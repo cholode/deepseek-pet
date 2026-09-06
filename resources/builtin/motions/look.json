@@ -1,0 +1,75 @@
+{
+  "schemaVersion": 1,
+  "id": "look",
+  "name": "look",
+  "kind": "rig_timeline",
+  "avatarId": "deepblue-chibi-v1",
+  "durationMs": 2100,
+  "channels": [
+    "pose"
+  ],
+  "tracks": [
+    {
+      "targetId": "head",
+      "property": "rotationDeg",
+      "keyframes": [
+        {
+          "timeMs": 0,
+          "value": 0,
+          "easing": "easeInOut"
+        },
+        {
+          "timeMs": 525,
+          "value": -12,
+          "easing": "easeInOut"
+        },
+        {
+          "timeMs": 1050,
+          "value": 0,
+          "easing": "easeInOut"
+        },
+        {
+          "timeMs": 1575,
+          "value": 12,
+          "easing": "easeInOut"
+        },
+        {
+          "timeMs": 2100,
+          "value": 0,
+          "easing": "easeInOut"
+        }
+      ]
+    },
+    {
+      "targetId": "head",
+      "property": "offsetX",
+      "keyframes": [
+        {
+          "timeMs": 0,
+          "value": 0,
+          "easing": "easeInOut"
+        },
+        {
+          "timeMs": 525,
+          "value": -5,
+          "easing": "easeInOut"
+        },
+        {
+          "timeMs": 1050,
+          "value": 0,
+          "easing": "easeInOut"
+        },
+        {
+          "timeMs": 1575,
+          "value": 5,
+          "easing": "easeInOut"
+        },
+        {
+          "timeMs": 2100,
+          "value": 0,
+          "easing": "easeInOut"
+        }
+      ]
+    }
+  ]
+}

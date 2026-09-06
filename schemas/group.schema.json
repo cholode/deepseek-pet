@@ -1,0 +1,319 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "properties": {
+    "schemaVersion": {
+      "type": "number",
+      "const": 1
+    },
+    "id": {
+      "type": "string",
+      "pattern": "^[a-zA-Z0-9_.-]{1,80}$"
+    },
+    "name": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 100
+    },
+    "description": {
+      "type": "string",
+      "maxLength": 1000
+    },
+    "tags": {
+      "maxItems": 20,
+      "type": "array",
+      "items": {
+        "type": "string",
+        "maxLength": 40
+      }
+    },
+    "enabled": {
+      "type": "boolean"
+    },
+    "random": {
+      "type": "object",
+      "properties": {
+        "eligible": {
+          "type": "boolean"
+        },
+        "weight": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1000
+        },
+        "cooldownMs": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 86400000
+        }
+      },
+      "required": [
+        "eligible",
+        "weight",
+        "cooldownMs"
+      ],
+      "additionalProperties": false
+    },
+    "conditions": {
+      "type": "object",
+      "properties": {
+        "minIdleMs": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 86400000
+        },
+        "requiresRoaming": {
+          "type": "boolean"
+        },
+        "requiresPointerAway": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "minIdleMs",
+        "requiresRoaming",
+        "requiresPointerAway"
+      ],
+      "additionalProperties": false
+    },
+    "maxDurationMs": {
+      "type": "number",
+      "minimum": 1,
+      "maximum": 30000
+    },
+    "timeline": {
+      "$ref": "#/$defs/__schema0"
+    }
+  },
+  "required": [
+    "schemaVersion",
+    "id",
+    "name",
+    "description",
+    "tags",
+    "enabled",
+    "random",
+    "conditions",
+    "maxDurationMs",
+    "timeline"
+  ],
+  "additionalProperties": false,
+  "$defs": {
+    "__schema0": {
+      "oneOf": [
+        {
+          "type": "object",
+          "properties": {
+            "type": {
+              "type": "string",
+              "const": "sequence"
+            },
+            "children": {
+              "minItems": 1,
+              "maxItems": 128,
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/__schema0"
+              }
+            }
+          },
+          "required": [
+            "type",
+            "children"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "type": {
+              "type": "string",
+              "const": "parallel"
+            },
+            "children": {
+              "minItems": 1,
+              "maxItems": 128,
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/__schema0"
+              }
+            }
+          },
+          "required": [
+            "type",
+            "children"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "type": {
+              "type": "string",
+              "const": "motion"
+            },
+            "motionId": {
+              "type": "string",
+              "pattern": "^[a-zA-Z0-9_.-]{1,80}:[a-zA-Z0-9_.-]{1,80}$"
+            },
+            "repeat": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 20
+            }
+          },
+          "required": [
+            "type",
+            "motionId",
+            "repeat"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "type": {
+              "type": "string",
+              "const": "expression"
+            },
+            "expressionId": {
+              "type": "string",
+              "enum": [
+                "neutral",
+                "smile",
+                "shy",
+                "annoyed",
+                "sleep",
+                "surprised"
+              ]
+            },
+            "durationMs": {
+              "type": "number",
+              "minimum": 1,
+              "maximum": 30000
+            }
+          },
+          "required": [
+            "type",
+            "expressionId",
+            "durationMs"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "type": {
+              "type": "string",
+              "const": "move_by"
+            },
+            "dxDip": {
+              "type": "number",
+              "minimum": -1000,
+              "maximum": 1000
+            },
+            "dyDip": {
+              "type": "number",
+              "minimum": -1000,
+              "maximum": 1000
+            },
+            "durationMs": {
+              "type": "number",
+              "minimum": 1,
+              "maximum": 30000
+            },
+            "easing": {
+              "type": "string",
+              "enum": [
+                "linear",
+                "easeInOut",
+                "easeOut"
+              ]
+            }
+          },
+          "required": [
+            "type",
+            "dxDip",
+            "dyDip",
+            "durationMs",
+            "easing"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "type": {
+              "type": "string",
+              "const": "effect"
+            },
+            "effectId": {
+              "type": "string",
+              "enum": [
+                "sparkles",
+                "hearts",
+                "sleepy",
+                "splash"
+              ]
+            },
+            "durationMs": {
+              "type": "number",
+              "minimum": 1,
+              "maximum": 30000
+            }
+          },
+          "required": [
+            "type",
+            "effectId",
+            "durationMs"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "type": {
+              "type": "string",
+              "const": "bubble"
+            },
+            "text": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 120
+            },
+            "durationMs": {
+              "type": "number",
+              "minimum": 1,
+              "maximum": 30000
+            }
+          },
+          "required": [
+            "type",
+            "text",
+            "durationMs"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "type": {
+              "type": "string",
+              "const": "wait"
+            },
+            "durationMs": {
+              "type": "number",
+              "minimum": 1,
+              "maximum": 30000
+            }
+          },
+          "required": [
+            "type",
+            "durationMs"
+          ],
+          "additionalProperties": false
+        }
+      ]
+    }
+  }
+}

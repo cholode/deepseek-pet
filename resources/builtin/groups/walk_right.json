@@ -1,0 +1,38 @@
+{
+  "schemaVersion": 1,
+  "id": "walk_right",
+  "name": "向右散步",
+  "description": "迈着小步移动桌面位置，遇到边界自动停下。",
+  "tags": [
+    "散步"
+  ],
+  "enabled": true,
+  "random": {
+    "eligible": true,
+    "weight": 1,
+    "cooldownMs": 12000
+  },
+  "conditions": {
+    "minIdleMs": 5000,
+    "requiresRoaming": true,
+    "requiresPointerAway": true
+  },
+  "maxDurationMs": 2900,
+  "timeline": {
+    "type": "parallel",
+    "children": [
+      {
+        "type": "motion",
+        "motionId": "builtin.deepblue:walk_right",
+        "repeat": 3
+      },
+      {
+        "type": "move_by",
+        "dxDip": 120,
+        "dyDip": 0,
+        "durationMs": 2400,
+        "easing": "linear"
+      }
+    ]
+  }
+}

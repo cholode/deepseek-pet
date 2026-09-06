@@ -1,0 +1,21 @@
+{
+  "schemaVersion": 1,
+  "size": 1,
+  "alwaysOnTop": true,
+  "fixedPosition": false,
+  "roaming": false,
+  "intervalMinMs": 3000,
+  "intervalMaxMs": 10000,
+  "bubbles": true,
+  "autonomousBubbles": false,
+  "clickThrough": false,
+  "fps": 60,
+  "paused": true,
+  "position": {
+    "x": 800,
+    "y": 290
+  },
+  "headAction": "builtin.deepblue:head_touch",
+  "bodyAction": "builtin.deepblue:body_touch",
+  "overrides": {}
+}

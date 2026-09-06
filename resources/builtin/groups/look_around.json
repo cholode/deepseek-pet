@@ -1,0 +1,26 @@
+{
+  "schemaVersion": 1,
+  "id": "look_around",
+  "name": "看看四周",
+  "description": "歪歪脑袋，看看你在不在身边。",
+  "tags": [
+    "日常"
+  ],
+  "enabled": true,
+  "random": {
+    "eligible": true,
+    "weight": 6,
+    "cooldownMs": 12000
+  },
+  "conditions": {
+    "minIdleMs": 2000,
+    "requiresRoaming": false,
+    "requiresPointerAway": false
+  },
+  "maxDurationMs": 2600,
+  "timeline": {
+    "type": "motion",
+    "motionId": "builtin.deepblue:look",
+    "repeat": 1
+  }
+}

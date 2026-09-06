@@ -1,0 +1,36 @@
+{
+  "schemaVersion": 1,
+  "id": "shy_pose",
+  "name": "有点害羞",
+  "description": "双手收拢，红着脸轻轻歪头。",
+  "tags": [
+    "日常"
+  ],
+  "enabled": true,
+  "random": {
+    "eligible": true,
+    "weight": 3,
+    "cooldownMs": 12000
+  },
+  "conditions": {
+    "minIdleMs": 2000,
+    "requiresRoaming": false,
+    "requiresPointerAway": false
+  },
+  "maxDurationMs": 2300,
+  "timeline": {
+    "type": "parallel",
+    "children": [
+      {
+        "type": "motion",
+        "motionId": "builtin.deepblue:shy",
+        "repeat": 1
+      },
+      {
+        "type": "expression",
+        "expressionId": "shy",
+        "durationMs": 1800
+      }
+    ]
+  }
+}

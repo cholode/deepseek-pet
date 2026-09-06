@@ -1,0 +1,41 @@
+{
+  "schemaVersion": 1,
+  "id": "greet_wave",
+  "name": "向你招手",
+  "description": "抬起右手，带着微笑和星光打个招呼。",
+  "tags": [
+    "日常"
+  ],
+  "enabled": true,
+  "random": {
+    "eligible": true,
+    "weight": 3,
+    "cooldownMs": 12000
+  },
+  "conditions": {
+    "minIdleMs": 2000,
+    "requiresRoaming": false,
+    "requiresPointerAway": false
+  },
+  "maxDurationMs": 1900,
+  "timeline": {
+    "type": "parallel",
+    "children": [
+      {
+        "type": "motion",
+        "motionId": "builtin.deepblue:wave",
+        "repeat": 1
+      },
+      {
+        "type": "expression",
+        "expressionId": "smile",
+        "durationMs": 1400
+      },
+      {
+        "type": "effect",
+        "effectId": "sparkles",
+        "durationMs": 1400
+      }
+    ]
+  }
+}

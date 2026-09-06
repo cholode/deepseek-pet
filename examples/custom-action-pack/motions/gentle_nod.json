@@ -1,0 +1,60 @@
+{
+  "schemaVersion": 1,
+  "id": "gentle_nod",
+  "name": "轻轻点头",
+  "kind": "rig_timeline",
+  "avatarId": "deepblue-chibi-v1",
+  "durationMs": 700,
+  "channels": [
+    "pose"
+  ],
+  "tracks": [
+    {
+      "targetId": "head",
+      "property": "rotationDeg",
+      "keyframes": [
+        {
+          "timeMs": 0,
+          "value": 0,
+          "easing": "linear"
+        },
+        {
+          "timeMs": 200,
+          "value": 7,
+          "easing": "easeInOut"
+        },
+        {
+          "timeMs": 430,
+          "value": -2,
+          "easing": "easeInOut"
+        },
+        {
+          "timeMs": 700,
+          "value": 0,
+          "easing": "easeInOut"
+        }
+      ]
+    },
+    {
+      "targetId": "head",
+      "property": "offsetY",
+      "keyframes": [
+        {
+          "timeMs": 0,
+          "value": 0,
+          "easing": "linear"
+        },
+        {
+          "timeMs": 250,
+          "value": 4,
+          "easing": "easeInOut"
+        },
+        {
+          "timeMs": 700,
+          "value": 0,
+          "easing": "easeInOut"
+        }
+      ]
+    }
+  ]
+}

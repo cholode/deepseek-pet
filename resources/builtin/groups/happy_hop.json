@@ -1,0 +1,41 @@
+{
+  "schemaVersion": 1,
+  "id": "happy_hop",
+  "name": "开心跳跳",
+  "description": "轻盈地跳起来，落地后再弹一下。",
+  "tags": [
+    "日常"
+  ],
+  "enabled": true,
+  "random": {
+    "eligible": true,
+    "weight": 3,
+    "cooldownMs": 12000
+  },
+  "conditions": {
+    "minIdleMs": 2000,
+    "requiresRoaming": false,
+    "requiresPointerAway": false
+  },
+  "maxDurationMs": 1600,
+  "timeline": {
+    "type": "parallel",
+    "children": [
+      {
+        "type": "motion",
+        "motionId": "builtin.deepblue:hop",
+        "repeat": 1
+      },
+      {
+        "type": "expression",
+        "expressionId": "smile",
+        "durationMs": 1100
+      },
+      {
+        "type": "effect",
+        "effectId": "sparkles",
+        "durationMs": 1100
+      }
+    ]
+  }
+}

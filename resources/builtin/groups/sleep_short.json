@@ -1,0 +1,41 @@
+{
+  "schemaVersion": 1,
+  "id": "sleep_short",
+  "name": "打个盹儿",
+  "description": "闭上眼睛小憩九秒，之后自动醒来。",
+  "tags": [
+    "日常"
+  ],
+  "enabled": true,
+  "random": {
+    "eligible": true,
+    "weight": 1,
+    "cooldownMs": 60000
+  },
+  "conditions": {
+    "minIdleMs": 2000,
+    "requiresRoaming": false,
+    "requiresPointerAway": false
+  },
+  "maxDurationMs": 9500,
+  "timeline": {
+    "type": "parallel",
+    "children": [
+      {
+        "type": "motion",
+        "motionId": "builtin.deepblue:sleep",
+        "repeat": 1
+      },
+      {
+        "type": "expression",
+        "expressionId": "sleep",
+        "durationMs": 9000
+      },
+      {
+        "type": "effect",
+        "effectId": "sleepy",
+        "durationMs": 9000
+      }
+    ]
+  }
+}

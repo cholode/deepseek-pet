@@ -1,0 +1,62 @@
+{
+  "schemaVersion": 1,
+  "id": "celebrate",
+  "name": "点头后开心挥手",
+  "description": "先轻轻点头，再微笑挥手并显示星星；可用于打招呼或表达开心。",
+  "tags": [
+    "greeting",
+    "happy",
+    "upper-body"
+  ],
+  "enabled": true,
+  "random": {
+    "eligible": true,
+    "weight": 3,
+    "cooldownMs": 18000
+  },
+  "conditions": {
+    "minIdleMs": 1500,
+    "requiresRoaming": false,
+    "requiresPointerAway": false
+  },
+  "maxDurationMs": 6000,
+  "timeline": {
+    "type": "sequence",
+    "children": [
+      {
+        "type": "motion",
+        "motionId": "user.celebrations:gentle_nod",
+        "repeat": 1
+      },
+      {
+        "type": "parallel",
+        "children": [
+          {
+            "type": "motion",
+            "motionId": "builtin.deepblue:wave",
+            "repeat": 1
+          },
+          {
+            "type": "expression",
+            "expressionId": "smile",
+            "durationMs": 1400
+          },
+          {
+            "type": "effect",
+            "effectId": "sparkles",
+            "durationMs": 1400
+          },
+          {
+            "type": "bubble",
+            "text": "今天也要加油呀。",
+            "durationMs": 1400
+          }
+        ]
+      },
+      {
+        "type": "wait",
+        "durationMs": 300
+      }
+    ]
+  }
+}

@@ -1,0 +1,38 @@
+{
+  "schemaVersion": 1,
+  "id": "builtin.deepblue",
+  "name": "DeepBlue · 日常",
+  "version": "1.1.0",
+  "avatarId": "deepblue-chibi-v1",
+  "description": "精细 AI 分层角色，鳍状耳朵、独立鲸尾与十三个动作组。",
+  "motions": [
+    "motions/wave.json",
+    "motions/sway.json",
+    "motions/look.json",
+    "motions/hop.json",
+    "motions/shy.json",
+    "motions/shake.json",
+    "motions/sleep.json",
+    "motions/walk_right.json",
+    "motions/walk_left.json",
+    "motions/pat.json",
+    "motions/boop.json",
+    "motions/settle.json",
+    "motions/frame_magic.json"
+  ],
+  "groups": [
+    "groups/idle_sway.json",
+    "groups/look_around.json",
+    "groups/greet_wave.json",
+    "groups/happy_hop.json",
+    "groups/shy_pose.json",
+    "groups/annoyed_shake.json",
+    "groups/sleep_short.json",
+    "groups/walk_left.json",
+    "groups/walk_right.json",
+    "groups/head_touch.json",
+    "groups/body_touch.json",
+    "groups/drag_release.json",
+    "groups/water_magic.json"
+  ]
+}

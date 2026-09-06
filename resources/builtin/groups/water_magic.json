@@ -1,0 +1,26 @@
+{
+  "schemaVersion": 1,
+  "id": "water_magic",
+  "name": "水光变奏",
+  "description": "真实 PNG 序列帧动画；结束或打断后恢复分层角色。",
+  "tags": [
+    "互动"
+  ],
+  "enabled": true,
+  "random": {
+    "eligible": false,
+    "weight": 3,
+    "cooldownMs": 12000
+  },
+  "conditions": {
+    "minIdleMs": 2000,
+    "requiresRoaming": false,
+    "requiresPointerAway": false
+  },
+  "maxDurationMs": 2100,
+  "timeline": {
+    "type": "motion",
+    "motionId": "builtin.deepblue:frame_magic",
+    "repeat": 2
+  }
+}

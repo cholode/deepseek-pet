@@ -1,0 +1,36 @@
+{
+  "schemaVersion": 1,
+  "id": "annoyed_shake",
+  "name": "小小抗议",
+  "description": "摇摇头，表达一点小小的不满。",
+  "tags": [
+    "互动"
+  ],
+  "enabled": true,
+  "random": {
+    "eligible": false,
+    "weight": 3,
+    "cooldownMs": 12000
+  },
+  "conditions": {
+    "minIdleMs": 2000,
+    "requiresRoaming": false,
+    "requiresPointerAway": false
+  },
+  "maxDurationMs": 1500,
+  "timeline": {
+    "type": "parallel",
+    "children": [
+      {
+        "type": "motion",
+        "motionId": "builtin.deepblue:shake",
+        "repeat": 1
+      },
+      {
+        "type": "expression",
+        "expressionId": "annoyed",
+        "durationMs": 1000
+      }
+    ]
+  }
+}

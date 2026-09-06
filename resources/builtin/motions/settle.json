@@ -1,0 +1,96 @@
+{
+  "schemaVersion": 1,
+  "id": "settle",
+  "name": "settle",
+  "kind": "rig_timeline",
+  "avatarId": "deepblue-chibi-v1",
+  "durationMs": 750,
+  "channels": [
+    "pose"
+  ],
+  "tracks": [
+    {
+      "targetId": "root",
+      "property": "rotationDeg",
+      "keyframes": [
+        {
+          "timeMs": 0,
+          "value": 0,
+          "easing": "easeInOut"
+        },
+        {
+          "timeMs": 188,
+          "value": -8,
+          "easing": "easeInOut"
+        },
+        {
+          "timeMs": 375,
+          "value": 6,
+          "easing": "easeInOut"
+        },
+        {
+          "timeMs": 563,
+          "value": -3,
+          "easing": "easeInOut"
+        },
+        {
+          "timeMs": 750,
+          "value": 0,
+          "easing": "easeInOut"
+        }
+      ]
+    },
+    {
+      "targetId": "hairBack",
+      "property": "rotationDeg",
+      "keyframes": [
+        {
+          "timeMs": 0,
+          "value": 0,
+          "easing": "easeInOut"
+        },
+        {
+          "timeMs": 250,
+          "value": 10,
+          "easing": "easeInOut"
+        },
+        {
+          "timeMs": 500,
+          "value": -6,
+          "easing": "easeInOut"
+        },
+        {
+          "timeMs": 750,
+          "value": 0,
+          "easing": "easeInOut"
+        }
+      ]
+    },
+    {
+      "targetId": "tail",
+      "property": "rotationDeg",
+      "keyframes": [
+        {
+          "timeMs": 0,
+          "value": 0,
+          "easing": "easeInOut"
+        },
+        {
+          "timeMs": 250,
+          "value": -7,
+          "easing": "easeInOut"
+        },
+        {
+          "timeMs": 500,
+          "value": 6,
+          "easing": "easeInOut"
+        },
+        {
+          "timeMs": 750,
+          "value": 0,
+          "easing": "easeInOut"
+        }
+      ]
+    }
+  ]
+}

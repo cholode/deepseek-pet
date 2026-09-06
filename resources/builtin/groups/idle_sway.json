@@ -1,0 +1,26 @@
+{
+  "schemaVersion": 1,
+  "id": "idle_sway",
+  "name": "微风摇摇",
+  "description": "随着微风轻轻摆动，发梢也跟着晃一晃。",
+  "tags": [
+    "日常"
+  ],
+  "enabled": true,
+  "random": {
+    "eligible": true,
+    "weight": 10,
+    "cooldownMs": 12000
+  },
+  "conditions": {
+    "minIdleMs": 2000,
+    "requiresRoaming": false,
+    "requiresPointerAway": false
+  },
+  "maxDurationMs": 2700,
+  "timeline": {
+    "type": "motion",
+    "motionId": "builtin.deepblue:sway",
+    "repeat": 1
+  }
+}

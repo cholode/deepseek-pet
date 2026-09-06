@@ -1,0 +1,91 @@
+{
+  "schemaVersion": 1,
+  "id": "hop",
+  "name": "hop",
+  "kind": "rig_timeline",
+  "avatarId": "deepblue-chibi-v1",
+  "durationMs": 1100,
+  "channels": [
+    "pose"
+  ],
+  "tracks": [
+    {
+      "targetId": "root",
+      "property": "offsetY",
+      "keyframes": [
+        {
+          "timeMs": 0,
+          "value": 0,
+          "easing": "easeInOut"
+        },
+        {
+          "timeMs": 220,
+          "value": 5,
+          "easing": "easeInOut"
+        },
+        {
+          "timeMs": 440,
+          "value": -34,
+          "easing": "easeInOut"
+        },
+        {
+          "timeMs": 660,
+          "value": 0,
+          "easing": "easeInOut"
+        },
+        {
+          "timeMs": 880,
+          "value": -12,
+          "easing": "easeInOut"
+        },
+        {
+          "timeMs": 1100,
+          "value": 0,
+          "easing": "easeInOut"
+        }
+      ]
+    },
+    {
+      "targetId": "armLeft",
+      "property": "rotationDeg",
+      "keyframes": [
+        {
+          "timeMs": 0,
+          "value": 0,
+          "easing": "easeInOut"
+        },
+        {
+          "timeMs": 550,
+          "value": 35,
+          "easing": "easeInOut"
+        },
+        {
+          "timeMs": 1100,
+          "value": 0,
+          "easing": "easeInOut"
+        }
+      ]
+    },
+    {
+      "targetId": "armRight",
+      "property": "rotationDeg",
+      "keyframes": [
+        {
+          "timeMs": 0,
+          "value": 0,
+          "easing": "easeInOut"
+        },
+        {
+          "timeMs": 550,
+          "value": -35,
+          "easing": "easeInOut"
+        },
+        {
+          "timeMs": 1100,
+          "value": 0,
+          "easing": "easeInOut"
+        }
+      ]
+    }
+  ]
+}

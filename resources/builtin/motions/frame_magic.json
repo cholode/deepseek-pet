@@ -1,0 +1,27 @@
+{
+  "schemaVersion": 1,
+  "id": "frame_magic",
+  "name": "水光逐帧",
+  "kind": "frame_animation",
+  "avatarId": "deepblue-chibi-v1",
+  "durationMs": 800,
+  "channels": [
+    "pose",
+    "face"
+  ],
+  "frames": [
+    "assets/frame-0.png",
+    "assets/frame-1.png",
+    "assets/frame-2.png",
+    "assets/frame-3.png"
+  ],
+  "fps": 5,
+  "canvas": {
+    "width": 340,
+    "height": 420
+  },
+  "anchor": {
+    "x": 0.5,
+    "y": 0.9285714285714286
+  }
+}

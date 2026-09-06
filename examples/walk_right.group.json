@@ -1,0 +1,40 @@
+{
+  "schemaVersion": 1,
+  "id": "walk_right",
+  "name": "向右散步",
+  "description": "一边播放步行动画，一边沿桌面向右移动。",
+  "tags": [
+    "locomotion",
+    "walk",
+    "right"
+  ],
+  "enabled": true,
+  "random": {
+    "eligible": true,
+    "weight": 3,
+    "cooldownMs": 12000
+  },
+  "conditions": {
+    "minIdleMs": 5000,
+    "requiresRoaming": true,
+    "requiresPointerAway": true
+  },
+  "maxDurationMs": 4500,
+  "timeline": {
+    "type": "parallel",
+    "children": [
+      {
+        "type": "motion",
+        "motionId": "builtin.deepblue:walk_right",
+        "repeat": 3
+      },
+      {
+        "type": "move_by",
+        "dxDip": 160,
+        "dyDip": 0,
+        "durationMs": 2400,
+        "easing": "linear"
+      }
+    ]
+  }
+}

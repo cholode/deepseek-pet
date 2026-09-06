@@ -1,0 +1,70 @@
+{
+  "schemaVersion": 1,
+  "id": "wave",
+  "name": "wave",
+  "kind": "rig_timeline",
+  "avatarId": "deepblue-chibi-v1",
+  "durationMs": 1400,
+  "channels": [
+    "pose"
+  ],
+  "tracks": [
+    {
+      "targetId": "armRight",
+      "property": "rotationDeg",
+      "keyframes": [
+        {
+          "timeMs": 0,
+          "value": 0,
+          "easing": "easeInOut"
+        },
+        {
+          "timeMs": 280,
+          "value": -105,
+          "easing": "easeInOut"
+        },
+        {
+          "timeMs": 560,
+          "value": -60,
+          "easing": "easeInOut"
+        },
+        {
+          "timeMs": 840,
+          "value": -110,
+          "easing": "easeInOut"
+        },
+        {
+          "timeMs": 1120,
+          "value": -65,
+          "easing": "easeInOut"
+        },
+        {
+          "timeMs": 1400,
+          "value": 0,
+          "easing": "easeInOut"
+        }
+      ]
+    },
+    {
+      "targetId": "head",
+      "property": "rotationDeg",
+      "keyframes": [
+        {
+          "timeMs": 0,
+          "value": 0,
+          "easing": "easeInOut"
+        },
+        {
+          "timeMs": 700,
+          "value": 5,
+          "easing": "easeInOut"
+        },
+        {
+          "timeMs": 1400,
+          "value": 0,
+          "easing": "easeInOut"
+        }
+      ]
+    }
+  ]
+}

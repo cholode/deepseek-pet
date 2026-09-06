@@ -1,0 +1,127 @@
+{
+  "schemaVersion": 1,
+  "id": "walk_left",
+  "name": "walk_left",
+  "kind": "rig_timeline",
+  "avatarId": "deepblue-chibi-v1",
+  "durationMs": 800,
+  "channels": [
+    "pose"
+  ],
+  "tracks": [
+    {
+      "targetId": "root",
+      "property": "offsetY",
+      "keyframes": [
+        {
+          "timeMs": 0,
+          "value": 0,
+          "easing": "easeInOut"
+        },
+        {
+          "timeMs": 200,
+          "value": -7,
+          "easing": "easeInOut"
+        },
+        {
+          "timeMs": 400,
+          "value": 0,
+          "easing": "easeInOut"
+        },
+        {
+          "timeMs": 600,
+          "value": -7,
+          "easing": "easeInOut"
+        },
+        {
+          "timeMs": 800,
+          "value": 0,
+          "easing": "easeInOut"
+        }
+      ]
+    },
+    {
+      "targetId": "armLeft",
+      "property": "rotationDeg",
+      "keyframes": [
+        {
+          "timeMs": 0,
+          "value": 0,
+          "easing": "easeInOut"
+        },
+        {
+          "timeMs": 200,
+          "value": 22,
+          "easing": "easeInOut"
+        },
+        {
+          "timeMs": 400,
+          "value": -22,
+          "easing": "easeInOut"
+        },
+        {
+          "timeMs": 600,
+          "value": 22,
+          "easing": "easeInOut"
+        },
+        {
+          "timeMs": 800,
+          "value": 0,
+          "easing": "easeInOut"
+        }
+      ]
+    },
+    {
+      "targetId": "armRight",
+      "property": "rotationDeg",
+      "keyframes": [
+        {
+          "timeMs": 0,
+          "value": 0,
+          "easing": "easeInOut"
+        },
+        {
+          "timeMs": 200,
+          "value": -22,
+          "easing": "easeInOut"
+        },
+        {
+          "timeMs": 400,
+          "value": 22,
+          "easing": "easeInOut"
+        },
+        {
+          "timeMs": 600,
+          "value": -22,
+          "easing": "easeInOut"
+        },
+        {
+          "timeMs": 800,
+          "value": 0,
+          "easing": "easeInOut"
+        }
+      ]
+    },
+    {
+      "targetId": "root",
+      "property": "scaleX",
+      "keyframes": [
+        {
+          "timeMs": 0,
+          "value": -1,
+          "easing": "easeInOut"
+        },
+        {
+          "timeMs": 400,
+          "value": -1,
+          "easing": "easeInOut"
+        },
+        {
+          "timeMs": 800,
+          "value": -1,
+          "easing": "easeInOut"
+        }
+      ]
+    }
+  ]
+}

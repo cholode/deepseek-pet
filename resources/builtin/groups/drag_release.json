@@ -1,0 +1,26 @@
+{
+  "schemaVersion": 1,
+  "id": "drag_release",
+  "name": "站稳啦",
+  "description": "被放下后晃一晃身体，重新站稳。",
+  "tags": [
+    "互动"
+  ],
+  "enabled": true,
+  "random": {
+    "eligible": false,
+    "weight": 3,
+    "cooldownMs": 12000
+  },
+  "conditions": {
+    "minIdleMs": 2000,
+    "requiresRoaming": false,
+    "requiresPointerAway": false
+  },
+  "maxDurationMs": 1250,
+  "timeline": {
+    "type": "motion",
+    "motionId": "builtin.deepblue:settle",
+    "repeat": 1
+  }
+}

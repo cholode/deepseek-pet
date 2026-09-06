@@ -1,0 +1,14 @@
+{
+  "schemaVersion": 1,
+  "id": "user.celebrations",
+  "name": "自定义庆祝动作包",
+  "version": "1.0.0",
+  "avatarId": "deepblue-chibi-v1",
+  "description": "演示不修改 TypeScript，只增加 JSON 即可添加新动作与动作组。依赖内置角色的 wave 动作、smile 表情和 sparkles 特效。",
+  "motions": [
+    "motions/gentle_nod.json"
+  ],
+  "groups": [
+    "groups/celebrate.json"
+  ]
+}

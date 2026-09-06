@@ -1,0 +1,49 @@
+{
+  "schemaVersion": 1,
+  "id": "shake",
+  "name": "shake",
+  "kind": "rig_timeline",
+  "avatarId": "deepblue-chibi-v1",
+  "durationMs": 1000,
+  "channels": [
+    "pose"
+  ],
+  "tracks": [
+    {
+      "targetId": "head",
+      "property": "rotationDeg",
+      "keyframes": [
+        {
+          "timeMs": 0,
+          "value": 0,
+          "easing": "easeInOut"
+        },
+        {
+          "timeMs": 200,
+          "value": -10,
+          "easing": "easeInOut"
+        },
+        {
+          "timeMs": 400,
+          "value": 10,
+          "easing": "easeInOut"
+        },
+        {
+          "timeMs": 600,
+          "value": -10,
+          "easing": "easeInOut"
+        },
+        {
+          "timeMs": 800,
+          "value": 8,
+          "easing": "easeInOut"
+        },
+        {
+          "timeMs": 1000,
+          "value": 0,
+          "easing": "easeInOut"
+        }
+      ]
+    }
+  ]
+}

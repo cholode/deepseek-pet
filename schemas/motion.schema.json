@@ -1,0 +1,262 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "oneOf": [
+    {
+      "type": "object",
+      "properties": {
+        "schemaVersion": {
+          "type": "number",
+          "const": 1
+        },
+        "id": {
+          "type": "string",
+          "pattern": "^[a-zA-Z0-9_.-]{1,80}$"
+        },
+        "name": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 100
+        },
+        "avatarId": {
+          "type": "string",
+          "const": "deepblue-chibi-v1"
+        },
+        "durationMs": {
+          "type": "number",
+          "minimum": 1,
+          "maximum": 30000
+        },
+        "channels": {
+          "minItems": 1,
+          "maxItems": 5,
+          "type": "array",
+          "items": {
+            "type": "string",
+            "enum": [
+              "pose",
+              "face",
+              "movement",
+              "effect",
+              "bubble"
+            ]
+          }
+        },
+        "kind": {
+          "type": "string",
+          "const": "rig_timeline"
+        },
+        "tracks": {
+          "minItems": 1,
+          "maxItems": 60,
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "targetId": {
+                "type": "string",
+                "enum": [
+                  "root",
+                  "body",
+                  "head",
+                  "hairBack",
+                  "hairFront",
+                  "armLeft",
+                  "armRight",
+                  "eyes",
+                  "mouth",
+                  "effects",
+                  "tail"
+                ]
+              },
+              "property": {
+                "type": "string",
+                "enum": [
+                  "offsetX",
+                  "offsetY",
+                  "rotationDeg",
+                  "scaleX",
+                  "scaleY",
+                  "alpha"
+                ]
+              },
+              "keyframes": {
+                "minItems": 2,
+                "maxItems": 120,
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "timeMs": {
+                      "type": "number",
+                      "minimum": 0,
+                      "maximum": 30000
+                    },
+                    "value": {
+                      "type": "number",
+                      "minimum": -2000,
+                      "maximum": 2000
+                    },
+                    "easing": {
+                      "type": "string",
+                      "enum": [
+                        "linear",
+                        "easeInOut",
+                        "easeOut"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "timeMs",
+                    "value",
+                    "easing"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            },
+            "required": [
+              "targetId",
+              "property",
+              "keyframes"
+            ],
+            "additionalProperties": false
+          }
+        }
+      },
+      "required": [
+        "schemaVersion",
+        "id",
+        "name",
+        "avatarId",
+        "durationMs",
+        "channels",
+        "kind",
+        "tracks"
+      ],
+      "additionalProperties": false
+    },
+    {
+      "type": "object",
+      "properties": {
+        "schemaVersion": {
+          "type": "number",
+          "const": 1
+        },
+        "id": {
+          "type": "string",
+          "pattern": "^[a-zA-Z0-9_.-]{1,80}$"
+        },
+        "name": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 100
+        },
+        "avatarId": {
+          "type": "string",
+          "const": "deepblue-chibi-v1"
+        },
+        "durationMs": {
+          "type": "number",
+          "minimum": 1,
+          "maximum": 30000
+        },
+        "channels": {
+          "minItems": 1,
+          "maxItems": 5,
+          "type": "array",
+          "items": {
+            "type": "string",
+            "enum": [
+              "pose",
+              "face",
+              "movement",
+              "effect",
+              "bubble"
+            ]
+          }
+        },
+        "kind": {
+          "type": "string",
+          "const": "frame_animation"
+        },
+        "frames": {
+          "minItems": 1,
+          "maxItems": 240,
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 240
+          }
+        },
+        "fps": {
+          "type": "number",
+          "minimum": 1,
+          "maximum": 60
+        },
+        "frameDurationsMs": {
+          "maxItems": 240,
+          "type": "array",
+          "items": {
+            "type": "number",
+            "minimum": 1,
+            "maximum": 30000
+          }
+        },
+        "canvas": {
+          "type": "object",
+          "properties": {
+            "width": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 4096
+            },
+            "height": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 4096
+            }
+          },
+          "required": [
+            "width",
+            "height"
+          ],
+          "additionalProperties": false
+        },
+        "anchor": {
+          "type": "object",
+          "properties": {
+            "x": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 1
+            },
+            "y": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 1
+            }
+          },
+          "required": [
+            "x",
+            "y"
+          ],
+          "additionalProperties": false
+        }
+      },
+      "required": [
+        "schemaVersion",
+        "id",
+        "name",
+        "avatarId",
+        "durationMs",
+        "channels",
+        "kind",
+        "frames",
+        "canvas",
+        "anchor"
+      ],
+      "additionalProperties": false
+    }
+  ]
+}

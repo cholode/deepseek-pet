@@ -1,0 +1,36 @@
+{
+  "schemaVersion": 1,
+  "id": "body_touch",
+  "name": "戳戳肚子",
+  "description": "被戳到后缩一下身子，露出惊讶的表情。",
+  "tags": [
+    "互动"
+  ],
+  "enabled": true,
+  "random": {
+    "eligible": false,
+    "weight": 3,
+    "cooldownMs": 12000
+  },
+  "conditions": {
+    "minIdleMs": 2000,
+    "requiresRoaming": false,
+    "requiresPointerAway": false
+  },
+  "maxDurationMs": 1400,
+  "timeline": {
+    "type": "parallel",
+    "children": [
+      {
+        "type": "motion",
+        "motionId": "builtin.deepblue:boop",
+        "repeat": 1
+      },
+      {
+        "type": "expression",
+        "expressionId": "surprised",
+        "durationMs": 900
+      }
+    ]
+  }
+}

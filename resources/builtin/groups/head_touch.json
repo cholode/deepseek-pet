@@ -1,0 +1,41 @@
+{
+  "schemaVersion": 1,
+  "id": "head_touch",
+  "name": "摸摸头",
+  "description": "被摸头时轻轻低头，冒出一颗小爱心。",
+  "tags": [
+    "互动"
+  ],
+  "enabled": true,
+  "random": {
+    "eligible": false,
+    "weight": 3,
+    "cooldownMs": 12000
+  },
+  "conditions": {
+    "minIdleMs": 2000,
+    "requiresRoaming": false,
+    "requiresPointerAway": false
+  },
+  "maxDurationMs": 1700,
+  "timeline": {
+    "type": "parallel",
+    "children": [
+      {
+        "type": "motion",
+        "motionId": "builtin.deepblue:pat",
+        "repeat": 1
+      },
+      {
+        "type": "expression",
+        "expressionId": "smile",
+        "durationMs": 1200
+      },
+      {
+        "type": "effect",
+        "effectId": "hearts",
+        "durationMs": 1200
+      }
+    ]
+  }
+}

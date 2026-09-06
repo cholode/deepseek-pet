@@ -1,0 +1,3 @@
+// Development-only client for Electron's explicitly enabled Node inspector.
+// Never bundled in the desktop application.
+(async()=>{const port=process.argv[2];const expression=process.argv[3];const targets=await(await fetch(`http://127.0.0.1:${port}/json/list`)).json();const ws=new WebSocket(targets[0].webSocketDebuggerUrl);ws.onopen=()=>ws.send(JSON.stringify({id:1,method:'Runtime.evaluate',params:{expression,returnByValue:true,awaitPromise:true}}));ws.onmessage=e=>{const r=JSON.parse(e.data);if(r.id===1){console.log(JSON.stringify(r.result,null,2));ws.close();}};})().catch(e=>{console.error(e);process.exitCode=1;});
