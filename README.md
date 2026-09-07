@@ -4,7 +4,11 @@
 
 ## 直接使用
 
-双击 `release/DeepBlue-Desktop-Pet-1.1.0-win-x64.exe`。便携版不需要 Node.js、不需要安装依赖、不需要账号或网络。首次解压启动需稍等。此程序未签名。
+推荐分享 `release/DeepBlue-Setup-1.1.1-win-x64.exe`：安装向导会安装到用户程序目录，并创建桌面与开始菜单快捷方式。安装后移动或删除源码文件夹不会影响使用。
+
+免安装使用 `release/DeepBlue-Desktop-Pet-1.1.1-win-x64.exe`：单个文件包含运行环境和全部素材，无需 Node.js、账号或网络。把它保留在固定位置，首次启动会自动解压。便携 EXE 本身被移动后，手工指向它的快捷方式仍需更新。
+
+两个 EXE 均未签名；若系统策略拒绝运行，请勿关闭安全策略。实际验证结果见 docs/TEST_REPORT.md。
 
 - 单击头部：摸摸头；单击身体：戳戳肚子。设置里可以更换绑定动作。
 - 双击角色：打开“桌宠小屋”；右键角色：打开菜单。
@@ -18,7 +22,7 @@
 
 ## 开发与构建
 
-在本目录运行（当前路径 `D:\go-project\vibecodingatempt\desktoppet`）：
+在项目根目录运行（支持整个项目目录移动或改名）：
 
 ```powershell
 npm install
@@ -30,7 +34,7 @@ npm run build
 npm run dist:win
 ```
 
-`npm run start` 运行已构建版本。`npm run test:watch` 是监听测试，普通 `test` 会自动退出。`dist:win` 会先检查类型并构建，然后生成 Windows x64 便携包。没有签名证书，不配置假签名。
+`npm run start` 运行已构建版本。`npm run test:watch` 是监听测试，普通 `test` 会自动退出。`dist:win` 会先检查类型并构建，然后生成 Windows x64 安装版和便携版。没有签名证书，不配置假签名。
 
 本机实际验证版本：Node **24.20.0**、npm **11.19.0**、Electron **44.2.0**、PixiJS **8.20.1**、React **19.2.8**、TypeScript **5.9.3**、electron-vite **5.0.0**、Vite **7.3.6**、electron-builder **26.15.3**、Vitest **3.2.7**、Zod **4.5.4**。以 `package-lock.json` 锁定的依赖为准；复现安装可使用 `npm ci`。
 
@@ -71,6 +75,6 @@ AI 模式明确不可用：无 API Key、无模型 SDK、无聊天、无语音�
 
 Windows 透明穿透采用系统整窗开关和有限频率鼠标采样，不承诺逐像素命中。当前优先验证 Windows 11；不宣称其他系统、多显示器热插拔等未实际执行的组合全部通过。
 
-## 本机 1.1 启动说明
+## 旧版本记录
 
-桌面“DeepBlue 桌宠”快捷方式当前启动项目内 Electron 本地运行版，已验证新素材和鼠标互动。请保留整个项目目录。1.1 便携 EXE 已构建，但本机 Windows 应用控制拦截该文件，尚未通过便携启动验证；本次未修改系统安全策略。
+1.1 的便携包曾被本机应用控制阻止，因此旧快捷方式指向源码目录。1.1.1 新增安装包，当前结果见测试报告。

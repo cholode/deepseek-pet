@@ -1,0 +1,10 @@
+const fs = require('node:fs');
+const path = require('node:path');
+const crypto = require('node:crypto');
+const {version}=require('../package.json');
+const dir=path.resolve(__dirname,'../release');
+const names=[`DeepBlue-Setup-${version}-win-x64.exe`,`DeepBlue-Desktop-Pet-${version}-win-x64.exe`];
+const sums=names.map(name=>`${crypto.createHash('sha256').update(fs.readFileSync(path.join(dir,name))).digest('hex')}  ${name}`);
+fs.writeFileSync(path.join(dir,'SHA256SUMS.txt'),sums.join('\n')+'\n');
+fs.writeFileSync(path.join(dir,'使用说明.txt'),`DeepBlue 桌宠 ${version} — Windows 10/11 x64\r\n\r\n推荐：双击 ${names[0]} 安装，完成后从桌面“DeepBlue 桌宠”启动。\r\n安装位置：%LOCALAPPDATA%\\Programs\\DeepBlue Desktop Pet。源码目录移动不会影响安装版。\r\n无需 Node.js、npm、Python、账号或联网。分享给别人只需要发安装 EXE。\r\n升级前请从托盘退出旧版本。卸载使用 Windows“已安装的应用”，个人设置会保留。\r\n\r\n免安装：双击 ${names[1]}，首次自动解压稍等片刻。请把此文件放在固定位置。\r\n\r\n单击摸头或戳身体，按住拖动，双击打开小屋，右键显示菜单。\r\n找不到角色时按 Ctrl+Alt+P，或通过托盘菜单重置位置。\r\n\r\n本程序未做数字签名，系统应用控制可能拒绝运行；无需且不建议关闭系统安全策略。\r\n`);
+console.log(sums.join('\n'));

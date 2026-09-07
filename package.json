@@ -1,6 +1,6 @@
 {
   "name": "deepblue-desktop-pet",
-  "version": "1.1.0",
+  "version": "1.1.1",
   "description": "离线、数据驱动的蓝发桌宠",
   "author": "DeepBlue contributors",
   "license": "UNLICENSED",
@@ -13,7 +13,7 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "build": "npm run typecheck && electron-vite build",
-    "dist:win": "npm run build && electron-builder --win portable --x64",
+    "dist:win": "npm run build && electron-builder --win nsis portable --x64 && node scripts/release-notes.cjs",
     "schemas": "tsx scripts/schemas.ts",
     "assets": "tsx scripts/art-assets.ts",
     "test:gui": "node scripts/gui-test.cjs"
@@ -64,6 +64,7 @@
     ],
     "win": {
       "target": [
+        "nsis",
         "portable"
       ],
       "icon": "resources/icon.png",
@@ -71,6 +72,20 @@
     },
     "portable": {
       "artifactName": "DeepBlue-Desktop-Pet-${version}-win-x64.exe"
+    },
+    "nsis": {
+      "oneClick": false,
+      "perMachine": false,
+      "allowToChangeInstallationDirectory": false,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "DeepBlue 桌宠",
+      "runAfterFinish": true,
+      "artifactName": "DeepBlue-Setup-${version}-win-x64.exe",
+      "script": "build/installer.nsi",
+      "installerLanguages": [
+        "zh_CN"
+      ]
     }
   }
 }
