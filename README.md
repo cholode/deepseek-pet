@@ -2,6 +2,10 @@
 
 一个可离线运行的 Windows 桌宠。Electron + React 管理窗口与小屋，PixiJS 8 驱动真正分层的角色。动作、动作组和图片序列均由本地 JSON 定义。
 
+## 效果预览
+
+![DeepBlue 小蓝桌宠效果图](docs/images/deepblue-preview.png)
+
 ## 直接使用
 
 推荐分享 `release/DeepBlue-Setup-1.1.1-win-x64.exe`：安装向导会安装到用户程序目录，并创建桌面与开始菜单快捷方式。安装后移动或删除源码文件夹不会影响使用。
