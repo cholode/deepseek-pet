@@ -17,3 +17,8 @@ portrait.png 用实际运行组件合成；frame-0.png 至 frame-3.png 为同一
 resources/icon.png 与 icon.ico 延续项目内原始鲸鱼图标。scripts/assets.ts 是历史 1.0 原创矢量设计与动作生成代码，不再由 npm run assets 调用，请勿用其覆盖当前素材。
 
 这些素材随便携包本地分发。未声明 DeepSeek 官方授权或用户参考图的再分发许可证。本项目没有自动拆层或 Live2D 模型绑定。
+# 盖被子睡眠素材（1.1.2）
+
+下文的 `art/animations/`、提示词及 `scripts/sleep-*.cjs`、`scripts/integrate-sleep.cjs` 是本机制作用记录，按要求加入 Git 忽略规则，不随仓库发布。应用所需的 96 张身体序列帧及独立尾巴 PNG 全部位于已提交的 `resources/builtin/assets/sleep/`，克隆后无需生成素材即可构建运行。
+
+`resources/builtin/assets/sleep/` 来自本项目 `art/animations/sleep-v4`：同一张已确认的 AI 睡姿原画，96 帧仅让被子缓慢起伏；尾巴提取为独立透明 PNG，根部隐藏区域作延伸以供遮挡。运行时绕根部旋转，不拉伸尾巴。人物、枕头和口水静止，Z 由 Pixi Text 动态绘制。原画提示词与来源保留在 `art/animations/sleep-v1/source`。生成与接入脚本为 `sleep-tail-layer.cjs`、`integrate-sleep.cjs`。入睡和醒来按用户要求直接切换，无过渡动画。

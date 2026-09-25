@@ -32,9 +32,24 @@ describe('timeline lifecycle',()=>{
   it('recursively cancels active leaves and emits one terminal',()=>{const h=host(),done=vi.fn();const r=new ActionGroupRunner(group({type:'parallel',children:[{type:'bubble',text:'A',durationMs:1000},{type:'wait',durationMs:1000}]}),'x','manual',makeCatalog(registry),h,done);r.tick(0);r.cancel();r.cancel();r.tick(2000);expect(h.disposed).toHaveLength(2);expect(done).toHaveBeenCalledExactlyOnceWith('cancelled',undefined);});
   it('failure in one parallel branch releases its siblings',()=>{const h=host(),done=vi.fn();h.begin.mockImplementationOnce(()=>({update:vi.fn(),dispose:()=>h.disposed.push('first')})).mockImplementationOnce(()=>{throw new Error('broken');});const r=new ActionGroupRunner(group({type:'parallel',children:[{type:'wait',durationMs:100},{type:'bubble',text:'B',durationMs:100}]}),'x','manual',makeCatalog(registry),h,done);r.tick(0);expect(h.disposed).toEqual(['first']);expect(done).toHaveBeenCalledExactlyOnceWith('failed','broken');});
   it('watchdog cancels stuck work',()=>{const done=vi.fn();const g=group({type:'wait',durationMs:30000});g.maxDurationMs=100;const r=new ActionGroupRunner(g,'x','manual',makeCatalog(registry),host(),done);r.tick(101);expect(done).toHaveBeenCalledExactlyOnceWith('failed','ACTION_TIMEOUT');});
-  it('frame sequence advances by milliseconds and clamps its final frame',()=>{const m=registry.packs[0].motions.find(m=>m.kind==='frame_animation') as Extract<Motion,{kind:'frame_animation'}>;expect([0,199,200,600,800].map(t=>frameIndex(m,t))).toEqual([0,0,1,3,3]);});
+  it('frame sequence advances by milliseconds and clamps its final frame',()=>{const m=registry.packs[0].motions.find(m=>m.id==='frame_magic') as Extract<Motion,{kind:'frame_animation'}>;expect([0,199,200,600,800].map(t=>frameIndex(m,t))).toEqual([0,0,1,3,3]);});
 });
 describe('command gateway and priority',()=>{
+  it('sleep only enters from standing and returns to standing on completion or cancellation',()=>{
+    const h=host(),r=new PetRuntime(structuredClone(registry),structuredClone(defaults),structuredClone(desktop),h);
+    expect(r.play('builtin.deepblue:greet_wave','normal').status).toBe('accepted');const previous=r.current;
+    expect(r.play('builtin.deepblue:sleep_short','manual').errorCode).toBe('REQUIRES_STANDING');expect(r.current).toBe(previous);
+    r.current!.cancel();h.disposed.length=0;expect(r.play('builtin.deepblue:sleep_short','manual').status).toBe('accepted');
+    expect(r.current!.group.expectedDurationMs).toBe(14400);expect(r.current!.group.random.eligible).toBe(true);
+    for(let i=0;i<144;i++)r.tick(100);expect(r.current).toBeNull();expect(h.reset).toHaveBeenCalled();
+    expect(r.play('builtin.deepblue:sleep_short','system').status).toBe('accepted');r.setDesktop({...desktop,dragging:true});expect(r.current).toBeNull();
+    expect(h.disposed.filter(x=>x==='motion')).toHaveLength(2);expect(h.disposed.filter(x=>x==='effect')).toHaveLength(2);
+  });
+  it('sleep layers are independently registered and missing tail assets are rejected',()=>{
+    const m=makeCatalog(registry).motions.get('builtin.deepblue:sleep')!;expect(m.kind).toBe('frame_animation');
+    if(m.kind==='frame_animation'){expect(m.layers?.[0].image).toBe('assets/sleep/tail.png');expect(m.frames).toHaveLength(96);expect(m.hitAreas).toHaveLength(2);}
+    const bad=structuredClone(registry);delete bad.packs[0].assets['assets/sleep/tail.png'];expect(()=>makeCatalog(bad)).toThrow('缺少图片');
+  });
   it('deduplicates identical command and rejects conflicting payload',async()=>{const r=runtime();const p=r.port('manual');const c={protocolVersion:1 as const,commandId:'same',type:'play_group' as const,groupId:'builtin.deepblue:greet_wave'};const a=await p.submit(c);expect(await p.submit(c)).toEqual(a);expect(r.events.filter(e=>e.type==='action_lifecycle')).toHaveLength(1);expect((await p.submit({...c,groupId:'builtin.deepblue:happy_hop'})).errorCode).toBe('COMMAND_ID_CONFLICT');});
   it('rejects expired, unknown, AI and forged source commands',()=>{const r=runtime();expect(r.submit({protocolVersion:1,commandId:'e',type:'play_group',groupId:'builtin.deepblue:greet_wave',expiresAtUnixMs:0},'manual').errorCode).toBe('COMMAND_EXPIRED');expect(r.play('no:such','manual').errorCode).toBe('UNKNOWN_GROUP');expect(r.play('builtin.deepblue:greet_wave','ai').errorCode).toBe('MODE_NOT_AVAILABLE');expect(r.submit({protocolVersion:1,commandId:'x',type:'stop_current',source:'system'},'manual').errorCode).toBe('INVALID_COMMAND');});
   it('interaction preempts random, manual preempts interaction, low priority is BUSY',()=>{const r=runtime();r.play('builtin.deepblue:greet_wave','normal');const old=r.current!;expect(r.play('builtin.deepblue:head_touch','interaction').status).toBe('accepted');expect(r.play('builtin.deepblue:look_around','normal').errorCode).toBe('BUSY');expect(r.play('builtin.deepblue:happy_hop','manual').status).toBe('accepted');const current=r.current;old.tick(10000);expect(r.current).toBe(current);expect(r.events.filter(e=>e.type==='action_lifecycle'&&e.payload.status==='cancelled')).toHaveLength(2);});

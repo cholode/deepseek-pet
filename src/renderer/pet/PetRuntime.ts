@@ -31,6 +31,7 @@ export class PetRuntime {
       if (!g) result = reject('UNKNOWN_GROUP', '找不到动作组');
       else if (!g.enabled || this.quarantined.has(c.groupId)) result = reject('GROUP_UNAVAILABLE', '动作被禁用或发生故障');
       else if (!this.desktop.visible || this.desktop.suspended) result = reject('NOT_VISIBLE');
+      else if (g.conditions.requiresStanding && this.current) result = reject('REQUIRES_STANDING', '请等当前动作结束、回到站立待机后再睡觉');
       else if (this.settings.fixedPosition && g.channels.includes('movement')) result = reject('FIXED_POSITION', '关闭固定位置后才能播放移动动作');
       else if (Date.now() - (this.lastSubmit.get(source) ?? 0) < 90 && source !== 'system') result = reject('RATE_LIMITED', '操作太快，请稍候');
       else {

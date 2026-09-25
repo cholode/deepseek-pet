@@ -175,6 +175,109 @@
             ]
           }
         },
+        "displayScale": {
+          "type": "number",
+          "minimum": 0.1,
+          "maximum": 3
+        },
+        "layers": {
+          "maxItems": 8,
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "image": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 240
+              },
+              "x": {
+                "type": "number",
+                "minimum": -4096,
+                "maximum": 4096
+              },
+              "y": {
+                "type": "number",
+                "minimum": -4096,
+                "maximum": 4096
+              },
+              "pivotX": {
+                "type": "number",
+                "minimum": -4096,
+                "maximum": 4096
+              },
+              "pivotY": {
+                "type": "number",
+                "minimum": -4096,
+                "maximum": 4096
+              },
+              "rotationDeg": {
+                "type": "number",
+                "minimum": -180,
+                "maximum": 180
+              },
+              "periodMs": {
+                "type": "number",
+                "minimum": 100,
+                "maximum": 30000
+              }
+            },
+            "required": [
+              "image",
+              "x",
+              "y",
+              "pivotX",
+              "pivotY",
+              "rotationDeg",
+              "periodMs"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "hitAreas": {
+          "maxItems": 8,
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "target": {
+                "type": "string",
+                "enum": [
+                  "head",
+                  "body"
+                ]
+              },
+              "x": {
+                "type": "number",
+                "minimum": 0,
+                "maximum": 4096
+              },
+              "y": {
+                "type": "number",
+                "minimum": 0,
+                "maximum": 4096
+              },
+              "width": {
+                "type": "number",
+                "minimum": 1,
+                "maximum": 4096
+              },
+              "height": {
+                "type": "number",
+                "minimum": 1,
+                "maximum": 4096
+              }
+            },
+            "required": [
+              "target",
+              "x",
+              "y",
+              "width",
+              "height"
+            ],
+            "additionalProperties": false
+          }
+        },
         "kind": {
           "type": "string",
           "const": "frame_animation"

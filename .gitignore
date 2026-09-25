@@ -8,3 +8,9 @@ test-results/
 .dev-test-user/
 .package-test-user/
 
+# 本地动画制作过程：提示词、原画试稿、预览、导出压缩包
+/art/animations/
+# 本次动画制作、接入及本机验收辅助脚本；运行素材已在 resources/builtin 中
+/scripts/integrate-sleep.cjs
+/scripts/sleep-*.cjs
+

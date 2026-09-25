@@ -1,75 +1,147 @@
 {
   "schemaVersion": 1,
   "id": "sleep",
-  "name": "sleep",
-  "kind": "rig_timeline",
+  "name": "盖被子侧卧熟睡",
+  "kind": "frame_animation",
   "avatarId": "deepblue-chibi-v1",
-  "durationMs": 9000,
+  "durationMs": 4800,
   "channels": [
-    "pose"
+    "pose",
+    "face"
   ],
-  "tracks": [
+  "frames": [
+    "assets/sleep/001.png",
+    "assets/sleep/002.png",
+    "assets/sleep/003.png",
+    "assets/sleep/004.png",
+    "assets/sleep/005.png",
+    "assets/sleep/006.png",
+    "assets/sleep/007.png",
+    "assets/sleep/008.png",
+    "assets/sleep/009.png",
+    "assets/sleep/010.png",
+    "assets/sleep/011.png",
+    "assets/sleep/012.png",
+    "assets/sleep/013.png",
+    "assets/sleep/014.png",
+    "assets/sleep/015.png",
+    "assets/sleep/016.png",
+    "assets/sleep/017.png",
+    "assets/sleep/018.png",
+    "assets/sleep/019.png",
+    "assets/sleep/020.png",
+    "assets/sleep/021.png",
+    "assets/sleep/022.png",
+    "assets/sleep/023.png",
+    "assets/sleep/024.png",
+    "assets/sleep/025.png",
+    "assets/sleep/026.png",
+    "assets/sleep/027.png",
+    "assets/sleep/028.png",
+    "assets/sleep/029.png",
+    "assets/sleep/030.png",
+    "assets/sleep/031.png",
+    "assets/sleep/032.png",
+    "assets/sleep/033.png",
+    "assets/sleep/034.png",
+    "assets/sleep/035.png",
+    "assets/sleep/036.png",
+    "assets/sleep/037.png",
+    "assets/sleep/038.png",
+    "assets/sleep/039.png",
+    "assets/sleep/040.png",
+    "assets/sleep/041.png",
+    "assets/sleep/042.png",
+    "assets/sleep/043.png",
+    "assets/sleep/044.png",
+    "assets/sleep/045.png",
+    "assets/sleep/046.png",
+    "assets/sleep/047.png",
+    "assets/sleep/048.png",
+    "assets/sleep/049.png",
+    "assets/sleep/050.png",
+    "assets/sleep/051.png",
+    "assets/sleep/052.png",
+    "assets/sleep/053.png",
+    "assets/sleep/054.png",
+    "assets/sleep/055.png",
+    "assets/sleep/056.png",
+    "assets/sleep/057.png",
+    "assets/sleep/058.png",
+    "assets/sleep/059.png",
+    "assets/sleep/060.png",
+    "assets/sleep/061.png",
+    "assets/sleep/062.png",
+    "assets/sleep/063.png",
+    "assets/sleep/064.png",
+    "assets/sleep/065.png",
+    "assets/sleep/066.png",
+    "assets/sleep/067.png",
+    "assets/sleep/068.png",
+    "assets/sleep/069.png",
+    "assets/sleep/070.png",
+    "assets/sleep/071.png",
+    "assets/sleep/072.png",
+    "assets/sleep/073.png",
+    "assets/sleep/074.png",
+    "assets/sleep/075.png",
+    "assets/sleep/076.png",
+    "assets/sleep/077.png",
+    "assets/sleep/078.png",
+    "assets/sleep/079.png",
+    "assets/sleep/080.png",
+    "assets/sleep/081.png",
+    "assets/sleep/082.png",
+    "assets/sleep/083.png",
+    "assets/sleep/084.png",
+    "assets/sleep/085.png",
+    "assets/sleep/086.png",
+    "assets/sleep/087.png",
+    "assets/sleep/088.png",
+    "assets/sleep/089.png",
+    "assets/sleep/090.png",
+    "assets/sleep/091.png",
+    "assets/sleep/092.png",
+    "assets/sleep/093.png",
+    "assets/sleep/094.png",
+    "assets/sleep/095.png",
+    "assets/sleep/096.png"
+  ],
+  "fps": 20,
+  "canvas": {
+    "width": 512,
+    "height": 512
+  },
+  "anchor": {
+    "x": 0.5,
+    "y": 0.9609375
+  },
+  "displayScale": 0.72,
+  "layers": [
     {
-      "targetId": "head",
-      "property": "rotationDeg",
-      "keyframes": [
-        {
-          "timeMs": 0,
-          "value": 0,
-          "easing": "easeInOut"
-        },
-        {
-          "timeMs": 2250,
-          "value": 12,
-          "easing": "easeInOut"
-        },
-        {
-          "timeMs": 4500,
-          "value": 13,
-          "easing": "easeInOut"
-        },
-        {
-          "timeMs": 6750,
-          "value": 12,
-          "easing": "easeInOut"
-        },
-        {
-          "timeMs": 9000,
-          "value": 0,
-          "easing": "easeInOut"
-        }
-      ]
+      "image": "assets/sleep/tail.png",
+      "x": 365,
+      "y": 325,
+      "pivotX": 36,
+      "pivotY": 72,
+      "rotationDeg": 16,
+      "periodMs": 2400
+    }
+  ],
+  "hitAreas": [
+    {
+      "target": "head",
+      "x": 35,
+      "y": 210,
+      "width": 235,
+      "height": 190
     },
     {
-      "targetId": "body",
-      "property": "scaleY",
-      "keyframes": [
-        {
-          "timeMs": 0,
-          "value": 1,
-          "easing": "easeInOut"
-        },
-        {
-          "timeMs": 2250,
-          "value": 0.98,
-          "easing": "easeInOut"
-        },
-        {
-          "timeMs": 4500,
-          "value": 1,
-          "easing": "easeInOut"
-        },
-        {
-          "timeMs": 6750,
-          "value": 0.98,
-          "easing": "easeInOut"
-        },
-        {
-          "timeMs": 9000,
-          "value": 1,
-          "easing": "easeInOut"
-        }
-      ]
+      "target": "body",
+      "x": 180,
+      "y": 350,
+      "width": 275,
+      "height": 140
     }
   ]
 }

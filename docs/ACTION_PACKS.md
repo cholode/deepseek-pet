@@ -116,3 +116,10 @@
 每包最多 100 MB、1000 个文件和目录，目录深度最多 12。JSON 单文件最多 1 MB。图片只接受 PNG/WebP，单图最大 4096×4096，估算解码总量最多 256 MB。路径必须是包内相对路径，禁止绝对路径、`..`、网络路径、反斜杠、编码逃逸、符号链接和目录联接。包中不接受 JS/TS/HTML/SVG；原创内部 SVG 仅在开发资产脚本中使用，不是用户包可执行资源。
 
 `schemas/*.schema.json` 由相同 Zod 结构通过 `npm run schemas` 生成，可配置编辑器文件关联进行补全。JSON Schema 表达字段结构；路径安全、通道交叉引用、帧时长总和等跨字段约束仍由运行时校验，不能仅靠编辑器提示判定有效。
+# 睡姿及独立图层扩展（1.1.2）
+
+`conditions.requiresStanding: true` 是所有命令来源均须遵守的入口条件：当前有前景动作时拒绝开始该组，不抢占现有动作。基础待机是站立姿态；动作完成或取消由统一执行器 reset 恢复站立。
+
+`frame_animation` 可选 `displayScale`（默认 1）、`layers` 和 `hitAreas`。`layers` 是位于序列帧后方的独立图片列表，字段为包内 `image`、画布位置 `x/y`、图片内支点 `pivotX/pivotY`、正弦旋转幅度 `rotationDeg`、周期 `periodMs`。图片须已加载并通过包路径校验。`hitAreas` 使用帧画布坐标，每项为 `target: head|body`、`x/y/width/height`，随缩放更新鼠标区域。
+
+`effect` 节点可选 `origin: {x,y}`，为 sleepy 特效的起始设计坐标（相对角色脚底），Z 向右上方移动并淡出。特效独立于隐藏的站立角色，完成、取消、失败均清理。示例见内置 `motions/sleep.json` 与 `groups/sleep_short.json`。

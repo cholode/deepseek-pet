@@ -1,10 +1,12 @@
 {
   "schemaVersion": 1,
   "id": "sleep_short",
-  "name": "打个盹儿",
-  "description": "闭上眼睛小憩九秒，之后自动醒来。",
+  "name": "盖被子睡觉",
+  "description": "仅从站立待机直接进入侧卧睡觉；被子呼吸、独立尾巴摇摆，Z 向右上飘，14.4 秒后站起来。",
   "tags": [
-    "日常"
+    "日常",
+    "待机",
+    "睡觉"
   ],
   "enabled": true,
   "random": {
@@ -13,28 +15,28 @@
     "cooldownMs": 60000
   },
   "conditions": {
-    "minIdleMs": 2000,
+    "minIdleMs": 8000,
     "requiresRoaming": false,
-    "requiresPointerAway": false
+    "requiresPointerAway": true,
+    "requiresStanding": true
   },
-  "maxDurationMs": 9500,
+  "maxDurationMs": 15000,
   "timeline": {
     "type": "parallel",
     "children": [
       {
         "type": "motion",
         "motionId": "builtin.deepblue:sleep",
-        "repeat": 1
-      },
-      {
-        "type": "expression",
-        "expressionId": "sleep",
-        "durationMs": 9000
+        "repeat": 3
       },
       {
         "type": "effect",
         "effectId": "sleepy",
-        "durationMs": 9000
+        "durationMs": 14400,
+        "origin": {
+          "x": -75,
+          "y": -215
+        }
       }
     ]
   }

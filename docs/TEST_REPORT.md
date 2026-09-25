@@ -106,3 +106,12 @@
 
 ## 尾巴连接修正
 调整尾巴方向、位置、尾根锚点及 body 父节点，预览与序列帧同步更新。typecheck、lint、51 项单元测试、build 通过。首次画面脚本在启动期间请求动作被拒绝；等待就绪后实际执行 greet_wave 和 body_touch 均 accepted/completed，错误为空，截图及状态见 test-results/art-v2/tail-*.png 与 tail-check.json。本轮更新本地运行版，未重做被应用控制拦截的便携包。
+# 1.1.2 盖被子睡眠集成（2026-09-25）
+
+本节的睡眠 GUI 专项脚本及截图为本机验收记录，按要求忽略，不随仓库发布；通用 GUI 测试仍通过 `npm run test:gui` 执行，新增自动化用例保存在 `tests/core.test.ts`。
+
+- `npm run typecheck`、`npm run lint`、`npm test`（53 项）、`npm run schemas`、`npm run build`、`npm run dist:win` 均退出 0。
+- 新增用例验证：非站立时不能进入睡觉且不打断原动作、14.4 秒完成后 reset、拖动取消睡姿与特效、独立尾巴图片缺失会拒绝加载。
+- `node scripts/sleep-gui-test.cjs` 在真实 Electron 窗口中验证站立入口限制、睡眠自然完成和停止后恢复站立、无运行错误。随后通过 `PET_TEST_EXE=release/win-unpacked/DeepBlue Desktop Pet.exe` 对打包程序重复检查，通过。截图 `test-results/sleep-live.png` 可见盖被子姿势、独立尾巴、头顶向右上分布的 Z；站立恢复截图和结果见同目录。
+- 安装 EXE `DeepBlue-Setup-1.1.2-win-x64.exe`：192952436 字节；便携 EXE `DeepBlue-Desktop-Pet-1.1.2-win-x64.exe`：152501120 字节。SHA256 见 `release/SHA256SUMS.txt`。未签名，本轮验证打包后的 unpacked 程序，未执行安装向导或便携自解压启动流程。
+- 本轮没有重新进行多屏、原生拖动、十分钟驻留测试；历史相关结果不能替代本轮完整回归。新增脚本仅操作本项目测试窗口，使用独立测试用户目录。
