@@ -1,0 +1,37 @@
+{
+  "schemaVersion": 1,
+  "id": "unimpressed_pause",
+  "name": "有点无语",
+  "description": "眉毛放松、眼皮耷拉、抿着平嘴，安静地看着你。",
+  "tags": [
+    "表情",
+    "互动"
+  ],
+  "enabled": true,
+  "random": {
+    "eligible": false,
+    "weight": 2,
+    "cooldownMs": 30000
+  },
+  "conditions": {
+    "minIdleMs": 4000,
+    "requiresRoaming": false,
+    "requiresPointerAway": true
+  },
+  "maxDurationMs": 2900,
+  "timeline": {
+    "type": "parallel",
+    "children": [
+      {
+        "type": "motion",
+        "motionId": "builtin.deepblue:unimpressed_pause",
+        "repeat": 1
+      },
+      {
+        "type": "expression",
+        "expressionId": "unimpressed",
+        "durationMs": 2400
+      }
+    ]
+  }
+}

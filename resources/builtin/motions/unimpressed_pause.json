@@ -1,0 +1,44 @@
+{
+  "schemaVersion": 1,
+  "id": "unimpressed_pause",
+  "name": "有点无语",
+  "avatarId": "deepblue-chibi-v1",
+  "kind": "rig_timeline",
+  "durationMs": 2400,
+  "channels": [
+    "pose"
+  ],
+  "tracks": [
+    {
+      "targetId": "head",
+      "property": "offsetY",
+      "keyframes": [
+        {
+          "timeMs": 0,
+          "value": 0,
+          "easing": "easeInOut"
+        },
+        {
+          "timeMs": 432,
+          "value": 2,
+          "easing": "easeInOut"
+        },
+        {
+          "timeMs": 1560,
+          "value": 2,
+          "easing": "easeInOut"
+        },
+        {
+          "timeMs": 2040,
+          "value": 2,
+          "easing": "easeInOut"
+        },
+        {
+          "timeMs": 2400,
+          "value": 0,
+          "easing": "easeInOut"
+        }
+      ]
+    }
+  ]
+}

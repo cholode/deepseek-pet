@@ -21,7 +21,8 @@
     "motions/frame_magic.json",
     "motions/confused_tilt.json",
     "motions/sad_pout.json",
-    "motions/smug_pose.json"
+    "motions/smug_pose.json",
+    "motions/unimpressed_pause.json"
   ],
   "groups": [
     "groups/idle_sway.json",
@@ -39,6 +40,7 @@
     "groups/water_magic.json",
     "groups/confused_tilt.json",
     "groups/sad_pout.json",
-    "groups/smug_pose.json"
+    "groups/smug_pose.json",
+    "groups/unimpressed_pause.json"
   ]
 }
