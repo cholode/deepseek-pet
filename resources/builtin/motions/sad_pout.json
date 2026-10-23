@@ -1,0 +1,106 @@
+{
+  "schemaVersion": 1,
+  "id": "sad_pout",
+  "name": "有点委屈",
+  "avatarId": "deepblue-chibi-v1",
+  "kind": "rig_timeline",
+  "durationMs": 2600,
+  "channels": [
+    "pose"
+  ],
+  "tracks": [
+    {
+      "targetId": "head",
+      "property": "offsetY",
+      "keyframes": [
+        {
+          "timeMs": 0,
+          "value": 0,
+          "easing": "easeInOut"
+        },
+        {
+          "timeMs": 468,
+          "value": 3,
+          "easing": "easeInOut"
+        },
+        {
+          "timeMs": 1690,
+          "value": 3,
+          "easing": "easeInOut"
+        },
+        {
+          "timeMs": 2210,
+          "value": 2,
+          "easing": "easeInOut"
+        },
+        {
+          "timeMs": 2600,
+          "value": 0,
+          "easing": "easeInOut"
+        }
+      ]
+    },
+    {
+      "targetId": "armLeft",
+      "property": "rotationDeg",
+      "keyframes": [
+        {
+          "timeMs": 0,
+          "value": 0,
+          "easing": "easeInOut"
+        },
+        {
+          "timeMs": 468,
+          "value": -8,
+          "easing": "easeInOut"
+        },
+        {
+          "timeMs": 1690,
+          "value": -8,
+          "easing": "easeInOut"
+        },
+        {
+          "timeMs": 2210,
+          "value": -3,
+          "easing": "easeInOut"
+        },
+        {
+          "timeMs": 2600,
+          "value": 0,
+          "easing": "easeInOut"
+        }
+      ]
+    },
+    {
+      "targetId": "armRight",
+      "property": "rotationDeg",
+      "keyframes": [
+        {
+          "timeMs": 0,
+          "value": 0,
+          "easing": "easeInOut"
+        },
+        {
+          "timeMs": 468,
+          "value": 8,
+          "easing": "easeInOut"
+        },
+        {
+          "timeMs": 1690,
+          "value": 8,
+          "easing": "easeInOut"
+        },
+        {
+          "timeMs": 2210,
+          "value": 3,
+          "easing": "easeInOut"
+        },
+        {
+          "timeMs": 2600,
+          "value": 0,
+          "easing": "easeInOut"
+        }
+      ]
+    }
+  ]
+}

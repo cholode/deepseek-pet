@@ -1,0 +1,37 @@
+{
+  "schemaVersion": 1,
+  "id": "sad_pout",
+  "name": "有点委屈",
+  "description": "眉头抬起，小嘴撇下，眼中泛起一点泪光。",
+  "tags": [
+    "表情",
+    "互动"
+  ],
+  "enabled": true,
+  "random": {
+    "eligible": false,
+    "weight": 2,
+    "cooldownMs": 30000
+  },
+  "conditions": {
+    "minIdleMs": 4000,
+    "requiresRoaming": false,
+    "requiresPointerAway": true
+  },
+  "maxDurationMs": 3100,
+  "timeline": {
+    "type": "parallel",
+    "children": [
+      {
+        "type": "motion",
+        "motionId": "builtin.deepblue:sad_pout",
+        "repeat": 1
+      },
+      {
+        "type": "expression",
+        "expressionId": "sad",
+        "durationMs": 2600
+      }
+    ]
+  }
+}

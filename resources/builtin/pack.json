@@ -19,7 +19,8 @@
     "motions/boop.json",
     "motions/settle.json",
     "motions/frame_magic.json",
-    "motions/confused_tilt.json"
+    "motions/confused_tilt.json",
+    "motions/sad_pout.json"
   ],
   "groups": [
     "groups/idle_sway.json",
@@ -35,6 +36,7 @@
     "groups/body_touch.json",
     "groups/drag_release.json",
     "groups/water_magic.json",
-    "groups/confused_tilt.json"
+    "groups/confused_tilt.json",
+    "groups/sad_pout.json"
   ]
 }

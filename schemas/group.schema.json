@@ -188,7 +188,8 @@
                 "annoyed",
                 "sleep",
                 "surprised",
-                "confused"
+                "confused",
+                "sad"
               ]
             },
             "durationMs": {

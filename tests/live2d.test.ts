@@ -16,6 +16,8 @@ describe('Live2D action adapter',()=>{
   it('keeps expressive gaze under face ownership, with independent brows, mouth and tears',()=>{
     const confused=parametersFor({},500,['face'],'confused',{x:-1,y:1},1);
     expect(confused.ParamEyeBallX).toBe(.3);expect(confused.ParamBrowAsym).toBe(1);expect(confused.ParamMouthTwist).toBeLessThan(0);
+    const sad=parametersFor({},500,['face'],'sad',{x:1,y:-1},1);
+    expect(sad.ParamTear).toBeGreaterThan(0);expect(sad.ParamBrowForm).toBeLessThan(0);expect(sad.ParamMouthForm).toBeLessThan(0);
   });
   it('keeps the neck on the torso during head nods and follows body translations',()=>{
     const source=new Float32Array([0,-.03,.1,-.08]),rest=new Float32Array(4),posed=new Float32Array(4);
