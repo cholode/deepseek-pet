@@ -189,7 +189,8 @@
                 "sleep",
                 "surprised",
                 "confused",
-                "sad"
+                "sad",
+                "smug"
               ]
             },
             "durationMs": {

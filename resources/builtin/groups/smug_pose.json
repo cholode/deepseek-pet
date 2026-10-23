@@ -1,0 +1,37 @@
+{
+  "schemaVersion": 1,
+  "id": "smug_pose",
+  "name": "小小得意",
+  "description": "半眯着眼挑起眉，嘴角一边扬起，轻轻抬头。",
+  "tags": [
+    "表情",
+    "互动"
+  ],
+  "enabled": true,
+  "random": {
+    "eligible": true,
+    "weight": 2,
+    "cooldownMs": 30000
+  },
+  "conditions": {
+    "minIdleMs": 4000,
+    "requiresRoaming": false,
+    "requiresPointerAway": true
+  },
+  "maxDurationMs": 2900,
+  "timeline": {
+    "type": "parallel",
+    "children": [
+      {
+        "type": "motion",
+        "motionId": "builtin.deepblue:smug_pose",
+        "repeat": 1
+      },
+      {
+        "type": "expression",
+        "expressionId": "smug",
+        "durationMs": 2400
+      }
+    ]
+  }
+}
