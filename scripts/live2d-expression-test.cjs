@@ -2,7 +2,27 @@ const {chromium}=require('playwright'),{build}=require('esbuild');
 const fs=require('node:fs/promises'),path=require('node:path'),http=require('node:http'),assert=require('node:assert/strict'),sharp=require('sharp');
 (async()=>{
  const dir=path.resolve('test-results/expressions');await fs.mkdir(dir,{recursive:true});
- const bundle=await build({stdin:{contents:"import {Live2DRenderer} from './src/renderer/pet/live2d/Live2DRenderer'; import {parametersFor,neutralNode} from './src/renderer/pet/live2d/pose'; import {expressionIds,expressionProfiles} from './src/shared/expressions';window.profiles=expressionProfiles;window.names=expressionIds;window.start=async()=>{window.rig=new Live2DRenderer();await rig.init();document.body.append(rig.canvas)};window.draw=(id,angle=0,y=0)=>{const pose={head:{...neutralNode(),rotationDeg:angle*3,offsetY:y}};const params=parametersFor(pose,0,['face','pose'],id,{x:0,y:0},1);rig.render(params,pose);return params}",resolveDir:process.cwd(),loader:'ts'},bundle:true,write:false,format:'iife',platform:'browser'});
+ const bundle=await build({stdin:{contents:`
+  import {Avatar} from './src/renderer/pet/Avatar';
+  import {defaults} from './src/shared/schema';
+  import {parametersFor,neutralNode} from './src/renderer/pet/live2d/pose';
+  import {expressionIds,expressionProfiles} from './src/shared/expressions';
+  window.profiles=expressionProfiles;window.names=expressionIds;
+  const catalog={assets:new Map(),groups:new Map(),motions:new Map()};
+  window.start=async()=>{
+   window.avatar=new Avatar(()=>({...defaults,size:1}),message=>{throw Error(message)});
+   await avatar.init(document.body,catalog);avatar.app.ticker.stop();window.rig=avatar.live;
+   // Keep the existing model crop coordinates, but render the production Pixi
+   // compositor too so its blush is present in the gallery.
+   avatar.app.renderer.resize(448,640);avatar.scene.scale.set(1.6);
+   avatar.placement.scale.set(1);avatar.placement.position.set(140,400);
+  };
+  window.draw=(id,angle=0,y=0)=>{
+   avatar.begin({type:'expression',expressionId:id,durationMs:1000},catalog,'manual','preview');
+   avatar.set('head','rotationDeg',angle*3);avatar.set('head','offsetY',y);
+   avatar.idle(0,['face','pose']);avatar.app.renderer.render(avatar.app.stage);
+   return parametersFor({head:{...neutralNode(),rotationDeg:angle*3,offsetY:y}},0,['face','pose'],id,{x:0,y:0},1);
+  };`,resolveDir:process.cwd(),loader:'ts'},bundle:true,write:false,format:'iife',platform:'browser'});
  const server=http.createServer(async(req,res)=>{try{
   if(req.url==='/'){res.setHeader('Content-Type','text/html');return res.end('<body style="margin:0;background:#e8eef8"><script src="/test.js"></script>');}
   if(req.url==='/test.js'){res.setHeader('Content-Type','application/javascript');return res.end(bundle.outputFiles[0].contents);}
@@ -29,7 +49,7 @@ const fs=require('node:fs/promises'),path=require('node:path'),http=require('nod
    await page.evaluate(id=>draw(id,4,8),id);await page.screenshot({path:path.join(dir,id+'-nod.png')});
   }
   await sharp({create:{width:1920,height:Math.ceil(names.length/4)*340,channels:4,background:'#e8eef8'}}).composite(crops).png().toFile(path.join(dir,'contact.png'));
-  await fs.writeFile(path.join(dir,'preview.html'),`<!doctype html><html lang="zh-CN"><meta charset="utf-8"><title>小蓝 · 表情一览</title><style>body{margin:24px;background:#eef2f8;color:#344568;font:16px "Microsoft YaHei",sans-serif}h1{font-size:26px}main{display:grid;grid-template-columns:repeat(auto-fit,minmax(290px,1fr));gap:16px}figure{margin:0;background:white;border-radius:14px;overflow:hidden}img{width:100%;display:block}figcaption{padding:12px;text-align:center;font-weight:600}</style><h1>小蓝 · 十一种表情</h1><p>程序实际 Live2D 模型渲染。新增疑惑、委屈、得意、无语、俏皮眨单眼，并补充原有表情的嘴型。</p><main>${cards.join('')}</main></html>`);
+  await fs.writeFile(path.join(dir,'preview.html'),`<!doctype html><html lang="zh-CN"><meta charset="utf-8"><title>小蓝 · 表情一览</title><style>body{margin:24px;background:#eef2f8;color:#344568;font:16px "Microsoft YaHei",sans-serif}h1{font-size:26px}main{display:grid;grid-template-columns:repeat(auto-fit,minmax(290px,1fr));gap:16px}figure{margin:0;background:white;border-radius:14px;overflow:hidden}img{width:100%;display:block}figcaption{padding:12px;text-align:center;font-weight:600}</style><h1>小蓝 · 十一种表情</h1><p>使用与桌宠相同的完整渲染，包含嘴型、眼睑、腮红和泪光。害羞时双颊更红，边缘柔和晕开。</p><main>${cards.join('')}</main></html>`);
   assert.deepEqual(errors,[]);await fs.writeFile(path.join(dir,'report.json'),JSON.stringify({checks,errors},null,2));console.log('PASS',names.length,'expressions; native mouth, independent wink, tear masks, head transforms');
  }finally{await browser.close();server.close();}
 })().catch(e=>{console.error(e);process.exitCode=1;});

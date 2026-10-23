@@ -71,7 +71,15 @@ export class Avatar implements AnimationHost {
     this.face=id; this.app.canvas.dataset.expression=id; const g=this.expressionArt; g.clear();
     // Blush is an accent; brows, eyelids, mouth shapes and tears belong to Core meshes.
     const blush=expressionProfile(id).blush;
-    if(blush) g.ellipse(-42,-213,9,3).ellipse(31,-213,9,3).fill({color:0xf29ba9,alpha:blush});
+    if(blush) {
+      const [rx,ry]=blush.radius??[9,3],[left,right]=blush.x??[-42,31],y=blush.y??-213,layers=blush.feather?12:1;
+      // Nested translucent ellipses soften the edge without a full-canvas blur.
+      const alpha=1-Math.pow(1-blush.alpha,1/layers);
+      for(let i=0;i<layers;i++){
+        const scale=1-i/(layers*1.6);
+        g.ellipse(left,y,rx*scale,ry*scale).ellipse(right,y,rx*scale,ry*scale).fill({color:blush.color??0xf29ba9,alpha});
+      }
+    }
   }
   begin(node: Leaf, catalog: Catalog, source: string, instanceId: string): RunningLeaf {
     let disposed=false; let update: (ms:number)=>void=()=>{}; let dispose:()=>void=()=>{};
