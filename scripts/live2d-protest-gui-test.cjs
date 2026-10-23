@@ -26,7 +26,7 @@ const wait=ms=>new Promise(r=>setTimeout(r,ms));
   assert((await get()).events.some(e=>e.type==='action_lifecycle'&&e.payload.actionInstanceId===play.actionInstanceId&&e.payload.status==='completed'));
   await reset();const samples=await pet.evaluate(()=>window.__protest),active=samples.filter(s=>s.params.ParamBrowForm===1);
   assert(active.length>5);assert(active.every(s=>s.params.ParamEyeLOpen>.54&&s.params.ParamEyeLOpen<.56));
-  assert(active.some(s=>s.params.ParamAngleZ>2)&&active.some(s=>s.params.ParamAngleZ<-2));assert(samples.every(s=>s.meshes===30));
+  assert(active.some(s=>s.params.ParamAngleZ>2)&&active.some(s=>s.params.ParamAngleZ<-2));assert(samples.every(s=>s.meshes===38));
   check('小小抗议同时驱动原眉毛、半闭眼及左右摇头，结束恢复眉毛');
   await wait(150);assert.equal((await request('play_group')).status,'accepted');await pet.waitForFunction(()=>window.__protest.at(-1)?.params.ParamBrowForm===1);await request('stop_current');await reset();
   check('中途停止恢复原眉毛');

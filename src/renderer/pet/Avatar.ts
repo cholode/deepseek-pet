@@ -6,6 +6,7 @@ import type { HitRegion } from '../../shared/contracts';
 import { frameIndex, type AnimationHost, type Leaf, type RunningLeaf } from './engine';
 import { Live2DRenderer } from './live2d/Live2DRenderer';
 import { parametersFor, type RigPose } from './live2d/pose';
+import { expressionProfile } from '../../shared/expressions';
 const pivot: Record<string, [number, number]> = { root: [0,0], body: [0,-145], head: [0,-205], hairBack:[0,-300],hairFront:[0,-305],armLeft:[-49,-193],armRight:[49,-193],eyes:[0,-240],mouth:[0,-208],effects:[0,-200],tail:[28,-114] };
 export class Avatar implements AnimationHost {
   readonly app = new Application(); readonly placement = new Container(); readonly overlay = new Container(); readonly nodes = new Map<string, Container>(); private textures = new Map<string, Texture>(); private time = 0; private nextBlink = 2500; private blinkUntil = 0; private face = 'neutral'; private expressionArt = new Graphics(); private fx = new Container(); private frame = new Sprite(); private bubble = new Text({ text: '', style: { fontFamily: 'Microsoft YaHei, sans-serif', fontSize: 14, fill: '#254269', wordWrap: true, wordWrapWidth: 235, align: 'center', fontWeight: '500' } }); private bubbleBack = new Graphics(); private bubbleContainer = new Container(); pressed = false;
@@ -67,10 +68,10 @@ export class Avatar implements AnimationHost {
   private resetChannels(channels: ActionChannel[]) { for(const [id,n] of this.nodes) { const channel=id==='eyes'||id==='mouth'?'face':id==='effects'?'effect':'pose'; if(!channels.includes(channel)) continue; n.position.set(...pivot[id]); n.scale.set(1); n.rotation=0; n.alpha=1; } }
   reset() { this.resetChannels(['pose','face','effect']); this.expression('neutral'); this.fx.removeChildren().forEach(c=>c.destroy()); this.bubbleContainer.visible=false; this.frame.visible=false; this.frameMotion=undefined; this.frameStage.removeChildren().filter(c=>c!==this.frame).forEach(c=>c.destroy()); this.frameStage.addChild(this.frame); this.nodes.get('root')!.visible=true; this.app.canvas.dataset.pose='standing'; this.resize(); }
   private expression(id: string) {
-    this.face=id; const g=this.expressionArt; g.clear();
-    // Accents follow the Core head angle; eyelids and original brows belong to the model.
-    if(id==='smile'||id==='shy') g.ellipse(-42,-213,9,3).ellipse(31,-213,9,3).fill({color:0xf29ba9,alpha:.18});
-    if(id==='surprised') g.ellipse(-9,-206,2,2.8).fill(0xb6737d);
+    this.face=id; this.app.canvas.dataset.expression=id; const g=this.expressionArt; g.clear();
+    // Blush is an accent; brows, eyelids, mouth shapes and tears belong to Core meshes.
+    const blush=expressionProfile(id).blush;
+    if(blush) g.ellipse(-42,-213,9,3).ellipse(31,-213,9,3).fill({color:0xf29ba9,alpha:blush});
   }
   begin(node: Leaf, catalog: Catalog, source: string, instanceId: string): RunningLeaf {
     let disposed=false; let update: (ms:number)=>void=()=>{}; let dispose:()=>void=()=>{};

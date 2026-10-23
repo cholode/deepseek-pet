@@ -27,7 +27,7 @@ const fs=require('node:fs/promises'),path=require('node:path'),http=require('nod
    only('BackHair','Dress','Neck','LegL','LegR');rig.render({},{});const body=rig.canvas.toDataURL();rig.render({ParamTail:1},{});const tailIndependent=body===rig.canvas.toDataURL();
    m.update=update;rig.render({},{});return {neckFixed,upperRearEmpty,oldFinOutlineEmpty,tailIndependent,meshes:m.drawables.count};
   });
-  assert.equal(checks.neckFixed,true,'neck follows torso, not head');assert.equal(checks.upperRearEmpty,true,'rear hair must not contain headband/ahoge fragments');assert.equal(checks.tailIndependent,true);assert.equal(checks.meshes,30);
+  assert.equal(checks.neckFixed,true,'neck follows torso, not head');assert.equal(checks.upperRearEmpty,true,'rear hair must not contain headband/ahoge fragments');assert.equal(checks.tailIndependent,true);assert.equal(checks.meshes,38);
   assert.equal(checks.oldFinOutlineEmpty,true,'rear layer must not retain the old fin outline');
   // Capture an entire cycle at 30 fps with nod and tail extremes, not just neutral.
   const frames=path.join(dir,'frames');await fs.mkdir(frames,{recursive:true});

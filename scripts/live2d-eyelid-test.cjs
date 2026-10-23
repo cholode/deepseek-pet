@@ -37,7 +37,7 @@ const fs=require('node:fs/promises'),path=require('node:path'),http=require('nod
    const foldsHidden=['EyeCreaseL','EyeCreaseR','EyeLidEdgeR'].every(id=>m.drawables.opacities[index(id)]===0);
    rig.render({},{});return {meshes:m.drawables.count,fullY,halfY,expectedHalfY:401+(fullY-401)*.5,rightIndependent,faceFixed,foldsHidden,exactReset:rest===rig.canvas.toDataURL()};
   });
-  assert.equal(checks.meshes,30);assert(Math.abs(checks.halfY-checks.expectedHalfY)<.01);assert(checks.halfY-checks.fullY>20);
+  assert.equal(checks.meshes,38);assert(Math.abs(checks.halfY-checks.expectedHalfY)<.01);assert(checks.halfY-checks.fullY>20);
   for(const name of ['rightIndependent','faceFixed','foldsHidden','exactReset'])assert(checks[name],name);
   await sharp({create:{width:1980,height:Math.ceil(crops.length/3)*375,channels:4,background:'#e8eef8'}}).composite(crops).png().toFile(path.join(dir,'comparison.png'));
   // The creases must remain attached to the head when timeline nods and Core rotations combine.

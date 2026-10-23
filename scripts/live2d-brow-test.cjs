@@ -28,7 +28,7 @@ const fs=require('node:fs/promises'),path=require('node:path'),http=require('nod
    rig.render({},{});const exactReset=rig.canvas.toDataURL()===image;
    return {parameters:m.parameters.ids,meshes:m.drawables.count,changed,browPixelChange,displacements,exactReset};
   });
-  assert(checks.parameters.includes('ParamBrowForm'));assert.equal(checks.meshes,30);
+  assert(checks.parameters.includes('ParamBrowForm'));assert.equal(checks.meshes,38);
   assert.deepEqual(checks.changed.sort(),['BangCenter','FrontHair','HeadBase']);
   assert(checks.browPixelChange);assert(checks.exactReset);assert(Object.values(checks.displacements).every(d=>d>3&&d<12));
   const captures=[['neutral','neutral',0,0],['annoyed','annoyed',0,0],['annoyed-left','annoyed',-4,-8],['annoyed-right','annoyed',4,8]];

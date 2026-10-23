@@ -1,4 +1,5 @@
 import type { ActionChannel } from '../../../shared/schema';
+import { expressionProfile, neutralFaceParameters } from '../../../shared/expressions';
 
 export interface NodePose { offsetX: number; offsetY: number; rotationDeg: number; scaleX: number; scaleY: number; alpha: number }
 export type RigPose = Record<string, NodePose>;
@@ -9,16 +10,15 @@ export const clamp = (v: number, lo: number, hi: number) => Math.max(lo, Math.mi
 export function parametersFor(pose: RigPose, time: number, occupied: ActionChannel[], face: string, gaze: {x: number; y: number}, blink: number): Record<string, number> {
   const get = (id: string) => pose[id] ?? neutralNode();
   const idlePose = !occupied.includes('pose'), idleFace = !occupied.includes('face');
-  const eye = face === 'sleep' || face === 'smile' ? 0 : face === 'annoyed' ? .55 : face === 'shy' ? .85 : 1;
-  const open = clamp(get('eyes').scaleY * eye * (idleFace ? blink : 1), 0, 1);
+  const expression = expressionProfile(face), eyeScale = get('eyes').scaleY * (idleFace ? blink : 1);
   return {
+    ...neutralFaceParameters, ...expression.parameters,
     ParamAngleZ: clamp(get('head').rotationDeg / 3 + (idlePose ? gaze.x * .65 + Math.sin(time / 1750) * .65 : 0), -4, 4),
     ParamBodyAngleZ: clamp(get('body').rotationDeg / 6, -1.2, 1.2),
     ParamBreath: idlePose ? (1 - Math.cos(time / 750)) / 2 : 0,
-    ParamEyeLOpen: open, ParamEyeROpen: open,
-    ParamBrowForm: face === 'annoyed' ? 1 : 0,
-    ParamEyeBallX: clamp((idleFace ? gaze.x : 0) + get('eyes').offsetX / 4, -1, 1),
-    ParamEyeBallY: clamp((idleFace ? gaze.y : 0) + get('eyes').offsetY / 3, -1, 1),
+    ParamEyeLOpen: clamp(eyeScale * expression.eyes[0], 0, 1), ParamEyeROpen: clamp(eyeScale * expression.eyes[1], 0, 1),
+    ParamEyeBallX: clamp((idleFace ? gaze.x : expression.gaze?.[0] ?? 0) + get('eyes').offsetX / 4, -1, 1),
+    ParamEyeBallY: clamp((idleFace ? gaze.y : expression.gaze?.[1] ?? 0) + get('eyes').offsetY / 3, -1, 1),
     ParamTail: clamp(get('tail').rotationDeg / 8 + (idlePose ? Math.sin(time / 1400) * .55 : 0), -1, 1),
     ParamHairBack: clamp(get('hairBack').rotationDeg / 10 + (idlePose ? Math.sin(time / 1600 - .8) * .3 : 0), -1, 1),
     ParamHairFront: clamp(get('hairFront').rotationDeg / 8 + (idlePose ? Math.sin(time / 1600 - .3) * .3 : 0), -1, 1),
@@ -38,7 +38,9 @@ const meshNodes: Record<string, string[]> = {
   Headband: ['head'], Ahoge: ['head'], EarL: ['head'], EarR: ['head'], BowR: ['head'],
   EyeOpenL: ['eyes', 'head'], EyeOpenR: ['eyes', 'head'], EyeLashL: ['eyes', 'head'], EyeLashR: ['eyes', 'head'],
   EyeClosedL: ['eyes', 'head'], EyeClosedR: ['eyes', 'head'], EyeIrisL: ['eyes', 'head'], EyeIrisR: ['eyes', 'head'], Mouth: ['mouth', 'head'],
-  EyeCreaseL: ['eyes', 'head'], EyeCreaseR: ['eyes', 'head'], EyeLidEdgeR: ['eyes', 'head']
+  EyeCreaseL: ['eyes', 'head'], EyeCreaseR: ['eyes', 'head'], EyeLidEdgeR: ['eyes', 'head'],
+  MouthFill: ['mouth', 'head'], MouthLip: ['mouth', 'head'], MouthTongue: ['mouth', 'head'], MouthTeeth: ['mouth', 'head'],
+  TearL: ['eyes', 'head'], TearR: ['eyes', 'head'], TearGlintL: ['eyes', 'head'], TearGlintR: ['eyes', 'head']
 };
 const pivots: Record<string, [number, number]> = { body: [-6.56,-148.63], head: [-6.56,-194.1], hairBack: [-6.56,-299.45], hairFront: [-14,-340.1], armLeft: [-47.25,-177.49], armRight: [33.25,-177.49], tail: [69.13,-91.8], eyes: [-6.56,-226], mouth: [-9.63,-206.34] };
 

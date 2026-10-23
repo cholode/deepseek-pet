@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { expressionIds } from './expressions';
 export const AVATAR = 'deepblue-chibi-v1';
 const finite = z.number().finite();
 const duration = finite.min(1).max(30000);
@@ -9,7 +10,7 @@ export type ActionChannel = z.infer<typeof channelSchema>;
 export const easingSchema = z.enum(['linear', 'easeInOut', 'easeOut']);
 export type Easing = z.infer<typeof easingSchema>;
 export const nodes = ['root', 'body', 'head', 'hairBack', 'hairFront', 'armLeft', 'armRight', 'eyes', 'mouth', 'effects', 'tail'] as const;
-export const expressions = ['neutral', 'smile', 'shy', 'annoyed', 'sleep', 'surprised'] as const;
+export const expressions = expressionIds;
 export const effects = ['sparkles', 'hearts', 'sleepy', 'splash'] as const;
 export const relativePath = z.string().min(1).max(240).refine(p => !p.includes('\\') && !p.includes('%') && !p.includes(':') && !p.startsWith('/') && p.split('/').every(s => s !== '..' && s !== '.' && s.length > 0), '路径必须位于动作包内，不能包含编码或父目录');
 const keyframe = z.object({ timeMs: finite.min(0).max(30000), value: finite.min(-2000).max(2000), easing: easingSchema }).strict();

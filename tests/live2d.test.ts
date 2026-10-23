@@ -1,13 +1,17 @@
 import { describe, it, expect } from 'vitest';
 import { neutralNode, parametersFor, transformMesh, type RigPose } from '../src/renderer/pet/live2d/pose';
+import { expressionIds } from '../src/shared/expressions';
 
 describe('Live2D action adapter',()=>{
-  it('drives original brow keyforms for protest and resets them for every other expression',()=>{
+  it('drives original brow keyforms for protest and resets all face parameters on return to neutral',()=>{
     const protest=parametersFor({},500,['face','pose'],'annoyed',{x:1,y:1},0);
     expect(protest.ParamBrowForm).toBe(1);
     expect(protest.ParamEyeLOpen).toBe(.55);
-    for(const face of ['neutral','smile','shy','surprised','sleep'])
-      expect(parametersFor({},500,[],face,{x:0,y:0},1).ParamBrowForm).toBe(0);
+    for(const face of expressionIds){
+      parametersFor({},500,['face'],face,{x:0,y:0},1);
+      const reset=parametersFor({},500,[],'neutral',{x:0,y:0},1);
+      for(const id of ['ParamBrowForm','ParamBrowAsym','ParamEyeSmile','ParamMouthActive','ParamMouthForm','ParamMouthTwist','ParamMouthOpenY','ParamTear'])expect(reset[id]).toBe(0);
+    }
   });
   it('keeps the neck on the torso during head nods and follows body translations',()=>{
     const source=new Float32Array([0,-.03,.1,-.08]),rest=new Float32Array(4),posed=new Float32Array(4);
@@ -62,6 +66,14 @@ describe('Live2D action adapter',()=>{
     for(const id of ['EyeCreaseL','EyeCreaseR','EyeLidEdgeR']){
       expect(transformMesh(id,source,fold,p)).toBeCloseTo(alpha);
       expect(fold).toEqual(eye);
+    }
+  });
+  it('keeps expressive mouth components and their clipping mask together under timeline transforms',()=>{
+    const p={head:{...neutralNode(),offsetY:8,offsetX:-5,scaleX:1.05,alpha:.8},mouth:{...neutralNode(),offsetX:2,scaleX:1.03,alpha:.6}};
+    const source=new Float32Array([-.1,.02,-.05,-.03]),mask=new Float32Array(4),part=new Float32Array(4);
+    const alpha=transformMesh('MouthFill',source,mask,p);
+    for(const id of ['MouthLip','MouthTongue','MouthTeeth']){
+      expect(transformMesh(id,source,part,p)).toBeCloseTo(alpha);expect(part).toEqual(mask);
     }
   });
   it('does not mutate Core vertices and keeps tail and feet isolated from arm gestures',()=>{

@@ -34,7 +34,7 @@ const wait=ms=>new Promise(r=>setTimeout(r,ms));
   await pet.waitForFunction(()=>window.__lids.at(-1)?.open>.99);
   await pet.screenshot({path:path.join(dir,'open.png'),omitBackground:true});
   const samples=await pet.evaluate(()=>window.__lids),open=samples.find(s=>s.open>.99),closed=samples.find(s=>s.open===0);
-  assert(samples.every(s=>s.meshes===30));
+  assert(samples.every(s=>s.meshes===38));
   for(const side of ['left','right']){
    assert(open[side].opacity>.99);assert.equal(closed[side].opacity,0);
    assert((open[side].y-closed[side].y)*320>35);
