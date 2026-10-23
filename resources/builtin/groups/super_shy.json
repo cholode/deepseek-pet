@@ -1,0 +1,54 @@
+{
+  "schemaVersion": 1,
+  "id": "super_shy",
+  "name": "超级害羞",
+  "description": "迅速抬起双手捂脸，脸颊渐红、闭眼、嘴巴微张，头顶冒蒸汽；放手时恢复肤色并睁眼。",
+  "tags": [
+    "表情",
+    "害羞"
+  ],
+  "enabled": true,
+  "random": {
+    "eligible": true,
+    "weight": 1,
+    "cooldownMs": 60000
+  },
+  "conditions": {
+    "minIdleMs": 3000,
+    "requiresRoaming": false,
+    "requiresPointerAway": false,
+    "requiresStanding": true
+  },
+  "maxDurationMs": 3300,
+  "timeline": {
+    "type": "parallel",
+    "children": [
+      {
+        "type": "motion",
+        "motionId": "builtin.deepblue:cover_face",
+        "repeat": 1
+      },
+      {
+        "type": "expression",
+        "expressionId": "super_shy",
+        "durationMs": 2800,
+        "fadeInMs": 260,
+        "fadeOutMs": 320
+      },
+      {
+        "type": "sequence",
+        "children": [
+          {
+            "type": "wait",
+            "durationMs": 150
+          },
+          {
+            "type": "effect",
+            "effectId": "steam",
+            "durationMs": 2400
+          }
+        ]
+      }
+    ]
+  }
+}

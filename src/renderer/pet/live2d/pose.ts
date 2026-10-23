@@ -1,5 +1,6 @@
 import type { ActionChannel } from '../../../shared/schema';
 import { expressionProfile, neutralFaceParameters } from '../../../shared/expressions';
+import { articulateArm } from './arms';
 
 export interface NodePose { offsetX: number; offsetY: number; rotationDeg: number; scaleX: number; scaleY: number; alpha: number }
 export type RigPose = Record<string, NodePose>;
@@ -7,16 +8,17 @@ export const neutralNode = (): NodePose => ({ offsetX: 0, offsetY: 0, rotationDe
 export const clamp = (v: number, lo: number, hi: number) => Math.max(lo, Math.min(hi, v));
 
 /** Bind stable action-pack nodes to the approved model's finite parameter ranges. */
-export function parametersFor(pose: RigPose, time: number, occupied: ActionChannel[], face: string, gaze: {x: number; y: number}, blink: number): Record<string, number> {
+export function parametersFor(pose: RigPose, time: number, occupied: ActionChannel[], face: string, gaze: {x: number; y: number}, blink: number, faceWeight=1): Record<string, number> {
   const get = (id: string) => pose[id] ?? neutralNode();
   const idlePose = !occupied.includes('pose'), idleFace = !occupied.includes('face');
   const expression = expressionProfile(face), eyeScale = get('eyes').scaleY * (idleFace ? blink : 1);
+  const weight=clamp(faceWeight,0,1),faceParameters=Object.fromEntries(Object.entries(expression.parameters).map(([id,value])=>[id,value*weight]));
   return {
-    ...neutralFaceParameters, ...expression.parameters,
+    ...neutralFaceParameters, ...faceParameters,
     ParamAngleZ: clamp(get('head').rotationDeg / 3 + (idlePose ? gaze.x * .65 + Math.sin(time / 1750) * .65 : 0), -4, 4),
     ParamBodyAngleZ: clamp(get('body').rotationDeg / 6, -1.2, 1.2),
     ParamBreath: idlePose ? (1 - Math.cos(time / 750)) / 2 : 0,
-    ParamEyeLOpen: clamp(eyeScale * expression.eyes[0], 0, 1), ParamEyeROpen: clamp(eyeScale * expression.eyes[1], 0, 1),
+    ParamEyeLOpen: clamp(eyeScale * (1+(expression.eyes[0]-1)*weight), 0, 1), ParamEyeROpen: clamp(eyeScale * (1+(expression.eyes[1]-1)*weight), 0, 1),
     ParamEyeBallX: clamp((idleFace ? gaze.x : expression.gaze?.[0] ?? 0) + get('eyes').offsetX / 4, -1, 1),
     ParamEyeBallY: clamp((idleFace ? gaze.y : expression.gaze?.[1] ?? 0) + get('eyes').offsetY / 3, -1, 1),
     ParamTail: clamp(get('tail').rotationDeg / 8 + (idlePose ? Math.sin(time / 1400) * .55 : 0), -1, 1),
@@ -51,8 +53,14 @@ const pivots: Record<string, [number, number]> = { body: [-6.56,-148.63], head: 
 export function transformMesh(id: string, source: Float32Array, target: Float32Array, pose: RigPose): number {
   const chain = meshNodes[id] ?? []; let alpha = 1;
   for (const node of chain) alpha *= pose[node]?.alpha ?? 1;
+  const arm=/^(Arm|Hand)[LR]$/.test(id);
+  if(arm){
+    const side=id.endsWith('L')?'Left':'Right';
+    for(const joint of id.startsWith('Hand')?['shoulder','elbow','wrist']:['shoulder','elbow'])alpha*=pose[joint+side]?.alpha??1;
+  }
   for (let i = 0; i < source.length; i += 2) {
     let x = source[i] * 140, y = -200 - source[i+1] * (400 * 320 / 915);
+    if(arm)[x, y] = articulateArm(id, x, y, pose);
     if (id === 'BackHair' && pose.head) {
       // Match the rear-hair head/torso weighting in the Cubism mesh. Its roots
       // must follow timeline nods as well as Core rotations; tips stay anchored.

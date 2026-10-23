@@ -1,9 +1,10 @@
-export const expressionIds = ['neutral', 'smile', 'shy', 'annoyed', 'sleep', 'surprised', 'confused', 'sad', 'smug', 'unimpressed', 'wink'] as const;
+export const expressionIds = ['neutral', 'smile', 'shy', 'super_shy', 'annoyed', 'sleep', 'surprised', 'confused', 'sad', 'smug', 'unimpressed', 'wink'] as const;
 export type ExpressionId = typeof expressionIds[number];
 interface ExpressionProfile {
   label: string;
   eyes: readonly [number, number];
   gaze?: readonly [number, number];
+  faceFlush?: number;
   blush?: { alpha: number; color?: number; radius?: readonly [number, number]; x?: readonly [number, number]; y?: number; feather?: boolean };
   parameters: Record<string, number>;
 }
@@ -13,6 +14,7 @@ export const expressionProfiles: Record<ExpressionId, ExpressionProfile> = {
   neutral: { label: '默认', eyes: [1, 1], parameters: {} },
   smile: { label: '开心', eyes: [0, 0], blush: { alpha: .18 }, parameters: { ParamEyeSmile: 1, ParamMouthActive: 1, ParamMouthForm: 1, ParamMouthOpenY: .65 } },
   shy: { label: '害羞', eyes: [.85, .85], gaze: [-.15, .25], blush: { alpha: .72, color: 0xed5874, radius: [11.5, 5.2], x: [-36, 19], y: -210, feather: true }, parameters: { ParamBrowForm: -.15, ParamMouthActive: 1, ParamMouthForm: .65, ParamMouthOpenY: .08 } },
+  super_shy: { label: '超级害羞', eyes: [0, 0], faceFlush: .72, parameters: { ParamBrowForm: -.65, ParamEyeSmile: .2, ParamMouthActive: 1, ParamMouthForm: .05, ParamMouthOpenY: .32 } },
   annoyed: { label: '小小抗议', eyes: [.55, .55], parameters: { ParamBrowForm: 1, ParamMouthActive: 1, ParamMouthForm: -.65, ParamMouthOpenY: .1 } },
   sleep: { label: '闭眼休息', eyes: [0, 0], parameters: {} },
   surprised: { label: '惊讶', eyes: [1, 1], parameters: { ParamBrowForm: -.25, ParamMouthActive: 1, ParamMouthOpenY: 1 } },
@@ -26,4 +28,10 @@ export const expressionProfiles: Record<ExpressionId, ExpressionProfile> = {
 export const neutralFaceParameters = { ParamBrowForm: 0, ParamBrowAsym: 0, ParamEyeSmile: 0, ParamMouthActive: 0, ParamMouthForm: 0, ParamMouthOpenY: 0, ParamMouthTwist: 0, ParamTear: 0 };
 export function expressionProfile(id: string): ExpressionProfile {
   return Object.hasOwn(expressionProfiles, id) ? expressionProfiles[id as ExpressionId] : expressionProfiles.neutral;
+}
+
+/** Smooth normal → expression → normal envelope, driven by the action clock. */
+export function expressionEnvelope(ms: number, durationMs: number, fadeInMs=0, fadeOutMs=0): number {
+  const smooth=(v:number)=>{const t=Math.max(0,Math.min(1,v));return t*t*(3-2*t);};
+  return Math.min(fadeInMs?smooth(ms/fadeInMs):1,fadeOutMs?smooth((durationMs-ms)/fadeOutMs):1);
 }

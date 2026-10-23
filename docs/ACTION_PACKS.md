@@ -93,19 +93,20 @@
 | sequence | children 按顺序播放 |
 | parallel | children 同时启动，等待最长分支；通道重叠直接拒绝 |
 | motion | motionId 为完整 ID，repeat 为 1～20 的有限整数 |
-| expression | expressionId + durationMs，占 face |
+| expression | expressionId + durationMs，占 face；可选 fadeInMs / fadeOutMs 为进入/退出的平滑过渡时长，两者总和不得超过 durationMs |
 | move_by | dxDip / dyDip / durationMs / easing，占 movement，改变真实窗口位置 |
 | effect | effectId + durationMs，占 effect |
 | bubble | text + durationMs，占 bubble；关闭显示时仍保留时间长度 |
 | wait | durationMs，不占通道 |
 
-表情共 11 种，均通过现有 `expression` 节点播放：
+表情共 12 种，均通过现有 `expression` 节点播放：
 
 | expressionId | 效果 |
 |---|---|
 | neutral | 默认，恢复原嘴型 |
 | smile | 双眼笑闭、张嘴笑 |
 | shy | 害羞，小幅微笑、腮红 |
+| super_shy | 整脸通红、双眼闭合；遮脸手势与蒸汽由 pose/effect 独立组合 |
 | annoyed | 原眉毛皱起、半闭眼、撇嘴 |
 | sleep | 闭眼休息，不替代全身盖被睡眠动作 |
 | surprised | 圆形张嘴、睁眼 |
@@ -115,7 +116,9 @@
 | unimpressed | 半闭眼、平嘴 |
 | wink | 左眼笑闭、右眼睁开、微笑 |
 
-特效：sparkles、hearts、sleepy、splash。内置 wave 固定 1400ms，只占 pose；walk_right 为 800ms 序列，占 pose 和 face。
+特效：sparkles、hearts、sleepy、splash、steam。`steam` 从头顶两侧产生浅色蒸汽，支持 `origin` 调整设计坐标，停止时全部销毁。内置 wave 固定 1400ms，只占 pose；walk_right 为 800ms 序列，占 pose 和 face。
+
+1.3.2 增加 `shoulderLeft/Right`、`elbowLeft/Right`、`wristLeft/Right` 六个 pose 关节。旋转为实际关节角度（±150°），关节偏移限 ±8 设计像素、缩放限 0.7～1.5，透明度沿所属手臂链相乘；原 `armLeft/Right` 的小幅动作保持兼容。肩关节抬起时使用清理过的袖子与张开的手掌，并同步处理前后遮挡，袖口和手腕共用肘部变换。内置 `cover_face` 在 260ms 抬手、2480ms 开始放手、2800ms 归零；`super_shy` 组并行组合该 motion、同名表情，以及延迟 150ms 开始、2400ms 持续的蒸汽。表情通过 `fadeInMs:260`、`fadeOutMs:320` 同步渐变肤色、眼睑、眉形和嘴型；未设置过渡的旧动作保持原行为。动作结束或中止恢复原站姿。完整组只从站立状态进入，默认低权重随机、60 秒冷却，也可手动播放或绑定点击。
 
 1.3.0 的五个新组 `confused_tilt`、`sad_pout`、`smug_pose`、`unimpressed_pause`、`playful_wink` 使用普通 pose motion 与 expression 并行组合，无需新执行器。表情占用 face 期间左右眼和视线由预设控制，结束后恢复鼠标跟随及自动眨眼；结束、停止、抢占和重载都复位嘴型、眉形与泪光。
 

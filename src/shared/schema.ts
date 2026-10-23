@@ -9,9 +9,9 @@ export const channelSchema = z.enum(['pose', 'face', 'movement', 'effect', 'bubb
 export type ActionChannel = z.infer<typeof channelSchema>;
 export const easingSchema = z.enum(['linear', 'easeInOut', 'easeOut']);
 export type Easing = z.infer<typeof easingSchema>;
-export const nodes = ['root', 'body', 'head', 'hairBack', 'hairFront', 'armLeft', 'armRight', 'eyes', 'mouth', 'effects', 'tail'] as const;
+export const nodes = ['root', 'body', 'head', 'hairBack', 'hairFront', 'armLeft', 'armRight', 'shoulderLeft', 'shoulderRight', 'elbowLeft', 'elbowRight', 'wristLeft', 'wristRight', 'eyes', 'mouth', 'effects', 'tail'] as const;
 export const expressions = expressionIds;
-export const effects = ['sparkles', 'hearts', 'sleepy', 'splash'] as const;
+export const effects = ['sparkles', 'hearts', 'sleepy', 'splash', 'steam'] as const;
 export const relativePath = z.string().min(1).max(240).refine(p => !p.includes('\\') && !p.includes('%') && !p.includes(':') && !p.startsWith('/') && p.split('/').every(s => s !== '..' && s !== '.' && s.length > 0), '路径必须位于动作包内，不能包含编码或父目录');
 const keyframe = z.object({ timeMs: finite.min(0).max(30000), value: finite.min(-2000).max(2000), easing: easingSchema }).strict();
 const track = z.object({ targetId: z.enum(nodes), property: z.enum(['offsetX', 'offsetY', 'rotationDeg', 'scaleX', 'scaleY', 'alpha']), keyframes: z.array(keyframe).min(2).max(120) }).strict();
@@ -27,12 +27,12 @@ export const motionSchema = z.discriminatedUnion('kind', [
   z.object({ ...commonMotion, ...frameOptions, kind: z.literal('frame_animation'), frames: z.array(relativePath).min(1).max(240), fps: finite.min(1).max(60).optional(), frameDurationsMs: z.array(duration).max(240).optional(), canvas: z.object({ width: finite.int().min(1).max(4096), height: finite.int().min(1).max(4096) }).strict(), anchor: z.object({ x: finite.min(0).max(1), y: finite.min(0).max(1) }).strict() }).strict()
 ]);
 export type Motion = z.infer<typeof motionSchema>;
-export type ActionNode = { type: 'sequence'; children: ActionNode[] } | { type: 'parallel'; children: ActionNode[] } | { type: 'motion'; motionId: string; repeat: number } | { type: 'expression'; expressionId: string; durationMs: number } | { type: 'move_by'; dxDip: number; dyDip: number; durationMs: number; easing: Easing } | { type: 'effect'; effectId: string; durationMs: number; origin?: {x:number;y:number} } | { type: 'bubble'; text: string; durationMs: number } | { type: 'wait'; durationMs: number };
+export type ActionNode = { type: 'sequence'; children: ActionNode[] } | { type: 'parallel'; children: ActionNode[] } | { type: 'motion'; motionId: string; repeat: number } | { type: 'expression'; expressionId: string; durationMs: number; fadeInMs?: number; fadeOutMs?: number } | { type: 'move_by'; dxDip: number; dyDip: number; durationMs: number; easing: Easing } | { type: 'effect'; effectId: string; durationMs: number; origin?: {x:number;y:number} } | { type: 'bubble'; text: string; durationMs: number } | { type: 'wait'; durationMs: number };
 export const nodeSchema: z.ZodType<ActionNode> = z.lazy(() => z.discriminatedUnion('type', [
   z.object({ type: z.literal('sequence'), children: z.array(nodeSchema).min(1).max(128) }).strict(),
   z.object({ type: z.literal('parallel'), children: z.array(nodeSchema).min(1).max(128) }).strict(),
   z.object({ type: z.literal('motion'), motionId: globalId, repeat: finite.int().min(1).max(20) }).strict(),
-  z.object({ type: z.literal('expression'), expressionId: z.enum(expressions), durationMs: duration }).strict(),
+  z.object({ type: z.literal('expression'), expressionId: z.enum(expressions), durationMs: duration, fadeInMs: finite.min(0).max(30000).optional(), fadeOutMs: finite.min(0).max(30000).optional() }).strict().refine(n=>(n.fadeInMs??0)+(n.fadeOutMs??0)<=n.durationMs,'表情过渡总时长不能超过持续时间'),
   z.object({ type: z.literal('move_by'), dxDip: finite.min(-1000).max(1000), dyDip: finite.min(-1000).max(1000), durationMs: duration, easing: easingSchema }).strict(),
   z.object({ type: z.literal('effect'), effectId: z.enum(effects), durationMs: duration, origin: point.optional() }).strict(),
   z.object({ type: z.literal('bubble'), text: z.string().min(1).max(120), durationMs: duration }).strict(),

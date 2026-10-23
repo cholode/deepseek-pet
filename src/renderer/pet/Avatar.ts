@@ -6,11 +6,14 @@ import type { HitRegion } from '../../shared/contracts';
 import { frameIndex, type AnimationHost, type Leaf, type RunningLeaf } from './engine';
 import { Live2DRenderer } from './live2d/Live2DRenderer';
 import { parametersFor, type RigPose } from './live2d/pose';
-import { expressionProfile } from '../../shared/expressions';
+import { expressionEnvelope, expressionProfile } from '../../shared/expressions';
+import { steamEffect } from './steam';
 const pivot: Record<string, [number, number]> = { root: [0,0], body: [0,-145], head: [0,-205], hairBack:[0,-300],hairFront:[0,-305],armLeft:[-49,-193],armRight:[49,-193],eyes:[0,-240],mouth:[0,-208],effects:[0,-200],tail:[28,-114] };
+for (const side of ['Left','Right']) for (const joint of ['shoulder','elbow','wrist']) pivot[joint+side]=[0,0];
 export class Avatar implements AnimationHost {
   readonly app = new Application(); readonly placement = new Container(); readonly overlay = new Container(); readonly nodes = new Map<string, Container>(); private textures = new Map<string, Texture>(); private time = 0; private nextBlink = 2500; private blinkUntil = 0; private face = 'neutral'; private expressionArt = new Graphics(); private fx = new Container(); private frame = new Sprite(); private bubble = new Text({ text: '', style: { fontFamily: 'Microsoft YaHei, sans-serif', fontSize: 14, fill: '#254269', wordWrap: true, wordWrapWidth: 235, align: 'center', fontWeight: '500' } }); private bubbleBack = new Graphics(); private bubbleContainer = new Container(); pressed = false;
   private live = new Live2DRenderer(); private liveTexture?: Texture;
+  private faceWeight=1;
   private gaze = {x:0,y:0}; private gazeTarget = {x:0,y:0};
   private frameStage = new Container();
   private frameMotion?: Extract<Motion, {kind:'frame_animation'}>;
@@ -60,15 +63,15 @@ export class Avatar implements AnimationHost {
     if(!occupied.includes('face')&&this.time>this.nextBlink){this.blinkUntil=this.time+280;this.nextBlink=this.time+2500+Math.random()*4200;}
     const remaining=this.blinkUntil-this.time;const blink=remaining<=0?1:remaining>200?(remaining-200)/80:remaining>130?0:1-remaining/130;
     const pose:RigPose={};for(const [id,n]of this.nodes){const [x,y]=pivot[id];pose[id]={offsetX:n.x-x,offsetY:n.y-y,rotationDeg:n.rotation*180/Math.PI,scaleX:n.scale.x,scaleY:n.scale.y,alpha:n.alpha};}
-    const values=parametersFor(pose,this.time,occupied,this.face,this.gaze,blink);
-    this.live.render(values,pose);this.liveTexture!.source.update();
-    this.expressionArt.position.set(-6.3+pose.head.offsetX*.96,-194.3+pose.head.offsetY*.96-values.ParamBreath*1.23);this.expressionArt.rotation=(values.ParamAngleZ+values.ParamBodyAngleZ)*Math.PI/180;this.expressionArt.alpha=pose.head.alpha;
+    const values=parametersFor(pose,this.time,occupied,this.face,this.gaze,blink,this.faceWeight);
+    this.live.render(values,pose,(expressionProfile(this.face).faceFlush??0)*this.faceWeight);this.liveTexture!.source.update();
+    this.expressionArt.position.set(-6.3+pose.head.offsetX*.96,-194.3+pose.head.offsetY*.96-values.ParamBreath*1.23);this.expressionArt.rotation=(values.ParamAngleZ+values.ParamBodyAngleZ)*Math.PI/180;this.expressionArt.alpha=pose.head.alpha*this.faceWeight;
   }
   set(id: string, property: string, value: number) { const n=this.nodes.get(id); if(!n) throw new Error(`未知角色节点：${id}`); const [x,y]=pivot[id]; if(property==='offsetX') n.x=x+value; else if(property==='offsetY') n.y=y+value; else if(property==='rotationDeg') n.rotation=value*Math.PI/180; else if(property==='scaleX') n.scale.x=value; else if(property==='scaleY') n.scale.y=value; else if(property==='alpha') n.alpha=value; }
   private resetChannels(channels: ActionChannel[]) { for(const [id,n] of this.nodes) { const channel=id==='eyes'||id==='mouth'?'face':id==='effects'?'effect':'pose'; if(!channels.includes(channel)) continue; n.position.set(...pivot[id]); n.scale.set(1); n.rotation=0; n.alpha=1; } }
   reset() { this.resetChannels(['pose','face','effect']); this.expression('neutral'); this.fx.removeChildren().forEach(c=>c.destroy()); this.bubbleContainer.visible=false; this.frame.visible=false; this.frameMotion=undefined; this.frameStage.removeChildren().filter(c=>c!==this.frame).forEach(c=>c.destroy()); this.frameStage.addChild(this.frame); this.nodes.get('root')!.visible=true; this.app.canvas.dataset.pose='standing'; this.resize(); }
   private expression(id: string) {
-    this.face=id; this.app.canvas.dataset.expression=id; const g=this.expressionArt; g.clear();
+    this.face=id;this.faceWeight=1; this.app.canvas.dataset.expression=id; const g=this.expressionArt; g.clear();
     // Blush is an accent; brows, eyelids, mouth shapes and tears belong to Core meshes.
     const blush=expressionProfile(id).blush;
     if(blush) {
@@ -94,7 +97,14 @@ export class Avatar implements AnimationHost {
         update=ms=>{this.frame.texture=texture(m.frames[frameIndex(m,ms>=m.durationMs*node.repeat?m.durationMs:ms%m.durationMs)]);for(const {sprite,definition:l} of layers)sprite.rotation=l.rotationDeg*Math.PI/180*Math.sin(ms/l.periodMs*Math.PI*2);};
         dispose=()=>{layers.forEach(l=>l.sprite.destroy());this.frame.visible=false;this.frameMotion=undefined;this.nodes.get('root')!.visible=true;this.app.canvas.dataset.pose='standing';this.resize();};
       }
-    } else if(node.type==='expression'){this.resetChannels(['face']);this.expression(node.expressionId);dispose=()=>this.expression('neutral');}
+    } else if(node.type==='expression'){
+      this.resetChannels(['face']);this.expression(node.expressionId);
+      update=ms=>{this.faceWeight=expressionEnvelope(ms,node.durationMs,node.fadeInMs,node.fadeOutMs);};
+      update(0);dispose=()=>this.expression('neutral');
+    }
+    else if(node.type==='effect'&&node.effectId==='steam'){
+      const steam=steamEffect(this.fx,node.origin);update=steam.update;dispose=steam.dispose;
+    }
     else if(node.type==='effect'){
       const sleepy=node.effectId==='sleepy',count=sleepy?3:7,items:(Graphics|Text)[]=[];
       for(let i=0;i<count;i++){const item=sleepy?new Text({text:'Z',style:{fontSize:21,fill:'#b7ddff',stroke:{color:'#345886',width:2},fontWeight:'bold',fontFamily:'sans-serif'}}):new Graphics();if(item instanceof Graphics){if(node.effectId==='hearts'){item.moveTo(0,4).bezierCurveTo(-19,-9,-5,-20,0,-8).bezierCurveTo(5,-20,19,-9,0,4).fill(0xf195b9);}else item.star(0,0,4,8,3).fill(node.effectId==='splash'?0x60c8ff:0xffd58b);}this.fx.addChild(item);items.push(item);}

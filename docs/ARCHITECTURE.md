@@ -20,7 +20,9 @@
 
 1.2.0 起，`Avatar` 的站立角色由 `pet/live2d/Live2DRenderer.ts` 加载本地 MOC3、纹理及官方 Core，当前计算 38 个 ArtMesh，使用眼部及口腔剪裁遮罩，渲染到透明 canvas，再交由 Pixi 合成。1.2.8 新增的双侧双眼皮线及原右眼睫毛边缘使用既有左右眼开合参数，跟随同一眼部/头部变换。1.3.0 加入四层嘴部网格与四层泪光网格。模型只有现有 Pixi ticker 一个时钟；睡觉等全身序列播放时完全跳过隐藏模型的更新。隐藏窗口/休眠继续停止 ticker；销毁时释放 Core 模型、MOC 内存、WebGL 缓冲、遮罩纹理和 Pixi canvas 纹理。
 
-`pet/live2d/pose.ts` 把公开节点的关键帧及表情投射到 24 个模型参数；额外位移/缩放作用于对应部件网格，虹膜和眼部遮罩使用相同的头部变换。`shared/expressions.ts` 集中定义 11 种预设及左右眼开合、视线、腮红和模型参数，schema 直接复用 ID 列表。每帧先设置全部面部参数的中性值，再应用当前预设，避免跨动作残留。`ParamBrowForm` 与 `ParamBrowAsym` 驱动原眉毛所在的脸部及刘海网格同步形变，Pixi 不另画眉毛。根节点跳跃、旋转和镜像由 Pixi 处理。适配器不按动作组 ID 分支，外部 JSON 仍由同一个 `ActionGroupRunner` 执行、抢占、取消和清理。前景 pose/face 通道仍优先于待机。
+`pet/live2d/pose.ts` 把公开节点的关键帧及表情投射到 24 个模型参数；额外位移/缩放作用于对应部件网格，虹膜和眼部遮罩使用相同的头部变换。`shared/expressions.ts` 集中定义 12 种预设及左右眼开合、视线、腮红和模型参数，schema 直接复用 ID 列表。每帧先设置全部面部参数的中性值，再应用当前预设，避免跨动作残留。`ParamBrowForm` 与 `ParamBrowAsym` 驱动原眉毛所在的脸部及刘海网格同步形变，Pixi 不另画眉毛。根节点跳跃、旋转和镜像由 Pixi 处理。适配器不按动作组 ID 分支，外部 JSON 仍由同一个 `ActionGroupRunner` 执行、抢占、取消和清理。前景 pose/face 通道仍优先于待机。
+
+1.3.2 的 `arms.ts` 为肩、肘、腕提供两段连续绑定；原 Core 输出作为输入，未改动原网格或贴图。`arm-art.ts` 生成局部清理和补绘的备用图集，肩关节启动时渐变切换，手臂跨过下巴前切换前景绘制层。`Live2DRenderer` 的面部肤色着色仅作用于指定网格，表情退出时强度归零。`hair-fill.ts` 补绘被手臂遮住的内侧卷发；`steam.ts` 提供有限时长的蒸汽特效。expression 叶子可声明进入/退出时长，Avatar 用平滑包络统一插值原生面部参数与肤色强度，未声明过渡时保持兼容。JSON `super_shy` 组合 pose、face、effect 三个通道，无动作 ID 专用分支，统一执行器负责自然结束、中止和重载清理。
 
 新嘴型由 Cubism 的 `ParamMouthForm/OpenY/Twist` 控制，`ParamMouthActive` 在原嘴与新嘴之间互斥切换。舌头和牙齿使用口腔遮罩；整个嘴部网格与遮罩共用 mouth/head 变换。`ParamEyeSmile` 控制闭眼线弧度，左右眼独立开合；`ParamTear` 控制眼内泪光，泪光随眼睑收拢并受对应眼部遮罩限制。Pixi 仅保留腮红覆盖，不再单独画惊讶嘴。五个新动作仅由 JSON 时间轴组合现有通道。
 

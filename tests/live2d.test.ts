@@ -1,8 +1,32 @@
 import { describe, it, expect } from 'vitest';
 import { neutralNode, parametersFor, transformMesh, type RigPose } from '../src/renderer/pet/live2d/pose';
-import { expressionIds } from '../src/shared/expressions';
+import { expressionEnvelope, expressionIds } from '../src/shared/expressions';
+import { articulateArm, armForeground } from '../src/renderer/pet/live2d/arms';
 
 describe('Live2D action adapter',()=>{
+  it('eases face color and eyelids from normal to shy and back without endpoint jumps',()=>{
+    const times=[0,100,400,850,3300,3750,4100,4200],weights=times.map(t=>expressionEnvelope(t,4200,850,900));
+    expect(weights[0]).toBe(0);expect(weights[3]).toBe(1);expect(weights[4]).toBe(1);expect(weights.at(-1)).toBe(0);
+    expect(weights[1]).toBeGreaterThan(0);expect(weights[1]).toBeLessThan(weights[2]);expect(weights[2]).toBeLessThan(1);
+    expect(weights[5]).toBe(.5);expect(weights[6]).toBeLessThan(weights[5]);expect(weights[6]).toBeGreaterThan(0);
+    for(const w of weights){const p=parametersFor({},0,['pose','face'],'super_shy',{x:0,y:0},1,w);expect(p.ParamEyeLOpen).toBeCloseTo(1-w);expect(p.ParamEyeROpen).toBeCloseTo(1-w);}
+    expect(expressionEnvelope(100,4200)).toBe(1);
+  });
+  it('bends a continuous sleeve/wrist chain, lifts both arms in front of the face and fully restores',()=>{
+    const p:RigPose={shoulderLeft:{...neutralNode(),rotationDeg:113},elbowLeft:{...neutralNode(),rotationDeg:102}};
+    const point=[(155-320)*280/640,634*400/915-400] as const;
+    const sleeve=articulateArm('ArmL',...point,p),hand=articulateArm('HandL',...point,p);
+    expect(hand).toEqual(sleeve);expect(hand[1]).toBeLessThan(-200);
+    expect(armForeground('HandL',p)).toBe(true);expect(armForeground('ArmL',p)).toBe(true);expect(armForeground('HandR',p)).toBe(false);
+    expect(articulateArm('HandL',...point,{})).toEqual(point);
+    expect(articulateArm('Tail',...point,p)).toEqual(point);expect(armForeground('HandL',{})).toBe(false);
+  });
+  it('keeps super-shy eyes closed through idle blinks and restores normal eyes',()=>{
+    const v=parametersFor({},2500,['face','pose'],'super_shy',{x:1,y:1},1);
+    expect(v.ParamEyeLOpen).toBe(0);expect(v.ParamEyeROpen).toBe(0);
+    const reset=parametersFor({},2500,[],'neutral',{x:0,y:0},1);
+    expect(reset.ParamEyeLOpen).toBe(1);expect(reset.ParamEyeROpen).toBe(1);
+  });
   it('drives original brow keyforms for protest and resets all face parameters on return to neutral',()=>{
     const protest=parametersFor({},500,['face','pose'],'annoyed',{x:1,y:1},0);
     expect(protest.ParamBrowForm).toBe(1);

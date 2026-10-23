@@ -1,7 +1,7 @@
 const {_electron:electron}=require('playwright');
 const path=require('node:path'),fs=require('node:fs/promises'),assert=require('node:assert/strict');
 const wait=ms=>new Promise(r=>setTimeout(r,ms));
-const actions=[['confused_tilt','confused','歪头疑惑'],['sad_pout','sad','有点委屈'],['smug_pose','smug','小小得意'],['unimpressed_pause','unimpressed','有点无语'],['playful_wink','wink','俏皮眨单眼']];
+const actions=[['confused_tilt','confused','歪头疑惑'],['sad_pout','sad','有点委屈'],['smug_pose','smug','小小得意'],['unimpressed_pause','unimpressed','有点无语'],['playful_wink','wink','俏皮眨单眼'],['super_shy','super_shy','超级害羞']];
 (async()=>{
  const tag=process.env.PET_TEST_EXE?'packaged':'source',dir=path.resolve('test-results/expressions-'+tag);await fs.mkdir(dir,{recursive:true});
  const env={...process.env,PET_TEST_USER:path.join(dir,'user'),ELECTRON_RENDERER_URL:''};delete env.ELECTRON_RUN_AS_NODE;
@@ -19,23 +19,29 @@ const actions=[['confused_tilt','confused','歪头疑惑'],['sad_pout','sad','�
   const reset=()=>pet.waitForFunction(()=>document.querySelector('canvas')?.dataset.expression==='neutral'&&window.__faces.at(-1)?.values.ParamMouthActive===0&&window.__faces.at(-1)?.values.ParamTear===0);
   await request('stop_current');await wait(200);
   await pet.evaluate(()=>{const update=window.Live2DCubismCore.Model.prototype.update;window.__faces=[];window.Live2DCubismCore.Model.prototype.update=function(){const result=update.call(this);const op=id=>this.drawables.opacities[this.drawables.ids.indexOf(id)];window.__faces.push({expression:document.querySelector('canvas')?.dataset.expression,values:Object.fromEntries(this.parameters.ids.map((id,i)=>[id,this.parameters.values[i]])),oldMouth:op('Mouth'),mouth:op('MouthLip'),leftClosed:op('EyeClosedL'),rightClosed:op('EyeClosedR'),tear:op('TearL')});if(window.__faces.length>1000)window.__faces.shift();return result;};});
-  assert.equal((await get()).groups.length,18);
+  assert.equal((await get()).groups.length,19);
   await panel.getByRole('button',{name:/^动作组/}).click();
   for(const [id,face,name]of actions){
    assert.equal(await panel.getByRole('heading',{name:new RegExp('^'+name)}).count(),1);
    await wait(150);const result=await request('play_group',id);assert.equal(result.status,'accepted');
-   await pet.waitForFunction(face=>document.querySelector('canvas')?.dataset.expression===face,face);await wait(250);
+   await pet.waitForFunction(face=>document.querySelector('canvas')?.dataset.expression===face,face);await wait(face==='super_shy'?1500:250);
    const sample=await pet.evaluate(()=>window.__faces.at(-1));
    assert(sample.mouth>.999&&sample.oldMouth<.001,'only the selected mouth is visible');
    if(face==='wink'){assert(sample.leftClosed>.999);assert.equal(sample.rightClosed,0);assert.equal(sample.values.ParamEyeROpen,1);}
    if(face==='sad')assert(sample.tear>0);
+   if(face==='super_shy'){assert.equal(sample.values.ParamEyeLOpen,0);assert.equal(sample.values.ParamEyeROpen,0);assert(Math.abs(sample.values.ParamMouthOpenY-.32)<1e-5);}
    if(face==='confused')assert.equal(sample.values.ParamBrowAsym,1);
    if(face==='unimpressed'){assert.equal(sample.values.ParamMouthForm,0);assert.equal(sample.values.ParamBrowForm,0);}
    await pet.screenshot({path:path.join(dir,face+'.png'),omitBackground:true});await complete(result.actionInstanceId);await reset();
+   if(face==='super_shy'){
+    const eyes=await pet.evaluate(()=>window.__faces.filter(f=>f.expression==='super_shy').map(f=>f.values.ParamEyeLOpen));
+    const closed=eyes.findIndex(v=>v<.001);assert(closed>0);assert(eyes.slice(0,closed).some(v=>v>.05&&v<.95));assert(eyes.slice(closed).some(v=>v>.05&&v<.95));
+    checks.push('超级害羞进入和退出均有真实的半闭眼帧');
+   }
   }
-  checks.push('五个新动作均在小屋显示、真实模型呈现并自然完成，恢复原嘴与表情');
+  checks.push('六个新动作均在小屋显示、真实模型呈现并自然完成，恢复原嘴与表情');
   for(const [id,face]of actions){await wait(120);assert.equal((await request('play_group',id)).status,'accepted');await pet.waitForFunction(face=>document.querySelector('canvas').dataset.expression===face,face);await request('stop_current');await reset();}
-  checks.push('五种表情中途停止均清除挑眉、嘴型、泪光和单眼闭合');
+  checks.push('六种表情中途停止均清除挑眉、嘴型、泪光和单眼闭合');
   await wait(150);await request('play_group','sad_pout');await pet.waitForFunction(()=>window.__faces.at(-1)?.values.ParamTear>0);
   await wait(120);const replacement=await request('play_group','playful_wink');assert.equal(replacement.status,'accepted',JSON.stringify(replacement));await pet.waitForFunction(()=>window.__faces.at(-1)?.expression==='wink');
   assert.equal(await pet.evaluate(()=>window.__faces.at(-1).values.ParamTear),0);await request('stop_current');await reset();checks.push('委屈被眨单眼抢占后不残留泪光');

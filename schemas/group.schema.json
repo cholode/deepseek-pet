@@ -185,6 +185,7 @@
                 "neutral",
                 "smile",
                 "shy",
+                "super_shy",
                 "annoyed",
                 "sleep",
                 "surprised",
@@ -198,6 +199,16 @@
             "durationMs": {
               "type": "number",
               "minimum": 1,
+              "maximum": 30000
+            },
+            "fadeInMs": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 30000
+            },
+            "fadeOutMs": {
+              "type": "number",
+              "minimum": 0,
               "maximum": 30000
             }
           },
@@ -261,7 +272,8 @@
                 "sparkles",
                 "hearts",
                 "sleepy",
-                "splash"
+                "splash",
+                "steam"
               ]
             },
             "durationMs": {
