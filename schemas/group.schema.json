@@ -187,7 +187,8 @@
                 "shy",
                 "annoyed",
                 "sleep",
-                "surprised"
+                "surprised",
+                "confused"
               ]
             },
             "durationMs": {

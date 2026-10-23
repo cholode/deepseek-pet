@@ -1,0 +1,37 @@
+{
+  "schemaVersion": 1,
+  "id": "confused_tilt",
+  "name": "歪头疑惑",
+  "description": "单侧挑眉，眼神偏向一边，歪着头露出一点疑惑。",
+  "tags": [
+    "表情",
+    "互动"
+  ],
+  "enabled": true,
+  "random": {
+    "eligible": true,
+    "weight": 2,
+    "cooldownMs": 30000
+  },
+  "conditions": {
+    "minIdleMs": 4000,
+    "requiresRoaming": false,
+    "requiresPointerAway": true
+  },
+  "maxDurationMs": 2900,
+  "timeline": {
+    "type": "parallel",
+    "children": [
+      {
+        "type": "motion",
+        "motionId": "builtin.deepblue:confused_tilt",
+        "repeat": 1
+      },
+      {
+        "type": "expression",
+        "expressionId": "confused",
+        "durationMs": 2400
+      }
+    ]
+  }
+}

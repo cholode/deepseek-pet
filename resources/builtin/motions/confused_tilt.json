@@ -1,0 +1,75 @@
+{
+  "schemaVersion": 1,
+  "id": "confused_tilt",
+  "name": "歪头疑惑",
+  "avatarId": "deepblue-chibi-v1",
+  "kind": "rig_timeline",
+  "durationMs": 2400,
+  "channels": [
+    "pose"
+  ],
+  "tracks": [
+    {
+      "targetId": "head",
+      "property": "rotationDeg",
+      "keyframes": [
+        {
+          "timeMs": 0,
+          "value": 0,
+          "easing": "easeInOut"
+        },
+        {
+          "timeMs": 432,
+          "value": -9,
+          "easing": "easeInOut"
+        },
+        {
+          "timeMs": 1560,
+          "value": -9,
+          "easing": "easeInOut"
+        },
+        {
+          "timeMs": 2040,
+          "value": -6,
+          "easing": "easeInOut"
+        },
+        {
+          "timeMs": 2400,
+          "value": 0,
+          "easing": "easeInOut"
+        }
+      ]
+    },
+    {
+      "targetId": "head",
+      "property": "offsetY",
+      "keyframes": [
+        {
+          "timeMs": 0,
+          "value": 0,
+          "easing": "easeInOut"
+        },
+        {
+          "timeMs": 432,
+          "value": -1,
+          "easing": "easeInOut"
+        },
+        {
+          "timeMs": 1560,
+          "value": -1,
+          "easing": "easeInOut"
+        },
+        {
+          "timeMs": 2040,
+          "value": 0,
+          "easing": "easeInOut"
+        },
+        {
+          "timeMs": 2400,
+          "value": 0,
+          "easing": "easeInOut"
+        }
+      ]
+    }
+  ]
+}

@@ -4,7 +4,7 @@
   "name": "DeepBlue · 日常",
   "version": "1.2.8",
   "avatarId": "deepblue-chibi-v1",
-  "description": "原图 Live2D 正面角色、侧视步行、盖被睡眠与十三个动作组。",
+  "description": "原图 Live2D 正面角色、表情动作、侧视步行与盖被睡眠。",
   "motions": [
     "motions/wave.json",
     "motions/sway.json",
@@ -18,7 +18,8 @@
     "motions/pat.json",
     "motions/boop.json",
     "motions/settle.json",
-    "motions/frame_magic.json"
+    "motions/frame_magic.json",
+    "motions/confused_tilt.json"
   ],
   "groups": [
     "groups/idle_sway.json",
@@ -33,6 +34,7 @@
     "groups/head_touch.json",
     "groups/body_touch.json",
     "groups/drag_release.json",
-    "groups/water_magic.json"
+    "groups/water_magic.json",
+    "groups/confused_tilt.json"
   ]
 }
