@@ -1,0 +1,75 @@
+{
+  "schemaVersion": 1,
+  "id": "playful_wink",
+  "name": "俏皮眨单眼",
+  "avatarId": "deepblue-chibi-v1",
+  "kind": "rig_timeline",
+  "durationMs": 1600,
+  "channels": [
+    "pose"
+  ],
+  "tracks": [
+    {
+      "targetId": "head",
+      "property": "rotationDeg",
+      "keyframes": [
+        {
+          "timeMs": 0,
+          "value": 0,
+          "easing": "easeInOut"
+        },
+        {
+          "timeMs": 288,
+          "value": -6,
+          "easing": "easeInOut"
+        },
+        {
+          "timeMs": 1040,
+          "value": -6,
+          "easing": "easeInOut"
+        },
+        {
+          "timeMs": 1360,
+          "value": -3,
+          "easing": "easeInOut"
+        },
+        {
+          "timeMs": 1600,
+          "value": 0,
+          "easing": "easeInOut"
+        }
+      ]
+    },
+    {
+      "targetId": "armRight",
+      "property": "rotationDeg",
+      "keyframes": [
+        {
+          "timeMs": 0,
+          "value": 0,
+          "easing": "easeInOut"
+        },
+        {
+          "timeMs": 288,
+          "value": -24,
+          "easing": "easeInOut"
+        },
+        {
+          "timeMs": 1040,
+          "value": -24,
+          "easing": "easeInOut"
+        },
+        {
+          "timeMs": 1360,
+          "value": -12,
+          "easing": "easeInOut"
+        },
+        {
+          "timeMs": 1600,
+          "value": 0,
+          "easing": "easeInOut"
+        }
+      ]
+    }
+  ]
+}

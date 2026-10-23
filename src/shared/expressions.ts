@@ -1,4 +1,4 @@
-export const expressionIds = ['neutral', 'smile', 'shy', 'annoyed', 'sleep', 'surprised', 'confused', 'sad', 'smug', 'unimpressed'] as const;
+export const expressionIds = ['neutral', 'smile', 'shy', 'annoyed', 'sleep', 'surprised', 'confused', 'sad', 'smug', 'unimpressed', 'wink'] as const;
 export type ExpressionId = typeof expressionIds[number];
 interface ExpressionProfile {
   label: string;
@@ -20,6 +20,7 @@ export const expressionProfiles: Record<ExpressionId, ExpressionProfile> = {
   sad: { label: '委屈', eyes: [.8, .8], gaze: [0, .35], parameters: { ParamBrowForm: -.9, ParamMouthActive: 1, ParamMouthForm: -.9, ParamTear: .8 } },
   smug: { label: '得意', eyes: [.48, .68], gaze: [-.25, 0], parameters: { ParamBrowForm: .1, ParamBrowAsym: -.65, ParamMouthActive: 1, ParamMouthForm: .9, ParamMouthTwist: .75, ParamMouthOpenY: .03 } },
   unimpressed: { label: '无语', eyes: [.38, .38], parameters: { ParamMouthActive: 1 } },
+  wink: { label: '俏皮眨单眼', eyes: [0, 1], gaze: [.1, 0], blush: .16, parameters: { ParamEyeSmile: 1, ParamBrowAsym: -.25, ParamMouthActive: 1, ParamMouthForm: 1, ParamMouthTwist: .25, ParamMouthOpenY: .35 } }
 };
 
 export const neutralFaceParameters = { ParamBrowForm: 0, ParamBrowAsym: 0, ParamEyeSmile: 0, ParamMouthActive: 0, ParamMouthForm: 0, ParamMouthOpenY: 0, ParamMouthTwist: 0, ParamTear: 0 };

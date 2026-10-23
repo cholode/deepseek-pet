@@ -13,6 +13,11 @@ describe('Live2D action adapter',()=>{
       for(const id of ['ParamBrowForm','ParamBrowAsym','ParamEyeSmile','ParamMouthActive','ParamMouthForm','ParamMouthTwist','ParamMouthOpenY','ParamTear'])expect(reset[id]).toBe(0);
     }
   });
+  it('keeps a wink one-sided even when an idle blink is due and restores both eyes afterward',()=>{
+    const wink=parametersFor({},500,['face'],'wink',{x:0,y:0},0);
+    expect(wink.ParamEyeLOpen).toBe(0);expect(wink.ParamEyeROpen).toBe(1);expect(wink.ParamEyeSmile).toBe(1);
+    const rest=parametersFor({},500,[],'neutral',{x:0,y:0},1);expect(rest.ParamEyeLOpen).toBe(1);expect(rest.ParamEyeROpen).toBe(1);
+  });
   it('keeps expressive gaze under face ownership, with independent brows, mouth and tears',()=>{
     const confused=parametersFor({},500,['face'],'confused',{x:-1,y:1},1);
     expect(confused.ParamEyeBallX).toBe(.3);expect(confused.ParamBrowAsym).toBe(1);expect(confused.ParamMouthTwist).toBeLessThan(0);

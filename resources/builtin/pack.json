@@ -22,7 +22,8 @@
     "motions/confused_tilt.json",
     "motions/sad_pout.json",
     "motions/smug_pose.json",
-    "motions/unimpressed_pause.json"
+    "motions/unimpressed_pause.json",
+    "motions/playful_wink.json"
   ],
   "groups": [
     "groups/idle_sway.json",
@@ -41,6 +42,7 @@
     "groups/confused_tilt.json",
     "groups/sad_pout.json",
     "groups/smug_pose.json",
-    "groups/unimpressed_pause.json"
+    "groups/unimpressed_pause.json",
+    "groups/playful_wink.json"
   ]
 }
