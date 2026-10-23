@@ -99,7 +99,25 @@
 | bubble | text + durationMs，占 bubble；关闭显示时仍保留时间长度 |
 | wait | durationMs，不占通道 |
 
-表情：neutral、smile、shy、annoyed、sleep、surprised。特效：sparkles、hearts、sleepy、splash。内置 wave 固定 1400ms，walk_right 周期 800ms；它们都只占 pose。
+表情共 11 种，均通过现有 `expression` 节点播放：
+
+| expressionId | 效果 |
+|---|---|
+| neutral | 默认，恢复原嘴型 |
+| smile | 双眼笑闭、张嘴笑 |
+| shy | 害羞，小幅微笑、腮红 |
+| annoyed | 原眉毛皱起、半闭眼、撇嘴 |
+| sleep | 闭眼休息，不替代全身盖被睡眠动作 |
+| surprised | 圆形张嘴、睁眼 |
+| confused | 单侧挑眉、侧看、歪嘴 |
+| sad | 眉头抬起、撇嘴、眼内泪光 |
+| smug | 不对称半闭眼、挑眉、歪嘴笑 |
+| unimpressed | 半闭眼、平嘴 |
+| wink | 左眼笑闭、右眼睁开、微笑 |
+
+特效：sparkles、hearts、sleepy、splash。内置 wave 固定 1400ms，只占 pose；walk_right 为 800ms 序列，占 pose 和 face。
+
+1.3.0 的五个新组 `confused_tilt`、`sad_pout`、`smug_pose`、`unimpressed_pause`、`playful_wink` 使用普通 pose motion 与 expression 并行组合，无需新执行器。表情占用 face 期间左右眼和视线由预设控制，结束后恢复鼠标跟随及自动眨眼；结束、停止、抢占和重载都复位嘴型、眉形与泪光。
 
 `annoyed` 使用原图眉毛的 Cubism 形变和半闭眼，自动跟随头部，不额外绘制眉毛。表情结束、取消或资源重载时恢复中性眉形；动作包接口不变。
 
