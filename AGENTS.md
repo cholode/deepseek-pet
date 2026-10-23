@@ -18,6 +18,8 @@
 
 ## 工作方式
 
+1.2.0 补充：按用户后续明确要求，站立角色现已接入本地 Live2D Cubism Core 与三视图拆件模型，覆盖长任务书中早期“不引入 Live2D”的限制。保持离线、安全隔离和统一动作执行器；模型及运行库位于 `src/renderer/public/live2d/`，不得依赖被忽略的本机制作用目录。AI 模式仍保持 unavailable。
+
 先给简短计划，直接分阶段实现、运行、修复。保留安全隔离和严格类型。不要通过禁用测试、隐藏错误或删掉核心功能宣称完成。
 
 最终运行并记录 `npm run typecheck`、`npm run lint`、`npm run test`、`npm run build`；当前环境允许时运行 `npm run dist:win` 并验证 GUI。未执行的项目写明原因。

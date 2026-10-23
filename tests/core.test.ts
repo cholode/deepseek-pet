@@ -6,7 +6,7 @@ import { ActionGroupRunner, frameIndex, type AnimationHost } from '../src/render
 import { candidates, weighted, NormalBehaviorDriver } from '../src/renderer/pet/behavior';
 import { PetRuntime } from '../src/renderer/pet/PetRuntime';
 import type { DesktopState } from '../src/shared/contracts';
-import { clampRect, nearestArea, dimensions } from '../src/shared/geometry';
+import { clampRect, nearestArea, dimensions, frameViewport, resizeAtFeet } from '../src/shared/geometry';
 let registry: Registry;
 beforeAll(async()=>{registry={revision:1,packs:[await readPack(path.resolve('resources/builtin'),true,p=>p)]};});
 afterEach(()=>vi.useRealTimers());
@@ -24,9 +24,27 @@ describe('schema and JSON extension',()=>{
   it('rejects duplicate group IDs and channel conflicts',()=>{const bad=structuredClone(registry);bad.packs[0].groups.push(bad.packs[0].groups[0]);expect(()=>makeCatalog(bad)).toThrow('重复动作组');const conflict=structuredClone(registry);conflict.packs[0].groups[0].timeline={type:'parallel',children:[{type:'motion',motionId:'builtin.deepblue:wave',repeat:1},{type:'motion',motionId:'builtin.deepblue:sway',repeat:1}]};expect(()=>makeCatalog(conflict)).toThrow('通道冲突');});
   it('requires actual motion channels and increasing keyframes',()=>{const m=structuredClone(registry.packs[0].motions[0]);if(m.kind!=='rig_timeline')throw new Error();m.channels=['face'];expect(()=>validateMotion(m)).toThrow('通道');m.channels=['pose'];m.tracks[0].keyframes[1].timeMs=0;expect(()=>validateMotion(m)).toThrow('递增');});
   it('requires alpha limits, positive finite repeat and watchdog margin',()=>{const m=structuredClone(registry.packs[0].motions[0]);if(m.kind!=='rig_timeline')throw new Error();m.tracks[0].property='alpha';expect(()=>validateMotion(m)).toThrow('alpha');const g=registry.packs[0].groups[0];expect(groupSchema.safeParse({...g,timeline:{type:'motion',motionId:'builtin.deepblue:wave',repeat:Infinity}}).success).toBe(false);const bad=structuredClone(registry);bad.packs[0].groups[0].maxDurationMs=1;expect(()=>makeCatalog(bad)).toThrow('看门狗');});
-  it('rejects frame ambiguity and missing assets',()=>{const m=structuredClone(registry.packs[0].motions.find(m=>m.kind==='frame_animation')!);if(m.kind!=='frame_animation')throw new Error();m.frameDurationsMs=[200,200,200,200];expect(()=>validateMotion(m)).toThrow('只能选择');const bad=structuredClone(registry);delete bad.packs[0].assets['assets/frame-0.png'];expect(()=>makeCatalog(bad)).toThrow('缺少图片');expect(motionSchema.safeParse({...m,frames:[]}).success).toBe(false);});
+  it('rejects frame ambiguity and missing assets',()=>{const m=structuredClone(registry.packs[0].motions.find(m=>m.kind==='frame_animation')!);if(m.kind!=='frame_animation')throw new Error();m.fps=20;m.frameDurationsMs=[200,200,200,200];expect(()=>validateMotion(m)).toThrow('只能选择');const bad=structuredClone(registry);delete bad.packs[0].assets['assets/frame-0.png'];expect(()=>makeCatalog(bad)).toThrow('缺少图片');expect(motionSchema.safeParse({...m,frames:[]}).success).toBe(false);});
 });
 describe('timeline lifecycle',()=>{
+  it('runs a side-view walking sequence in lockstep with movement, then resets',()=>{
+    const c=makeCatalog(registry);
+    for(const direction of ['left','right']){
+      const g=c.groups.get('builtin.deepblue:walk_'+direction)!;
+      const m=c.motions.get('builtin.deepblue:walk_'+direction)!;
+      expect(m.kind).toBe('frame_animation');expect(g.channels).toEqual(expect.arrayContaining(['pose','face','movement']));
+      if(m.kind!=='frame_animation')throw Error('Expected side-view frames');
+      expect(m.frames).toHaveLength(32);expect(m.frames.length*1000/m.fps!).toBe(m.durationMs);
+      expect(m.frames.every(f=>f.startsWith('assets/walk/'+direction+'-'))).toBe(true);expect(m.hitAreas).toHaveLength(2);
+      const h=host(),done=vi.fn(),runner=new ActionGroupRunner(g,'walking','manual',c,h,done);
+      runner.tick(0);expect(h.starts).toEqual(['motion','move_by']);runner.tick(2399);expect(done).not.toHaveBeenCalled();
+      runner.tick(1);expect(h.disposed).toEqual(['motion','move_by']);expect(h.reset).toHaveBeenCalledOnce();expect(done).toHaveBeenCalledWith('completed',undefined);
+    }
+  });
+  it('rejects missing side-view frames before changing the live registry',()=>{
+    const r=runtime(),bad=structuredClone(registry);delete bad.packs[0].assets['assets/walk/left-00.png'];
+    expect(()=>r.replaceRegistry(bad)).toThrow('缺少图片');expect(r.registry.revision).toBe(1);
+  });
   it('starts sequential leaves in order and releases before the next',()=>{const h=host(),done=vi.fn();const r=new ActionGroupRunner(group({type:'sequence',children:[{type:'bubble',text:'A',durationMs:100},{type:'bubble',text:'B',durationMs:100}]}),'x','manual',makeCatalog(registry),h,done);r.tick(0);expect(h.starts).toEqual(['bubble']);r.tick(100);expect(h.disposed).toEqual(['bubble']);expect(h.starts).toEqual(['bubble','bubble']);r.tick(100);expect(done).toHaveBeenCalledExactlyOnceWith('completed',undefined);});
   it('starts parallel leaves in same tick and waits for longest',()=>{const h=host(),done=vi.fn();const r=new ActionGroupRunner(group({type:'parallel',children:[{type:'bubble',text:'A',durationMs:100},{type:'wait',durationMs:300}]}),'x','manual',makeCatalog(registry),h,done);r.tick(0);expect(h.starts).toEqual(['bubble','wait']);r.tick(100);expect(done).not.toHaveBeenCalled();r.tick(200);expect(done).toHaveBeenCalledOnce();});
   it('recursively cancels active leaves and emits one terminal',()=>{const h=host(),done=vi.fn();const r=new ActionGroupRunner(group({type:'parallel',children:[{type:'bubble',text:'A',durationMs:1000},{type:'wait',durationMs:1000}]}),'x','manual',makeCatalog(registry),h,done);r.tick(0);r.cancel();r.cancel();r.tick(2000);expect(h.disposed).toHaveLength(2);expect(done).toHaveBeenCalledExactlyOnceWith('cancelled',undefined);});
@@ -47,7 +65,11 @@ describe('command gateway and priority',()=>{
   });
   it('sleep layers are independently registered and missing tail assets are rejected',()=>{
     const m=makeCatalog(registry).motions.get('builtin.deepblue:sleep')!;expect(m.kind).toBe('frame_animation');
-    if(m.kind==='frame_animation'){expect(m.layers?.[0].image).toBe('assets/sleep/tail.png');expect(m.frames).toHaveLength(96);expect(m.hitAreas).toHaveLength(2);}
+    if(m.kind==='frame_animation'){
+      expect(m.layers?.[0].image).toBe('assets/sleep/tail.png');expect(m.frames).toHaveLength(24);expect(m.hitAreas).toHaveLength(2);
+      expect(m.frameDurationsMs?.reduce((sum,ms)=>sum+ms,0)).toBe(3600);expect(m.durationMs).toBe(3600);
+      expect(m.layers?.[0].periodMs).toBe(m.durationMs);expect(m.layers?.[0].rotationDeg).toBe(6.5);
+    }
     const bad=structuredClone(registry);delete bad.packs[0].assets['assets/sleep/tail.png'];expect(()=>makeCatalog(bad)).toThrow('缺少图片');
   });
   it('deduplicates identical command and rejects conflicting payload',async()=>{const r=runtime();const p=r.port('manual');const c={protocolVersion:1 as const,commandId:'same',type:'play_group' as const,groupId:'builtin.deepblue:greet_wave'};const a=await p.submit(c);expect(await p.submit(c)).toEqual(a);expect(r.events.filter(e=>e.type==='action_lifecycle')).toHaveLength(1);expect((await p.submit({...c,groupId:'builtin.deepblue:happy_hop'})).errorCode).toBe('COMMAND_ID_CONFLICT');});
@@ -73,6 +95,16 @@ describe('normal random behavior',()=>{
   it('cooldown begins on terminal event and only accepted start enters history',async()=>{vi.useFakeTimers();const r=runtime();await r.start();r.play('builtin.deepblue:greet_wave','normal');expect(r.driver.cooldowns.size).toBe(0);expect(r.driver.history).toEqual(['builtin.deepblue:greet_wave']);await vi.advanceTimersByTimeAsync(100);r.current!.cancel();expect(r.driver.cooldowns.get('builtin.deepblue:greet_wave')).toBe(Date.now());await r.dispose();});
 });
 describe('DIP geometry',()=>{
+  it('reserves space for the enlarged sleep pose and restores its bottom-center anchor without drift',()=>{
+    const sleep=makeCatalog(registry).motions.get('builtin.deepblue:sleep')!;if(sleep.kind!=='frame_animation')throw Error('sleep must use frames');
+    const wide=frameViewport(sleep.canvas,sleep.displayScale??1);expect(wide.width).toBeGreaterThan(sleep.canvas.width*(sleep.displayScale??1)*.82);expect(wide.height).toBe(420);
+    for(const scale of [.6,.65,1,1.25,1.5]){
+      const start={x:-1400,y:50,...dimensions(scale)};let current={...start};
+      for(let i=0;i<50;i++){current=resizeAtFeet(current,dimensions(scale,wide));expect(current.x+current.width/2).toBe(start.x+start.width/2);expect(current.y+current.height).toBe(start.y+start.height);current=resizeAtFeet(current,dimensions(scale));}
+      expect(current).toEqual(start);
+      const area={x:-1920,y:40,width:1920,height:1040};const edge=clampRect(resizeAtFeet({x:-340,y:600,...dimensions(scale)},dimensions(scale,wide)),area);expect(edge.x).toBeGreaterThanOrEqual(area.x);expect(edge.x+edge.width).toBeLessThanOrEqual(area.x+area.width);expect(edge.y+edge.height).toBeLessThanOrEqual(area.y+area.height);
+    }
+  });
   it('clamps negative-coordinate display and nonzero work area origin',()=>{expect(clampRect({x:-3000,y:-100,width:340,height:420},{x:-1920,y:40,width:1920,height:1040})).toEqual({x:-1920,y:40,width:340,height:420});expect(clampRect({x:1900,y:1100,width:340,height:420},{x:100,y:40,width:1920,height:1040}).x).toBe(1680);});
   it('recovers removed display and handles different pet sizes',()=>{const area={x:0,y:0,width:1920,height:1040};expect(nearestArea({x:-1800,y:0,width:340,height:420},[area])).toBe(area);for(const size of [.6,1,1.5]){const d=dimensions(size);const r=clampRect({x:1920,y:1040,...d},area);expect(r.x+r.width).toBe(1920);expect(r.y+r.height).toBe(1040);}});
 });

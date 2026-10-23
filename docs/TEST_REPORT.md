@@ -84,7 +84,7 @@
 
 - Windows 10、多显示器负坐标真实硬件、热拔插、混合 DPI、系统睡眠/恢复的实机组合；相应纯函数和清理路径已实现，不能用单测代替多屏实测。
 - 每一机型的稳定 60 FPS、按压反馈严格小于 100ms 的仪器测量、无限运行稳定性。
-- 精细设定图的完整拆层、精修补画或 Live2D 绑定。桌面角色明确是可动画的分层演示资产。
+- 此处是 1.0 的历史范围：当时未完成 Live2D。1.2.0 已完成正面原画拆件绑定与程序接入，见文末；大角度侧转仍未制作。
 
 已知范围限制：本版无 AI、无 ZIP 市场、无脚本插件、无跨屏自主漫游；这些符合任务书边界。
 
@@ -115,3 +115,75 @@
 - `node scripts/sleep-gui-test.cjs` 在真实 Electron 窗口中验证站立入口限制、睡眠自然完成和停止后恢复站立、无运行错误。随后通过 `PET_TEST_EXE=release/win-unpacked/DeepBlue Desktop Pet.exe` 对打包程序重复检查，通过。截图 `test-results/sleep-live.png` 可见盖被子姿势、独立尾巴、头顶向右上分布的 Z；站立恢复截图和结果见同目录。
 - 安装 EXE `DeepBlue-Setup-1.1.2-win-x64.exe`：192952436 字节；便携 EXE `DeepBlue-Desktop-Pet-1.1.2-win-x64.exe`：152501120 字节。SHA256 见 `release/SHA256SUMS.txt`。未签名，本轮验证打包后的 unpacked 程序，未执行安装向导或便携自解压启动流程。
 - 本轮没有重新进行多屏、原生拖动、十分钟驻留测试；历史相关结果不能替代本轮完整回归。新增脚本仅操作本项目测试窗口，使用独立测试用户目录。
+
+## 1.2.0 Live2D 接入（2026-09-27）
+
+- `npm run typecheck`、`npm run lint`、`npm test`、`npm run build`、`npm run dist:win` 最终均退出 0。59 项单元测试通过，新增 6 项覆盖通道占用、参数范围、复位、眼部不重复缩放、虹膜与遮罩同步变换以及手臂/腿/尾巴隔离。第三方 Core 和本机制作用文件不属于 ESLint 源码检查范围。
+- 通用 `node scripts/gui-test.cjs` 实际运行 Electron：13 个内置动作组全部完成；AI unavailable、固定位置、移动取消、示例包导入、自定义 JSON 播放、事务重载均通过，运行错误为空。记录 `test-results/gui-report.json`。
+- `node scripts/live2d-gui-test.cjs` 使用独立用户目录进行 11 项专项验收；开发运行版与 `PET_TEST_EXE=release/win-unpacked/DeepBlue Desktop Pet.exe` 打包运行版最终均退出 0。验证实际 Core 参数的眨眼和尾巴变化、双轴视线、站立入睡限制、睡眠暂停隐藏模型更新、自然结束/取消后恢复、旧动作兼容、缩放与 30 FPS 设置、重载；未观察到 HTTP(S) 请求、renderer 异常或应用运行错误。
+- 鼠标跟随测试通过临时替换本项目测试进程的系统鼠标采样结果完成，不移动用户物理鼠标。截图由应用测试接口取得，未使用 Computer Use。最终记录与站立/招手/睡眠/缩放截图位于 `test-results/live2d-source/`、`test-results/live2d-packaged/`。
+- 验收过程曾出现鼠标跟随等待超时，以及后台控制面板截图超时。测试保留了原有功能断言，鼠标改为有界条件等待，控制面板截图前显式前置窗口；最后一次完整打包版回归 11 项全部通过。这些重试不作为长期帧率或所有硬件稳定性的证明。
+- 实测生产 CSP 保留 `nodeIntegration:false`，不含 JavaScript `unsafe-eval`；只为本地 Core 内嵌 WebAssembly 增加 `wasm-unsafe-eval`。模型与纹理位于打包后的 `app.asar` 静态资源内，无需制作目录、Python、Node 开发环境或模型编辑器。
+- 安装版 `DeepBlue-Setup-1.2.0-win-x64.exe`：194058387 字节，SHA256 `7561caa6896ec7dd0f67667202e42f37e9f53d25e24aff10012504aa56e2e7f7`。
+- 便携版 `DeepBlue-Desktop-Pet-1.2.0-win-x64.exe`：153719169 字节，SHA256 `b4bee03b79948827f46a0310795a0a5a7f2bad0d588b06da2437425bf54f6eb0`。两者 Authenticode 实测均为 `NotSigned`。本轮验证了实际打包运行程序，未执行安装向导或便携自解压启动流程。
+- 本轮未重新进行物理鼠标拖动、透明区域跨应用穿透、多显示器热插拔、十分钟驻留测试；不能以旧版结果替代本轮实测。模型当前为正面轻动作，旧部件时间轴幅度按此范围适配。
+
+
+## 1.2.1 头颈与尾巴拆件修正（2026-09-27）
+
+- 原因：后发兜底层残留头饰/呆毛/尾鳍边缘；脸层切进颈部和领口；后发上端未继承动作时间轴的头部位移。重新分配原图像素并清理底层，新增独立 Neck 网格、重建被遮挡的颈部与后发；头部动作幅度未缩小。
+- `npm run typecheck`、`npm run lint`、`npm test`（61 项）、`npm run build`、`npm run dist:win` 均通过。新单测覆盖脖子随身体而非头部移动、后发根部随点头而发梢维持锚定。
+- `node scripts/live2d-cutout-test.cjs` 调用生产 Live2DRenderer、真实 MOC3 和官方 Core：27 网格，头部位移/旋转/缩放不改变独立脖子图像；后发顶部无头饰残片；原尾鳍下缘抽样透明；摆尾参数不改变身体图层。检查头部 ±8 设计像素、±4 度及尾巴参数 ±1 的极限姿态，输出 90 帧/3 秒循环和截图，证据 `test-results/live2d-cutouts/`。实际视觉检查了抬头、低头、左右摆尾及打包版摸头截图。像素抽样与截图不代表全部可能姿态已穷举。
+- 独立制作预览的官方 Core 验证在 27 层首次导出时通过全部参数极值、眼罩与部件隔离；随后下巴精修的最终模型又通过上述生产渲染器检查与打包程序检查。
+- `PET_TEST_EXE=release/win-unpacked/DeepBlue Desktop Pet.exe node scripts/live2d-gui-test.cjs` 最终 11 项通过：眨眼、尾巴待机、主进程鼠标视线、招手、站立入睡限制、睡眠完成及取消恢复、摸头/身体/水光/张望、缩放与 30 FPS、重载，零运行错误、零 HTTP(S) 请求。首次运行鼠标检查因固定采样坐标与窗口缩放不一致超时；改为按当前窗口 bounds 取比例坐标，保留原视线方向断言，完整重跑通过。截图和报告在 `test-results/live2d-packaged/`。未使用 Computer Use。
+- 安装 EXE `DeepBlue-Setup-1.2.1-win-x64.exe`：193748893 字节，SHA256 `2457b32053fd961bacd5d2d23fc0198f2f73b75e2536d6f0727d903c81b4519a`。
+- 便携 EXE `DeepBlue-Desktop-Pet-1.2.1-win-x64.exe`：153412692 字节，SHA256 `f11f41ccbffc037fed367e7401d59b1e444ca83efbc8eb1b5a659629ea777076`。两者实测 NotSigned；验证的是打包后的 unpacked 程序，未运行安装向导或便携自解压启动流程。
+- 本轮未重跑通用 GUI 全部动作/导入测试，也未重测物理鼠标拖动、多显示器及长时间驻留；历史结果不替代本轮验证。制作目录继续忽略，程序使用的模型与图集独立打包。
+
+
+## 1.2.2 侧视步行（2026-09-27）
+
+- 内置左右步行改为原三视图侧面拆件导出的序列，每方向 32 帧，512×752，40 FPS，周期 800ms；与原有 2400ms 窗口移动重复三次同步。左行使用原侧面，右行水平镜像。没有新增动作 ID 分支或改动统一执行器。
+- `npm run typecheck`、`npm run lint`、`npm test`（63 项）、`npm run build` 均通过。新增用例验证侧面序列与窗口移动同时开始、2400ms 同时完成并 reset，以及缺少侧面帧时保持旧 registry。
+- 初始全尺寸导出使动作包解码预算超出 256 MiB，加载和测试明确失败；将 64 张侧面帧等比缩至 512×752，同时调整显示比例与命中区域。最终整个内置 PNG 解码量约 216.19 MiB，未放宽安全上限。重新导出后全部 63 项测试通过。
+- 素材检查：左右各 32 帧、画布一致、所有姿态在画布内，右行逐帧与左行的水平镜像相同。检查透明背景、尾巴周围与腿部运动，未重新生成角色。源码中只增加运行用 PNG/JSON；制作脚本和 GIF 继续留在忽略目录。
+- `node scripts/side-walk-gui-test.cjs` 在源码运行版与最终 `PET_TEST_EXE=release/win-unpacked/DeepBlue Desktop Pet.exe` 打包运行版各通过 7 项：左右素材识别、左/右实际移动 120 DIP 且方向正确、完成恢复正面、停止后正面且不继续移动、固定位置拒绝移动、走动期间重载恢复正面、零运行错误。实际渲染截图、正面恢复截图和 JSON 报告位于 `test-results/side-walk-source/` 和 `test-results/side-walk-packaged/`。未使用 Computer Use。
+- 本轮没有重新运行全部旧动作的 GUI 回归、多屏、物理鼠标拖动或长时间驻留。拖动中断仍经过原有单测与执行器清理逻辑，不能等同于本轮物理鼠标实测。
+
+- `npm run dist:win` 最终退出 0。安装版 `DeepBlue-Setup-1.2.2-win-x64.exe` 为 214895903 字节，SHA256 `942bdb8e9a87b416d11628ef055333db253f110ae4275c9e7165e097e1a19a2d`；便携版 `DeepBlue-Desktop-Pet-1.2.2-win-x64.exe` 为 174589806 字节，SHA256 `171cc3a7afcd0bd4b77a98c39712ed1acdfa4a94688c2238f3298606e55f1072`。两者仍未签名。
+- 本轮实际启动了便携 EXE，自解压后出现 `DeepBlue Pet` 正常用户窗口，进程来自便携临时解压目录；安装向导和卸载流程未执行。打包内容的步行交互验收仍以上述 unpacked 专项测试为依据。
+
+
+## 1.2.3 侧视腿根修正（2026-09-27）
+
+- 原腿层顶部延伸不够，且误保留原裙摆的白边、描线和截断阴影；迈步后这些像素露在裙外。向裙内加长腿根，清除顶部旧裁切痕迹，按原肤色重建连续大腿及侧边描线。双腿共用修正后的原腿组件，重导左右 64 帧。步幅、关节、脚底位置和时长均未改变。
+- `npm run typecheck`、`npm run lint`、`npm test`（63 项）通过。素材专项验证 32 个相位的近腿/远腿上截口均被裙身完全覆盖，腿根内部为连续不透明肤色、不再包含旧黑色横线；右行与左行保持逐帧严格镜像。放大检查三种极限位置与全 32 帧腿部接缝，记录位于本机忽略目录 `art/animations/side-walk-v2/thigh-validation.json`、`thigh-all-frames.png`、`thigh-closeup.png`。
+
+- `npm run build`、`npm run dist:win` 最终退出 0。打包后的 `side-walk-gui-test.cjs` 最终 7 项通过，检查左右 120 DIP 移动、结束/取消/重载恢复正面和固定位置限制，运行错误为空。首轮在打包压缩同时运行时，移动距离断言失败；补充坐标诊断后，待打包完成再完整重跑通过，未修改或放宽原断言。检查了最终打包版左走截图中的腿部接缝。
+- 安装版 `DeepBlue-Setup-1.2.3-win-x64.exe`：214819308 字节，SHA256 `36fcb1556f22458f2a7a3b6860986fcabea9a9c9f282e5715ecacd042de7be54`；便携版 `DeepBlue-Desktop-Pet-1.2.3-win-x64.exe`：174514038 字节，SHA256 `7e82293cd798d77303850281cb1fc29a01c8c9941ba46d9527a0048ce52beafc`。均实测 NotSigned。未执行安装/卸载向导，也未重测多屏或其他旧动作的完整 GUI 回归。
+
+- 1.2.3 便携版启动确认：自解压后成功显示 DeepBlue Pet 窗口，并读取实际运行目录 resources/app.asar 中的 package.json，版本为 1.2.3。
+
+# 1.2.4 新侧卧睡姿与飘动 Z（2026-10-23）
+
+- 使用用户确认的 SVG 睡姿导出 24 张透明 PNG（150ms/帧），独立尾巴周期 3600ms、幅度 ±6.5°；最小口型面积为最大时的 1/3。SVG 预览验证 Z 的 x 增大、y 减小，且头、被子、枕头检查区域在 24 个姿态间像素稳定。
+- `npm run lint`、`npm run test`（63/63）、`npm run build`（包含 `npm run typecheck`）通过。首次单测失败来自旧用例假设任意帧动画都有 fps；改为显式同时设置 fps 与 frameDurationsMs 后，原有互斥断言通过，未放宽校验。
+- `node scripts/sleep-svg-gui-test.cjs` 已在实际 Electron 进程验证：加载 1.2.4 素材，非站立入口拒绝，新睡姿/口型/尾巴/Z 渲染，14.4 秒自然结束及手动停止恢复站立，资源包重载；零运行错误、零 HTTP(S) 请求。截图与结果位于 `test-results/sleep-124-source/`。未使用 Computer Use。
+- `npm run dist:win` 退出 0，生成 `DeepBlue-Setup-1.2.4-win-x64.exe` 与 `DeepBlue-Desktop-Pet-1.2.4-win-x64.exe`，SHA-256 写入 `release/SHA256SUMS.txt`。
+- `PET_TEST_EXE=release/win-unpacked/DeepBlue Desktop Pet.exe node scripts/sleep-svg-gui-test.cjs` 同样六项通过，零运行错误、零 HTTP(S) 请求；打包程序截图与报告位于 `test-results/sleep-124-packaged/`。本轮验证的是打包程序运行，未执行安装向导或覆盖用户安装目录。
+
+## 1.2.5 睡姿肤色与站立统一（2026-10-23）
+
+- 以站立头部脸颊 RGB(253,244,239) 为参考，校正睡姿面部偏橙的底色，并同步修改缩小嘴型下方的皮肤填补。校正后 SVG 三处脸部中性肤色样本均为 RGB(253,244,239)，运行用 24 帧均通过同色取样检查。头发、被子、尾巴与枕头的抽检区域和校正前逐像素相同。前后对照及报告保留在本机 `test-results/sleep-skin-125/`。
+- SVG 预览检查通过：24 个姿态中头、被子、枕头检查区稳定，循环接缝误差在既有容限内，Z 向右上漂移，嘴型面积比例和尾巴运动参数保持原值。人工查看了张嘴与最小嘴型的放大对照图。
+- `npm run lint`、`npm run test`（63/63）、`npm run build`（包含 `npm run typecheck`）通过。仅更新睡眠 PNG、素材版本和文档，无新增运行时图像处理或依赖。
+- `npm run dist:win` 退出 0；便携版 `DeepBlue-Desktop-Pet-1.2.5-win-x64.exe` 与安装版 `DeepBlue-Setup-1.2.5-win-x64.exe` 已生成，校验和写入 `release/SHA256SUMS.txt`。实际打包程序六项 GUI 检查通过：加载新版素材、站立入口限制、睡姿与 Z 渲染、自然结束恢复站立、停止恢复站立、资源包重载；运行错误和 HTTP(S) 请求均为零，记录位于 `test-results/sleep-125-packaged/`。本轮未执行安装向导、卸载或多屏测试。
+
+## 1.2.6 睡姿放大与窗口适配（2026-10-23）
+
+- 睡姿显示比例从 0.44 提至 0.64，线性尺寸增大约 45%，优先匹配站立头部。Z 起点同步更新。程序按动作画布自适应横向窗口；睡姿为 502×420，站立为 340×420。用户大小设置改为缩放完整子场景，修正此前只放大窗口的问题。
+- `npm run lint`、`npm run test`（64/64）、`npm run build`（包含 typecheck）通过。新增几何检查覆盖 0.6、0.65、1、1.25、1.5 倍下 50 次扩展/恢复不漂移，以及负坐标工作区边界。
+- 源码 GUI 七项通过：实际宽窗口、脚底中心保持、放大脸部命中区域与主进程点击验证、完整画面不裁切、0.6/1.5 倍画面及命中区同步缩放、自然结束/取消恢复尺寸和位置、面板无权调用窗口尺寸 IPC。实际截图与结果位于 `test-results/sleep-size-126-source/`。在同一显示比例下人工查看站立与新睡姿对照，预览位于本机忽略目录 `art/animations/sleep-size-v1/`。
+- `npm run dist:win` 退出 0，1.2.6 安装版与便携版 EXE 均已生成。最终打包程序的尺寸专项七项通过（`test-results/sleep-size-126-packaged/`）；打包程序侧视步行七项通过，含左右各移动 120 DIP、停止、固定位置和重载。源码 Live2D 综合十一项通过，含眨眼、双轴鼠标跟随、旧动作、睡眠切换、缩放和重载。SVG 动画专项同样通过。本轮未执行安装/卸载向导或物理多屏测试。
+- 补测复现了启动后立即从已保存的 1.5 倍改成 1 倍时丢失设置消息的问题：主进程窗口已缩回，Renderer 仍保持 1.5 倍，鼠标跟随坐标偏差。改为纹理预加载前订阅并暂存消息，初始化后顺序应用；强制以 1.5 倍配置启动、立即切回 1 倍的鼠标跟随专项已通过，保留原有断言。
+- 加入启动消息处理修正并重新构建后，最终打包程序再次通过尺寸专项七项和保存 1.5 倍配置启动的鼠标跟随专项；lint、64 项单测和类型检查通过。

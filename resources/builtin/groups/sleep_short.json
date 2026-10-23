@@ -2,7 +2,7 @@
   "schemaVersion": 1,
   "id": "sleep_short",
   "name": "盖被子睡觉",
-  "description": "仅从站立待机直接进入侧卧睡觉；被子呼吸、独立尾巴摇摆，Z 向右上飘，14.4 秒后站起来。",
+  "description": "仅从站立待机进入盖被侧卧；嘴巴缓慢张合（最小面积为最大时的三分之一）、独立鲸尾轻摆，Z 从头部上方向右上飘，14.4 秒后恢复站立。",
   "tags": [
     "日常",
     "待机",
@@ -27,15 +27,15 @@
       {
         "type": "motion",
         "motionId": "builtin.deepblue:sleep",
-        "repeat": 3
+        "repeat": 4
       },
       {
         "type": "effect",
         "effectId": "sleepy",
         "durationMs": 14400,
         "origin": {
-          "x": -75,
-          "y": -215
+          "x": -71.68,
+          "y": -246.4
         }
       }
     ]

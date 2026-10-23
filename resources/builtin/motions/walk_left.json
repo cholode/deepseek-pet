@@ -1,127 +1,72 @@
 {
   "schemaVersion": 1,
   "id": "walk_left",
-  "name": "walk_left",
-  "kind": "rig_timeline",
+  "name": "侧身向左步行",
+  "kind": "frame_animation",
   "avatarId": "deepblue-chibi-v1",
   "durationMs": 800,
   "channels": [
-    "pose"
+    "pose",
+    "face"
   ],
-  "tracks": [
+  "frames": [
+    "assets/walk/left-00.png",
+    "assets/walk/left-01.png",
+    "assets/walk/left-02.png",
+    "assets/walk/left-03.png",
+    "assets/walk/left-04.png",
+    "assets/walk/left-05.png",
+    "assets/walk/left-06.png",
+    "assets/walk/left-07.png",
+    "assets/walk/left-08.png",
+    "assets/walk/left-09.png",
+    "assets/walk/left-10.png",
+    "assets/walk/left-11.png",
+    "assets/walk/left-12.png",
+    "assets/walk/left-13.png",
+    "assets/walk/left-14.png",
+    "assets/walk/left-15.png",
+    "assets/walk/left-16.png",
+    "assets/walk/left-17.png",
+    "assets/walk/left-18.png",
+    "assets/walk/left-19.png",
+    "assets/walk/left-20.png",
+    "assets/walk/left-21.png",
+    "assets/walk/left-22.png",
+    "assets/walk/left-23.png",
+    "assets/walk/left-24.png",
+    "assets/walk/left-25.png",
+    "assets/walk/left-26.png",
+    "assets/walk/left-27.png",
+    "assets/walk/left-28.png",
+    "assets/walk/left-29.png",
+    "assets/walk/left-30.png",
+    "assets/walk/left-31.png"
+  ],
+  "fps": 40,
+  "canvas": {
+    "width": 512,
+    "height": 752
+  },
+  "anchor": {
+    "x": 0.3203125,
+    "y": 1
+  },
+  "displayScale": 0.525,
+  "hitAreas": [
     {
-      "targetId": "root",
-      "property": "offsetY",
-      "keyframes": [
-        {
-          "timeMs": 0,
-          "value": 0,
-          "easing": "easeInOut"
-        },
-        {
-          "timeMs": 200,
-          "value": -7,
-          "easing": "easeInOut"
-        },
-        {
-          "timeMs": 400,
-          "value": 0,
-          "easing": "easeInOut"
-        },
-        {
-          "timeMs": 600,
-          "value": -7,
-          "easing": "easeInOut"
-        },
-        {
-          "timeMs": 800,
-          "value": 0,
-          "easing": "easeInOut"
-        }
-      ]
+      "target": "head",
+      "x": 12.0,
+      "y": 6.4,
+      "width": 334.40000000000003,
+      "height": 376.0
     },
     {
-      "targetId": "armLeft",
-      "property": "rotationDeg",
-      "keyframes": [
-        {
-          "timeMs": 0,
-          "value": 0,
-          "easing": "easeInOut"
-        },
-        {
-          "timeMs": 200,
-          "value": 22,
-          "easing": "easeInOut"
-        },
-        {
-          "timeMs": 400,
-          "value": -22,
-          "easing": "easeInOut"
-        },
-        {
-          "timeMs": 600,
-          "value": 22,
-          "easing": "easeInOut"
-        },
-        {
-          "timeMs": 800,
-          "value": 0,
-          "easing": "easeInOut"
-        }
-      ]
-    },
-    {
-      "targetId": "armRight",
-      "property": "rotationDeg",
-      "keyframes": [
-        {
-          "timeMs": 0,
-          "value": 0,
-          "easing": "easeInOut"
-        },
-        {
-          "timeMs": 200,
-          "value": -22,
-          "easing": "easeInOut"
-        },
-        {
-          "timeMs": 400,
-          "value": 22,
-          "easing": "easeInOut"
-        },
-        {
-          "timeMs": 600,
-          "value": -22,
-          "easing": "easeInOut"
-        },
-        {
-          "timeMs": 800,
-          "value": 0,
-          "easing": "easeInOut"
-        }
-      ]
-    },
-    {
-      "targetId": "root",
-      "property": "scaleX",
-      "keyframes": [
-        {
-          "timeMs": 0,
-          "value": -1,
-          "easing": "easeInOut"
-        },
-        {
-          "timeMs": 400,
-          "value": -1,
-          "easing": "easeInOut"
-        },
-        {
-          "timeMs": 800,
-          "value": -1,
-          "easing": "easeInOut"
-        }
-      ]
+      "target": "body",
+      "x": 32.0,
+      "y": 376.0,
+      "width": 460.8,
+      "height": 356.0
     }
   ]
 }

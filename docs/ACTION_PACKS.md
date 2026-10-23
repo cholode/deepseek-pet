@@ -123,3 +123,14 @@
 `frame_animation` 可选 `displayScale`（默认 1）、`layers` 和 `hitAreas`。`layers` 是位于序列帧后方的独立图片列表，字段为包内 `image`、画布位置 `x/y`、图片内支点 `pivotX/pivotY`、正弦旋转幅度 `rotationDeg`、周期 `periodMs`。图片须已加载并通过包路径校验。`hitAreas` 使用帧画布坐标，每项为 `target: head|body`、`x/y/width/height`，随缩放更新鼠标区域。
 
 `effect` 节点可选 `origin: {x,y}`，为 sleepy 特效的起始设计坐标（相对角色脚底），Z 向右上方移动并淡出。特效独立于隐藏的站立角色，完成、取消、失败均清理。示例见内置 `motions/sleep.json` 与 `groups/sleep_short.json`。
+> 1.2.0 兼容说明：公开的 `head`、`body`、`armLeft`、`armRight`、`tail` 等节点与 JSON 格式保持不变。站立动作通过 Live2D 适配器驱动；头部、手臂等部件幅度会收敛到正面原画支持的范围。根节点跳跃、镜像、位置移动以及表情、特效仍由统一执行器管理。全身序列会暂时隐藏并暂停 Live2D，完成或取消后自动恢复。动作包不能添加 JavaScript 或替换 Core 运行库。
+
+### 侧面步行示例（1.2.2）
+
+`walk_left` 与 `walk_right` 改为 `frame_animation`，各 32 帧 / 40 FPS / 800ms，占用 `pose` 和 `face`。动作组仍将三次循环和 2400ms `move_by` 并行执行，不新增动作 ID 分支。序列各自指定 `anchor`、`displayScale` 和头/身体 `hitAreas`，因此镜像造型的脚底和点击范围仍匹配；结束或取消沿现有清理路径恢复正面。旧自定义组合若把该走路 motion 与表情并行，因同时占用 face 会被正常拒绝，需要移除并行表情或改为顺序。
+
+### 盖被睡眠示例（1.2.4，1.2.5 更新肤色，1.2.6 更新大小）
+
+`sleep` 使用 24 张 880×500 PNG，`frameDurationsMs` 每项 150ms，共 3600ms；动作组循环四次。`layers` 中独立尾巴以 `(684.5,347)` 为支点、±6.5° 连续摆动，周期同为 3600ms。1.2.6 的 `displayScale` 为 `0.64`（原为 `0.44`），`sleepy.origin` 为 `(-71.68,-246.4)`，对应放大后的头部上方；Z 仍由独立 effect 通道管理，未烘焙进图片。入口 `requiresStanding` 和结束/取消清理语义不变。
+
+序列帧使用自身画布和显示比例计算所需透明窗口，不按动作 ID 判断。基础设计窗口为 340×420；超过基础窗口时添加边距，最大设计尺寸为 1024×1024。睡姿窗口为 502×420，再乘用户大小设置；命中区仍按素材坐标定义，随同一个场景变换缩放。结束或取消恢复基础窗口，主进程按底边中心定位，并执行工作区边界约束。

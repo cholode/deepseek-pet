@@ -1,127 +1,72 @@
 {
   "schemaVersion": 1,
   "id": "walk_right",
-  "name": "walk_right",
-  "kind": "rig_timeline",
+  "name": "侧身向右步行",
+  "kind": "frame_animation",
   "avatarId": "deepblue-chibi-v1",
   "durationMs": 800,
   "channels": [
-    "pose"
+    "pose",
+    "face"
   ],
-  "tracks": [
+  "frames": [
+    "assets/walk/right-00.png",
+    "assets/walk/right-01.png",
+    "assets/walk/right-02.png",
+    "assets/walk/right-03.png",
+    "assets/walk/right-04.png",
+    "assets/walk/right-05.png",
+    "assets/walk/right-06.png",
+    "assets/walk/right-07.png",
+    "assets/walk/right-08.png",
+    "assets/walk/right-09.png",
+    "assets/walk/right-10.png",
+    "assets/walk/right-11.png",
+    "assets/walk/right-12.png",
+    "assets/walk/right-13.png",
+    "assets/walk/right-14.png",
+    "assets/walk/right-15.png",
+    "assets/walk/right-16.png",
+    "assets/walk/right-17.png",
+    "assets/walk/right-18.png",
+    "assets/walk/right-19.png",
+    "assets/walk/right-20.png",
+    "assets/walk/right-21.png",
+    "assets/walk/right-22.png",
+    "assets/walk/right-23.png",
+    "assets/walk/right-24.png",
+    "assets/walk/right-25.png",
+    "assets/walk/right-26.png",
+    "assets/walk/right-27.png",
+    "assets/walk/right-28.png",
+    "assets/walk/right-29.png",
+    "assets/walk/right-30.png",
+    "assets/walk/right-31.png"
+  ],
+  "fps": 40,
+  "canvas": {
+    "width": 512,
+    "height": 752
+  },
+  "anchor": {
+    "x": 0.6796875,
+    "y": 1
+  },
+  "displayScale": 0.525,
+  "hitAreas": [
     {
-      "targetId": "root",
-      "property": "offsetY",
-      "keyframes": [
-        {
-          "timeMs": 0,
-          "value": 0,
-          "easing": "easeInOut"
-        },
-        {
-          "timeMs": 200,
-          "value": -7,
-          "easing": "easeInOut"
-        },
-        {
-          "timeMs": 400,
-          "value": 0,
-          "easing": "easeInOut"
-        },
-        {
-          "timeMs": 600,
-          "value": -7,
-          "easing": "easeInOut"
-        },
-        {
-          "timeMs": 800,
-          "value": 0,
-          "easing": "easeInOut"
-        }
-      ]
+      "target": "head",
+      "x": 165.60000000000002,
+      "y": 6.4,
+      "width": 334.40000000000003,
+      "height": 376.0
     },
     {
-      "targetId": "armLeft",
-      "property": "rotationDeg",
-      "keyframes": [
-        {
-          "timeMs": 0,
-          "value": 0,
-          "easing": "easeInOut"
-        },
-        {
-          "timeMs": 200,
-          "value": 22,
-          "easing": "easeInOut"
-        },
-        {
-          "timeMs": 400,
-          "value": -22,
-          "easing": "easeInOut"
-        },
-        {
-          "timeMs": 600,
-          "value": 22,
-          "easing": "easeInOut"
-        },
-        {
-          "timeMs": 800,
-          "value": 0,
-          "easing": "easeInOut"
-        }
-      ]
-    },
-    {
-      "targetId": "armRight",
-      "property": "rotationDeg",
-      "keyframes": [
-        {
-          "timeMs": 0,
-          "value": 0,
-          "easing": "easeInOut"
-        },
-        {
-          "timeMs": 200,
-          "value": -22,
-          "easing": "easeInOut"
-        },
-        {
-          "timeMs": 400,
-          "value": 22,
-          "easing": "easeInOut"
-        },
-        {
-          "timeMs": 600,
-          "value": -22,
-          "easing": "easeInOut"
-        },
-        {
-          "timeMs": 800,
-          "value": 0,
-          "easing": "easeInOut"
-        }
-      ]
-    },
-    {
-      "targetId": "root",
-      "property": "scaleX",
-      "keyframes": [
-        {
-          "timeMs": 0,
-          "value": 1,
-          "easing": "easeInOut"
-        },
-        {
-          "timeMs": 400,
-          "value": 1,
-          "easing": "easeInOut"
-        },
-        {
-          "timeMs": 800,
-          "value": 1,
-          "easing": "easeInOut"
-        }
-      ]
+      "target": "body",
+      "x": 19.200000000000003,
+      "y": 376.0,
+      "width": 460.8,
+      "height": 356.0
     }
   ]
 }

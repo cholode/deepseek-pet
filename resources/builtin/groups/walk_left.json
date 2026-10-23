@@ -2,7 +2,7 @@
   "schemaVersion": 1,
   "id": "walk_left",
   "name": "向左散步",
-  "description": "迈着小步移动桌面位置，遇到边界自动停下。",
+  "description": "侧身朝左迈步，手臂和鲸尾轻摆；走完恢复正面。",
   "tags": [
     "散步"
   ],

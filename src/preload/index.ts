@@ -7,6 +7,7 @@ const bridge: PetBridge = {
   onMessage: fn => { const listener = (_e: Electron.IpcRendererEvent, m: RuntimeMessage) => fn(m); ipcRenderer.on('runtime', listener); return () => { ipcRenderer.removeListener('runtime', listener); }; },
   onDebug: fn => { const listener = (_e: Electron.IpcRendererEvent, s: DebugState) => fn(s); ipcRenderer.on('debug', listener); return () => { ipcRenderer.removeListener('debug', listener); }; },
   hitRegions: r => ipcRenderer.send('hit-regions', r), pointerDown: point => ipcRenderer.invoke('pointer-down', point), dragStart: () => ipcRenderer.invoke('drag-start'), dragEnd: () => ipcRenderer.invoke('drag-end'),
+  setViewport: viewport => ipcRenderer.invoke('set-viewport', viewport),
   moveStart: (id, dx, dy, ms, easing) => ipcRenderer.invoke('move-start', { id, dx, dy, ms, easing }), moveStop: id => ipcRenderer.invoke('move-stop', id)
 };
 contextBridge.exposeInMainWorld('pet', bridge);
