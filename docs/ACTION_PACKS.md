@@ -101,6 +101,10 @@
 
 表情：neutral、smile、shy、annoyed、sleep、surprised。特效：sparkles、hearts、sleepy、splash。内置 wave 固定 1400ms，walk_right 周期 800ms；它们都只占 pose。
 
+`annoyed` 使用原图眉毛的 Cubism 形变和半闭眼，自动跟随头部，不额外绘制眉毛。表情结束、取消或资源重载时恢复中性眉形；动作包接口不变。
+
+双眼皮线跟随现有眼睑开合，普通眨眼、半闭眼与闭眼表情共用这一绑定。外部动作包仍使用 `eyes` 节点，无需新增目标或参数。
+
 顺序时长求和、并行取最大；maxDurationMs 要比预计时长至少多 100ms，且不超过 30 秒。树最大深度 8、节点总数 128。不允许零/负时长、无限循环、NaN、Infinity 或未知字段。
 
 ## 导入与重新加载

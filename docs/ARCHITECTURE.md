@@ -18,9 +18,9 @@
 
 ## 渲染和交互
 
-1.2.0 起，`Avatar` 的站立角色由 `pet/live2d/Live2DRenderer.ts` 加载本地 MOC3、纹理及官方 Core，计算 27 个 ArtMesh 与两个眼部剪裁遮罩，渲染到透明 canvas，再交由 Pixi 合成。模型只有现有 Pixi ticker 一个时钟；睡觉等全身序列播放时完全跳过隐藏模型的更新。隐藏窗口/休眠继续停止 ticker；销毁时释放 Core 模型、MOC 内存、WebGL 缓冲、遮罩纹理和 Pixi canvas 纹理。
+1.2.0 起，`Avatar` 的站立角色由 `pet/live2d/Live2DRenderer.ts` 加载本地 MOC3、纹理及官方 Core，当前计算 30 个 ArtMesh 与两个眼部剪裁遮罩，渲染到透明 canvas，再交由 Pixi 合成。1.2.8 的新增网格是双侧双眼皮线及原右眼睫毛边缘，使用既有左右眼开合参数，跟随同一眼部/头部变换。模型只有现有 Pixi ticker 一个时钟；睡觉等全身序列播放时完全跳过隐藏模型的更新。隐藏窗口/休眠继续停止 ticker；销毁时释放 Core 模型、MOC 内存、WebGL 缓冲、遮罩纹理和 Pixi canvas 纹理。
 
-`pet/live2d/pose.ts` 把公开节点的关键帧投射到 16 个模型参数；额外位移/缩放作用于对应部件网格，虹膜和眼部遮罩使用相同的头部变换。根节点跳跃、旋转和镜像由 Pixi 处理。适配器不按动作组 ID 分支，外部 JSON 仍由同一个 `ActionGroupRunner` 执行、抢占、取消和清理。前景 pose/face 通道仍优先于待机。
+`pet/live2d/pose.ts` 把公开节点的关键帧及表情投射到 17 个模型参数；额外位移/缩放作用于对应部件网格，虹膜和眼部遮罩使用相同的头部变换。`annoyed` 驱动 `ParamBrowForm`，让原眉毛所在的脸部及刘海网格同步形变；其他表情返回 0，Pixi 不再绘制抗议眉毛。根节点跳跃、旋转和镜像由 Pixi 处理。适配器不按动作组 ID 分支，外部 JSON 仍由同一个 `ActionGroupRunner` 执行、抢占、取消和清理。前景 pose/face 通道仍优先于待机。
 
 1.2.1 将脖子拆成独立 `Neck` 网格，Cubism 父级为胸口呼吸，时间轴绑定 `body`，不继承头部位移。后发顶端按与模型旋转一致的权重继承头部位移和缩放，权重向发梢衰减至零。头饰、下巴和尾巴残影在原始图层中修正；没有通过缩小动作幅度掩盖残留。`scripts/live2d-cutout-test.cjs` 使用生产渲染类与实际模型验证独立脖子、后发顶部透明、旧尾鳍外缘透明以及尾巴参数隔离，并输出极限姿态与循环帧。
 

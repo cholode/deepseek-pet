@@ -1,5 +1,21 @@
 # 实际测试报告
 
+## 1.2.8 双眼皮随眨眼运动（2026-10-23）
+
+- 将原图双眼皮线与右眼睫毛残片从静态脸部/刘海网格归入眼睑绑定。新增 EyeCreaseL/R、EyeLidEdgeR，共 30 网格，仍使用 17 个参数。通过 UV 拆件与邻近肤色采样修补原位置；贴图 SHA-256 保持原值，未生成新画。CMO3 回读与 MOC3 导出无警告。
+- 真实 Core 专项验证双眼皮与眼睑使用相同的开合轴：左双眼皮平均源图 y 从 343.71 移到半闭时的 372.35；左右眼参数独立，脸部底层不随眨眼移动，闭眼时双眼皮透明度为 0。恢复睁眼参数后，渲染画面逐像素恢复。检查了睁眼、半闭、全闭的前后对比及皱眉点头姿态，证据位于 `test-results/live2d-eyelids/`。
+- `npm run lint`、`npm test`（66/66）、`npm run build`（含 typecheck）、`npm run dist:win` 通过。原眉毛专项及头颈/尾巴拆件专项通过；源码抗议动作的自然结束、停止、重载恢复四项通过。
+- 源码与最终打包程序各三项 GUI 检查通过：实际自动眨眼中两条双眼皮下移、渐隐及复位；抗议表情仍同时驱动眉毛与半闭眼，停止后恢复；资源重载正常，无运行错误和外网请求。截图时短暂保持首次自然到达的闭眼姿态，用实际窗口截图检查眼皮，不修改产品眨眼逻辑。首次使用 canvas.toDataURL 捕获因 Pixi 不保留绘制缓冲得到透明图，已改用窗口截图并重跑。证据位于 `test-results/eyelid-source/`、`test-results/eyelid-packaged/`。
+- 生成 `DeepBlue-Setup-1.2.8-win-x64.exe` 和 `DeepBlue-Desktop-Pet-1.2.8-win-x64.exe`，SHA-256 在 `release/SHA256SUMS.txt`。本轮验证打包程序运行，未执行安装/卸载向导。未使用 Computer Use。
+
+## 1.2.7 小小抗议原眉毛修正（2026-10-23）
+
+- 删除抗议表情额外绘制的眉毛线。Cubism 新增 `ParamBrowForm`，只形变 HeadBase、FrontHair、BangCenter 三层中原有的眉毛区域；图集 SHA-256 与修改前相同。模型仍为 27 网格、11 变形器，新增后共 17 参数。CMO3 回读及 MOC3 导出无警告。
+- `npm run lint`、`npm test`（65/65）、`npm run build`（含 typecheck）和 `npm run dist:win` 通过。`live2d-brow-test.cjs` 调用真实 Core 与生产渲染器，确认只有上述三层随皱眉变化，位移约 8.2–8.6 原图像素；参数恢复后画面逐像素相同。人工查看了正常、抗议、左右摇头和实际程序截图，未出现第二对眉毛。证据：`test-results/live2d-brows/`。
+- 原拆件专项检查通过：独立脖子不随头位移，后发无顶部及旧鲸尾残留，尾巴参数不改变身体层；生成 90 帧极限姿态验证。未修改头颈、尾巴、眼睛或睡眠贴图。
+- 源码及最终打包程序的抗议专项各四项通过：实际眉毛参数与半闭眼、左右摇头同时生效；自然结束、中途停止、资源重载均恢复；无运行错误、无外网资源请求。截图及报告位于 `test-results/protest-source/` 与 `test-results/protest-packaged/`。未使用 Computer Use。
+- 生成安装版 `DeepBlue-Setup-1.2.7-win-x64.exe` 与便携版 `DeepBlue-Desktop-Pet-1.2.7-win-x64.exe`，校验和位于 `release/SHA256SUMS.txt`。本轮实测的是打包后的应用，未执行安装/卸载向导。
+
 日期：2026-09-06。环境：Windows 11，系统版本 10.0.26200，Node 24.20.0，Electron 44.2.0，单显示器，缩放 200%，逻辑显示器尺寸 1440×900 DIP。
 
 ## 自动检查：实际执行通过

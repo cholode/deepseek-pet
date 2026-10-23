@@ -16,6 +16,7 @@ export function parametersFor(pose: RigPose, time: number, occupied: ActionChann
     ParamBodyAngleZ: clamp(get('body').rotationDeg / 6, -1.2, 1.2),
     ParamBreath: idlePose ? (1 - Math.cos(time / 750)) / 2 : 0,
     ParamEyeLOpen: open, ParamEyeROpen: open,
+    ParamBrowForm: face === 'annoyed' ? 1 : 0,
     ParamEyeBallX: clamp((idleFace ? gaze.x : 0) + get('eyes').offsetX / 4, -1, 1),
     ParamEyeBallY: clamp((idleFace ? gaze.y : 0) + get('eyes').offsetY / 3, -1, 1),
     ParamTail: clamp(get('tail').rotationDeg / 8 + (idlePose ? Math.sin(time / 1400) * .55 : 0), -1, 1),
@@ -36,7 +37,8 @@ const meshNodes: Record<string, string[]> = {
   BangCenter: ['hairFront', 'head'], FrontHair: ['head'], HeadBase: ['head'],
   Headband: ['head'], Ahoge: ['head'], EarL: ['head'], EarR: ['head'], BowR: ['head'],
   EyeOpenL: ['eyes', 'head'], EyeOpenR: ['eyes', 'head'], EyeLashL: ['eyes', 'head'], EyeLashR: ['eyes', 'head'],
-  EyeClosedL: ['eyes', 'head'], EyeClosedR: ['eyes', 'head'], EyeIrisL: ['eyes', 'head'], EyeIrisR: ['eyes', 'head'], Mouth: ['mouth', 'head']
+  EyeClosedL: ['eyes', 'head'], EyeClosedR: ['eyes', 'head'], EyeIrisL: ['eyes', 'head'], EyeIrisR: ['eyes', 'head'], Mouth: ['mouth', 'head'],
+  EyeCreaseL: ['eyes', 'head'], EyeCreaseR: ['eyes', 'head'], EyeLidEdgeR: ['eyes', 'head']
 };
 const pivots: Record<string, [number, number]> = { body: [-6.56,-148.63], head: [-6.56,-194.1], hairBack: [-6.56,-299.45], hairFront: [-14,-340.1], armLeft: [-47.25,-177.49], armRight: [33.25,-177.49], tail: [69.13,-91.8], eyes: [-6.56,-226], mouth: [-9.63,-206.34] };
 

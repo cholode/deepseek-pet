@@ -68,9 +68,8 @@ export class Avatar implements AnimationHost {
   reset() { this.resetChannels(['pose','face','effect']); this.expression('neutral'); this.fx.removeChildren().forEach(c=>c.destroy()); this.bubbleContainer.visible=false; this.frame.visible=false; this.frameMotion=undefined; this.frameStage.removeChildren().filter(c=>c!==this.frame).forEach(c=>c.destroy()); this.frameStage.addChild(this.frame); this.nodes.get('root')!.visible=true; this.app.canvas.dataset.pose='standing'; this.resize(); }
   private expression(id: string) {
     this.face=id; const g=this.expressionArt; g.clear();
-    // Accents follow the Core head angle, while the eyelids belong to the model.
+    // Accents follow the Core head angle; eyelids and original brows belong to the model.
     if(id==='smile'||id==='shy') g.ellipse(-42,-213,9,3).ellipse(31,-213,9,3).fill({color:0xf29ba9,alpha:.18});
-    if(id==='annoyed') g.moveTo(-40,-253).lineTo(-25,-249).moveTo(18,-249).lineTo(33,-253).stroke({color:0x29344f,width:1.1});
     if(id==='surprised') g.ellipse(-9,-206,2,2.8).fill(0xb6737d);
   }
   begin(node: Leaf, catalog: Catalog, source: string, instanceId: string): RunningLeaf {
