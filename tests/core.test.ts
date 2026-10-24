@@ -37,6 +37,10 @@ describe('timeline lifecycle',()=>{
     const c=makeCatalog(registry),g=c.groups.get('builtin.deepblue:'+id)!,m=c.motions.get('builtin.deepblue:'+id)!;
     if(m.kind!=='frame_animation')throw Error('Phone action must be a frame sequence');
     expect(m.frames).toHaveLength(96);expect(m.fps).toBe(24);expect(m.canvas).toEqual({width:384,height:476});
+    const original=c.motions.get('builtin.deepblue:play_phone')!;
+    if(original.kind!=='frame_animation')throw Error('Expected original phone frames');
+    expect(m.frames).toEqual(original.frames);
+    if(id!=='play_phone'){expect(m.frameOverlays).toHaveLength(1);expect(g.random.eligible).toBe(false);}
     expect([0,41,42,3999,4000].map(t=>frameIndex(m,t))).toEqual([0,0,1,95,95]);
     expect(g.conditions.requiresStanding).toBe(true);expect(g.expectedDurationMs).toBe(4000);
     expect(g.channels.sort()).toEqual(['face','pose']);
