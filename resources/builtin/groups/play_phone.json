@@ -1,0 +1,29 @@
+{
+  "schemaVersion": 1,
+  "id": "play_phone",
+  "name": "玩手机",
+  "description": "坐在蓝色沙发上捧着手机，手指轻动、尾巴摇摆。保留视频原生 24fps 的 96 个连续帧，播放 4 秒后回到站立。",
+  "tags": [
+    "日常",
+    "手机",
+    "坐姿"
+  ],
+  "enabled": true,
+  "random": {
+    "eligible": true,
+    "weight": 1,
+    "cooldownMs": 90000
+  },
+  "conditions": {
+    "minIdleMs": 5000,
+    "requiresRoaming": false,
+    "requiresPointerAway": false,
+    "requiresStanding": true
+  },
+  "maxDurationMs": 4500,
+  "timeline": {
+    "type": "motion",
+    "motionId": "builtin.deepblue:play_phone",
+    "repeat": 1
+  }
+}

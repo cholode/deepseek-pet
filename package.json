@@ -1,6 +1,6 @@
 {
   "name": "deepblue-desktop-pet",
-  "version": "1.3.4",
+  "version": "1.3.7",
   "description": "离线、数据驱动的蓝发桌宠",
   "author": "DeepBlue contributors",
   "license": "UNLICENSED",
@@ -55,7 +55,12 @@
     "extraResources": [
       {
         "from": "resources",
-        "to": "pet-resources"
+        "to": "pet-resources",
+        "filter": [
+          "**/*",
+          "!**/*_tag.png",
+          "!**/*_tag.webp"
+        ]
       },
       {
         "from": "examples/custom-action-pack",

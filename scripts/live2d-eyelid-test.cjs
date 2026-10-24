@@ -9,7 +9,7 @@ const fs=require('node:fs/promises'),path=require('node:path'),http=require('nod
   if(req.url==='/test.js'){res.setHeader('Content-Type','application/javascript');return res.end(bundle.outputFiles[0].contents);}
   const file=req.url.split('/').at(-1);if(!['DeepBlue.moc3','texture_00.png','live2dcubismcore.min.js'].includes(file)){res.statusCode=404;return res.end();}
   const old=req.url.startsWith('/before/');
-  const target=old&&file==='DeepBlue.moc3'?'test-results/eyelids/before.moc3':old&&file==='texture_00.png'?'test-results/eyelids/before-texture.png':path.join('src/renderer/public/live2d',file);
+  const target=old&&file==='DeepBlue.moc3'?'test-results/eyelids/before.moc3':old&&file==='texture_00.png'?'test-results/eyelids/before-texture_tag.png':path.join('src/renderer/public/live2d',file);
   res.end(await fs.readFile(path.resolve(target)));
  }catch(e){res.statusCode=500;res.end(e.message);}});
  await new Promise(r=>server.listen(0,'127.0.0.1',r));
@@ -35,10 +35,35 @@ const fs=require('node:fs/promises'),path=require('node:path'),http=require('nod
    const faceFixed=JSON.stringify(head)===JSON.stringify(verts('HeadBase'));
    rig.render({ParamEyeLOpen:0,ParamEyeROpen:0},{});
    const foldsHidden=['EyeCreaseL','EyeCreaseR','EyeLidEdgeR'].every(id=>m.drawables.opacities[index(id)]===0);
-   rig.render({},{});return {meshes:m.drawables.count,fullY,halfY,expectedHalfY:401+(fullY-401)*.5,rightIndependent,faceFixed,foldsHidden,exactReset:rest===rig.canvas.toDataURL()};
+   rig.render({},{});
+   const skinRepair={};
+   for(const id of ['HeadBase','FrontHair','BangCenter']){
+    const i=index(id),uv=m.drawables.vertexUvs[i],indices=m.drawables.indices[i];let textured=0,flat=0;
+    const inSkin=v=>uv[v*2]*2048>=8-.01&&uv[v*2]*2048<=279+.01&&(1-uv[v*2+1])*2048>=800-.01&&(1-uv[v*2+1])*2048<=1009+.01;
+    for(let j=0;j<indices.length;j+=3){
+     const [a,b,c]=[indices[j],indices[j+1],indices[j+2]];if(![a,b,c].every(inSkin))continue;
+     const area=Math.abs((uv[b*2]-uv[a*2])*(uv[c*2+1]-uv[a*2+1])-(uv[c*2]-uv[a*2])*(uv[b*2+1]-uv[a*2+1]));
+     if(area>1e-12)textured++;else flat++;
+    }
+    skinRepair[id]={textured,flat};
+   }
+   return {meshes:m.drawables.count,fullY,halfY,expectedHalfY:401+(fullY-401)*.5,rightIndependent,faceFixed,foldsHidden,exactReset:rest===rig.canvas.toDataURL(),skinRepair};
   });
   assert.equal(checks.meshes,38);assert(Math.abs(checks.halfY-checks.expectedHalfY)<.01);assert(checks.halfY-checks.fullY>20);
   for(const name of ['rightIndependent','faceFixed','foldsHidden','exactReset'])assert(checks[name],name);
+  for(const [id,patch]of Object.entries(checks.skinRepair)){assert(patch.textured>0,id+' must sample the continuous skin tile');assert.equal(patch.flat,0,id+' must not fill triangles with a single colour texel');}
+  const atlas=await sharp('src/renderer/public/live2d/texture_00.png').ensureAlpha().raw().toBuffer({resolveWithObject:true});
+  const skinSample=(x,y)=>{
+   const mean=[0,0,0];
+   for(let dy=-2;dy<=2;dy++)for(let dx=-2;dx<=2;dx++){
+    const offset=((389+y+dy-263)*atlas.info.width+492+x+dx-167)*4;
+    for(let c=0;c<3;c++)mean[c]+=atlas.data[offset+c]/25;
+   }
+   return mean;
+  };
+  // Cross the old opaque eye-patch edge, avoiding eyelashes and cheek blush.
+  checks.skinSeams=[[skinSample(249,402),skinSample(264,402)],[skinSample(338,405),skinSample(329,405)]];
+  for(const [inside,outside]of checks.skinSeams)assert(Math.max(...inside.map((v,i)=>Math.abs(v-outside[i])))<6,'eye underlay must meet adjacent face skin without a flat pink patch');
   await sharp({create:{width:1980,height:Math.ceil(crops.length/3)*375,channels:4,background:'#e8eef8'}}).composite(crops).png().toFile(path.join(dir,'comparison.png'));
   // The creases must remain attached to the head when timeline nods and Core rotations combine.
   await page.evaluate(()=>rig.render({ParamEyeLOpen:.5,ParamEyeROpen:.5,ParamAngleZ:4,ParamBrowForm:1},{head:{offsetX:5,offsetY:8,rotationDeg:0,scaleX:1.04,scaleY:1.04,alpha:1}}));

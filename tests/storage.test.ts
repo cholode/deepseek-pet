@@ -13,7 +13,28 @@ describe('safe pack file access',()=>{
   it('rejects scripts and invalid image headers before texture decoding',async()=>{const dir=await temp();await fs.writeFile(path.join(dir,'evil.js'),'throw 1');await expect(inspectFolder(dir)).rejects.toThrow('文件类型');expect(()=>imageSize(Buffer.alloc(32))).toThrow('图像头');});
   it('rejects excessive dimensions before allocation',async()=>{const dir=await temp();const header=Buffer.alloc(32);Buffer.from([137,80,78,71,13,10,26,10]).copy(header);header.writeUInt32BE(9000,16);header.writeUInt32BE(9000,20);await fs.writeFile(path.join(dir,'huge.png'),header);await expect(inspectFolder(dir)).rejects.toThrow('4096');});
   it('rejects directory junctions',async()=>{const dir=await temp();const outside=await temp();await fs.symlink(outside,path.join(dir,'linked'),'junction');await expect(inspectFolder(dir)).rejects.toThrow('链接');});
-  it('rejects reserved builtin namespace',async()=>{await expect(readPack(path.resolve('resources/builtin'),false,p=>p)).rejects.toThrow('保留');});
+  it('excludes audit-tagged images but still rejects actions referencing them',async()=>{
+    const dir=await temp();await fs.cp(path.resolve('examples/custom-action-pack'),dir,{recursive:true});
+    await fs.writeFile(path.join(dir,'unused_tag.png'),Buffer.alloc(32));
+    expect((await inspectFolder(dir)).has('unused_tag.png')).toBe(false);
+    await fs.truncate(path.join(dir,'unused_tag.png'),100*1024*1024+1);
+    await expect(inspectFolder(dir)).rejects.toThrow('100 MB');
+    await fs.writeFile(path.join(dir,'unused_tag.png'),Buffer.alloc(32));
+    const manifest=JSON.parse(await fs.readFile(path.join(dir,'pack.json'),'utf8'));manifest.motions=['motions/tagged.json'];
+    await fs.writeFile(path.join(dir,'pack.json'),JSON.stringify(manifest));
+    await fs.writeFile(path.join(dir,'motions/tagged.json'),JSON.stringify({schemaVersion:1,id:'tagged',name:'tagged',kind:'frame_animation',avatarId:'deepblue-chibi-v1',durationMs:100,channels:['pose','face'],frames:['unused_tag.png'],frameDurationsMs:[100],canvas:{width:1,height:1},anchor:{x:.5,y:1}}));
+    await expect(readPack(dir,false,p=>p)).rejects.toThrow('缺少帧');
+  });
+  it('rejects reserved builtin namespace',async()=>{const dir=await temp();await fs.cp(path.resolve('examples/custom-action-pack'),dir,{recursive:true});const file=path.join(dir,'pack.json'),manifest=JSON.parse(await fs.readFile(file,'utf8'));manifest.id='builtin.fake';await fs.writeFile(file,JSON.stringify(manifest));await expect(readPack(dir,false,p=>p)).rejects.toThrow('保留');});
+  it('keeps imported image budgets at 256 MB and caps the shipped pack at 384 MB',async()=>{
+    const dir=await temp(),header=Buffer.alloc(32);Buffer.from([137,80,78,71,13,10,26,10]).copy(header);header.writeUInt32BE(4096,16);header.writeUInt32BE(4096,20);
+    for(let i=0;i<5;i++)await fs.writeFile(path.join(dir,`${i}.png`),header);
+    await expect(inspectFolder(dir)).rejects.toThrow('256 MB');expect((await inspectFolder(dir,true)).size).toBe(5);
+    await fs.writeFile(path.join(dir,'pack.json'),JSON.stringify({schemaVersion:1,id:'builtin.fake',name:'fake',version:'1',avatarId:'deepblue-chibi-v1',motions:[],groups:[]}));
+    await expect(readPack(dir,false,p=>p)).rejects.toThrow('256 MB');
+    for(let i=5;i<7;i++)await fs.writeFile(path.join(dir,`${i}.png`),header);
+    await expect(inspectFolder(dir,true)).rejects.toThrow('384 MB');
+  });
   it('keeps valid packs when another folder contains bad JSON',async()=>{const dir=await temp();const store=new PackStore(path.resolve('resources/builtin'),dir);store.commit(await store.candidate());await fs.mkdir(path.join(dir,'broken'));await fs.writeFile(path.join(dir,'broken','pack.json'),'{broken');const next=await store.candidate();expect(next.packs[0].manifest.id).toBe('builtin.deepblue');expect(store.errors.length).toBe(1);});
   it('valid reload publishes custom pack and invalid edit keeps its old snapshot',async()=>{const dir=await temp();const store=new PackStore(path.resolve('resources/builtin'),dir);const custom=path.join(dir,'user.celebrations');await fs.cp(path.resolve('examples/custom-action-pack'),custom,{recursive:true});store.commit(await store.candidate());expect(store.registry.packs.length).toBe(2);await fs.writeFile(path.join(custom,'pack.json'),'{bad');const next=await store.candidate();expect(next.packs.length).toBe(2);expect(next.packs[1]).toBe(store.registry.packs[1]);expect(store.errors.length).toBe(1);});
 });

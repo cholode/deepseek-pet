@@ -20,7 +20,7 @@ const assert = require('node:assert/strict');
     await new Promise(r=>setTimeout(r,delay));await pet.screenshot({path:`test-results/art-v2/${name}.png`,omitBackground:true});
     await panel.evaluate(()=>window.pet.panelRequest({type:'command',command:{protocolVersion:1,commandId:crypto.randomUUID(),type:'stop_current'}}));
   }
-  await pet.screenshot({path:'test-results/art-v2/idle.png',omitBackground:true});
+  await pet.screenshot({path:'test-results/art-v2/idle_tag.png',omitBackground:true});
   await app.evaluate(({BrowserWindow})=>{BrowserWindow.getAllWindows().find(w=>w.getTitle()!=='DeepBlue Pet').hide();});
   if(process.env.ART_GUI_ONCE==='1'){assert.deepEqual((await panel.evaluate(()=>window.pet.getDebug())).errors,[]);await app.close();console.log('ART_GUI_PASS');return;}
   console.log('ART_GUI_READY');

@@ -18,7 +18,7 @@ const wait=ms=>new Promise(r=>setTimeout(r,ms));
   const frames=()=>pet.waitForFunction(()=>document.querySelector('canvas')?.dataset.pose==='frames');
   await command('stop_current');await standing();await wait(150);
   const before=await pet.evaluate(()=>({w:innerWidth,h:innerHeight}));
-  assert.equal((await get()).groups.length,20);
+  assert.equal((await get()).groups.length,21);
   await pet.screenshot({path:path.join(dir,'standing.png'),omitBackground:true});
   await panel.getByRole('button',{name:/^动作组/}).click();
   const card=panel.locator('article').filter({has:panel.getByRole('heading',{name:/^提裙摇摇/})});

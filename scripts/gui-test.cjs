@@ -29,8 +29,8 @@ const assert = require('node:assert/strict');
   finally { await app.evaluate(()=>globalThis.__testContextMenu?.closePopup()); }
   await save({paused:true,roaming:false,fixedPosition:false});await request('stop_current');
   await new Promise(r=>setTimeout(r,300));
-  await pet.screenshot({ path: 'test-results/pet-start.png', omitBackground: true });
-  await panel.screenshot({ path: 'test-results/panel-home.png' });
+  await pet.screenshot({ path: 'test-results/pet-start_tag.png', omitBackground: true });
+  await panel.screenshot({ path: 'test-results/panel-home_tag.png' });
   await app.evaluate(({BrowserWindow})=>{const w=BrowserWindow.getAllWindows().find(w=>w.getTitle()==='DeepBlue Pet');w.setPosition(600,300);});
   for(const g of (await get()).groups.filter(g=>g.packId==='builtin.deepblue')){const result=await request('play_group',g.groupId);assert.equal(result.status,'accepted',JSON.stringify(result));await wait(async()=>(await get()).events.some(e=>e.type==='action_lifecycle'&&e.payload.actionInstanceId===result.actionInstanceId&&e.payload.status==='completed'));check(`live playback complete: ${g.id}`);}
   const ai=await panel.evaluate(()=>window.pet.panelRequest({type:'mode',mode:'ai'}));assert.equal(ai.errorCode,'MODE_NOT_AVAILABLE');check('AI unavailable in real IPC');
@@ -40,7 +40,7 @@ const assert = require('node:assert/strict');
   const imported=await panel.evaluate(()=>window.pet.importPack());assert.equal(imported.ok,true,imported.message);await wait(async()=>(await get()).groups.some(g=>g.groupId==='user.celebrations:celebrate'));check('native folder import pipeline with deterministic dialog selection');
   const custom=await request('play_group','user.celebrations:celebrate');assert.equal(custom.status,'accepted');await wait(async()=>(await get()).events.some(e=>e.type==='action_lifecycle'&&e.payload.actionInstanceId===custom.actionInstanceId&&e.payload.status==='completed'));check('supplied custom JSON motion + group actually play');
   const reload=await panel.evaluate(()=>window.pet.reloadPacks());assert.equal(reload.ok,true,reload.message);check('transactional resource reload succeeds');
-  await panel.getByRole('button',{name:/^动作组/}).click();await panel.screenshot({path:'test-results/panel-actions.png'});await panel.getByRole('button',{name:'设置',exact:true}).click();await panel.screenshot({path:'test-results/panel-settings.png'});await panel.getByRole('button',{name:'桌宠',exact:true}).click();
+  await panel.getByRole('button',{name:/^动作组/}).click();await panel.screenshot({path:'test-results/panel-actions_tag.png'});await panel.getByRole('button',{name:'设置',exact:true}).click();await panel.screenshot({path:'test-results/panel-settings_tag.png'});await panel.getByRole('button',{name:'桌宠',exact:true}).click();
   assert.equal((await get()).errors.length,0,JSON.stringify((await get()).errors));check('no runtime errors after playback/import/reload');
   await save({paused:false,roaming:true});
   await fs.writeFile('test-results/gui-report.json',JSON.stringify(report,null,2));

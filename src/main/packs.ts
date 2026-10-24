@@ -13,7 +13,9 @@ export function imageSize(data: Buffer): { width: number; height: number } {
   }
   throw new Error('图像头无效，只允许 PNG / WebP');
 }
-export async function inspectFolder(root: string): Promise<Map<string, { path: string; size: number }>> {
+export async function inspectFolder(root: string, builtin = false): Promise<Map<string, { path: string; size: number }>> {
+  // Only the app-selected shipped pack gets the budget for its verified frame sequences.
+  const decodedLimitMb = builtin ? 384 : 256;
   const files = new Map<string, { path: string; size: number }>(); let total = 0; let entries = 0; let decodedBytes = 0;
   async function visit(dir: string, depth: number) {
     if (depth > 12) throw new Error('文件夹嵌套过深');
@@ -25,15 +27,17 @@ export async function inspectFolder(root: string): Promise<Map<string, { path: s
       const name = path.relative(root, full).split(path.sep).join('/'); resolveSafe(root, name);
       if (!s.isFile() || !/\.(json|png|webp)$/i.test(name)) throw new Error(`禁止的文件类型：${name}`);
       total += s.size; if (total > 100 * 1024 * 1024) throw new Error('动作包超过 100 MB');
+      // Audit-tagged pictures still count toward disk limits, but never become textures.
+      if (/_tag\.(png|webp)$/i.test(name)) continue;
       if (/\.json$/i.test(name) && s.size > 1024 * 1024) throw new Error(`JSON 超过 1 MB：${name}`);
-      if (/\.(png|webp)$/i.test(name)) { const handle = await fs.open(full, 'r'); const header = Buffer.alloc(32); try { await handle.read(header, 0, 32, 0); } finally { await handle.close(); } const size = imageSize(header); if (size.width < 1 || size.height < 1 || size.width > 4096 || size.height > 4096) throw new Error(`图片必须在 4096×4096 内：${name}`); decodedBytes += size.width * size.height * 4; if(decodedBytes > 256 * 1024 * 1024) throw new Error('动作包图片解码预算超过 256 MB'); }
+      if (/\.(png|webp)$/i.test(name)) { const handle = await fs.open(full, 'r'); const header = Buffer.alloc(32); try { await handle.read(header, 0, 32, 0); } finally { await handle.close(); } const size = imageSize(header); if (size.width < 1 || size.height < 1 || size.width > 4096 || size.height > 4096) throw new Error(`图片必须在 4096×4096 内：${name}`); decodedBytes += size.width * size.height * 4; if(decodedBytes > decodedLimitMb * 1024 * 1024) throw new Error(`动作包图片解码预算超过 ${decodedLimitMb} MB`); }
       files.set(name, { path: full, size: s.size });
     }
   }
   await visit(root, 0); return files;
 }
 export async function readPack(root: string, builtin: boolean, authorize: (file: string) => string): Promise<LoadedPack> {
-  const files = await inspectFolder(root);
+  const files = await inspectFolder(root, builtin);
   async function json(file: string): Promise<unknown> { const resolved = resolveSafe(root, file); if (!files.has(file) || !file.endsWith('.json')) throw new Error(`清单中的 JSON 不存在：${file}`); try { return JSON.parse(await fs.readFile(resolved, 'utf8')); } catch (e) { throw new Error(`${file}：${String(e)}`); } }
   const manifest = packSchema.parse(await json('pack.json'));
   if (!builtin && manifest.id.startsWith('builtin.')) throw new Error('builtin.* 是保留命名空间');
