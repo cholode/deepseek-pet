@@ -2,8 +2,9 @@ const {_electron:electron}=require('playwright');
 const fs=require('node:fs/promises'),path=require('node:path'),assert=require('node:assert/strict'),crypto=require('node:crypto');
 const wait=ms=>new Promise(r=>setTimeout(r,ms));
 (async()=>{
- const angry=process.argv.includes('--angry'),action=angry?'play_phone_angry':'play_phone',name=angry?'玩手机生气':'玩手机';
- const tag=process.env.PET_TEST_EXE?'packaged':'source',dir=path.resolve(angry?'test-results/phone-angry':'test-results/phone',tag);await fs.mkdir(dir,{recursive:true});
+ const action=process.argv.find(a=>a.startsWith('--action='))?.slice(9)??(process.argv.includes('--angry')?'play_phone_angry':'play_phone');
+ const angry=action==='play_phone_angry',name=require('../resources/builtin/groups/'+action+'.json').name;
+ const tag=process.env.PET_TEST_EXE?'packaged':'source',dir=path.resolve(action==='play_phone'?'test-results/phone':angry?'test-results/phone-angry':'test-results/phone-faces/'+action,tag);await fs.mkdir(dir,{recursive:true});
  const env={...process.env,PET_TEST_USER:path.join(dir,'user'),ELECTRON_RENDERER_URL:''};delete env.ELECTRON_RUN_AS_NODE;
  const app=await electron.launch({...(process.env.PET_TEST_EXE?{executablePath:process.env.PET_TEST_EXE}:{}),args:process.env.PET_TEST_EXE?['--panel']:[path.resolve('.'),'--panel'],env});
  const errors=[],remote=[],checks=[];
@@ -12,14 +13,14 @@ const wait=ms=>new Promise(r=>setTimeout(r,ms));
   await app.firstWindow();let pet,panel;
   for(let i=0;i<150;i++){pet=app.windows().find(p=>p.url().includes('page=pet'));panel=app.windows().find(p=>p.url().includes('page=panel'));if(pet&&panel)break;await wait(100);}
   assert(pet&&panel);await pet.waitForSelector('canvas[data-avatar="live2d"]',{timeout:30000});
-  await panel.evaluate(async()=>window.pet.saveSettings({...((await window.pet.bootstrap()).settings),paused:true,roaming:false,size:1}));
+  await panel.evaluate(async()=>window.pet.saveSettings({...((await window.pet.bootstrap()).settings),paused:true,roaming:false,fixedPosition:true,size:1}));
   const command=(type,id)=>panel.evaluate(({type,id})=>window.pet.panelRequest({type:'command',command:{protocolVersion:1,commandId:crypto.randomUUID(),type,...(id?{groupId:'builtin.deepblue:'+id}:{})}}),{type,id});
   const get=()=>panel.evaluate(()=>window.pet.getDebug());
   const standing=()=>pet.waitForFunction(()=>document.querySelector('canvas')?.dataset.pose==='standing');
   const frames=()=>pet.waitForFunction(()=>document.querySelector('canvas')?.dataset.pose==='frames');
   await command('stop_current');await standing();await wait(150);
   const before=await pet.evaluate(()=>({w:innerWidth,h:innerHeight}));
-  assert.equal((await get()).groups.length,22);
+  assert.equal((await get()).groups.length,32);
   const phoneMotion=await panel.evaluate(async id=>(await window.pet.bootstrap()).registry.packs.find(p=>p.manifest.id==='builtin.deepblue').motions.find(m=>m.id===id),action);
   assert.equal(phoneMotion.fps,24);assert.equal(phoneMotion.frames.length,96);assert.equal(phoneMotion.durationMs,4000);
   if(angry){const groups=(await get()).groups;assert(groups.some(g=>g.groupId==='builtin.deepblue:play_phone'));assert(groups.some(g=>g.groupId==='builtin.deepblue:play_phone_angry'&&!g.random.eligible));checks.push('生气动作独立存在，原动作保留，新动作默认不加入随机');}
@@ -32,6 +33,7 @@ const wait=ms=>new Promise(r=>setTimeout(r,ms));
   const hashes=[];
   for(let i=0;i<3;i++){await wait(300);const png=await pet.screenshot({path:path.join(dir,`playing-${i}.png`),omitBackground:true});hashes.push(crypto.createHash('sha256').update(png).digest('hex'));}
   assert.equal(new Set(hashes).size,3,'frames must visibly advance');
+  if(action==='play_phone_wink'){await wait(700);await pet.screenshot({path:path.join(dir,'after-wink.png'),omitBackground:true});}
   await standing();
   let completed;
   for(let i=0;i<30;i++){completed=(await get()).events.find(e=>e.type==='action_lifecycle'&&e.payload.actionInstanceId===instance.actionInstanceId&&e.payload.status==='completed');if(completed)break;await wait(100);}
