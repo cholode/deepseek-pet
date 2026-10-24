@@ -1,0 +1,29 @@
+{
+  "schemaVersion": 1,
+  "id": "play_phone_unimpressed",
+  "name": "玩手机无语",
+  "description": "低垂眼皮、平嘴无语。独立表情版本，保留手机、手指、坐姿与尾巴动画；24fps，4 秒后回到站立。",
+  "tags": [
+    "手机",
+    "无语",
+    "坐姿"
+  ],
+  "enabled": true,
+  "random": {
+    "eligible": false,
+    "weight": 1,
+    "cooldownMs": 90000
+  },
+  "conditions": {
+    "minIdleMs": 5000,
+    "requiresRoaming": false,
+    "requiresPointerAway": false,
+    "requiresStanding": true
+  },
+  "maxDurationMs": 4500,
+  "timeline": {
+    "type": "motion",
+    "motionId": "builtin.deepblue:play_phone_unimpressed",
+    "repeat": 1
+  }
+}
