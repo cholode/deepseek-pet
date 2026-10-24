@@ -2,7 +2,7 @@
   "schemaVersion": 1,
   "id": "builtin.deepblue",
   "name": "DeepBlue · 日常",
-  "version": "1.3.11",
+  "version": "1.3.12",
   "avatarId": "deepblue-chibi-v1",
   "description": "原图 Live2D 正面角色、十二种站立表情与十二种玩手机表情、侧视步行、盖被睡眠，三十二个动作组。",
   "motions": [
