@@ -8,6 +8,7 @@ import { Live2DRenderer } from './live2d/Live2DRenderer';
 import { parametersFor, type RigPose } from './live2d/pose';
 import { expressionEnvelope, expressionProfile } from '../../shared/expressions';
 import { steamEffect } from './steam';
+import { createFrameOverlays } from './frame-overlays';
 const pivot: Record<string, [number, number]> = { root: [0,0], body: [0,-145], head: [0,-205], hairBack:[0,-300],hairFront:[0,-305],armLeft:[-49,-193],armRight:[49,-193],eyes:[0,-240],mouth:[0,-208],effects:[0,-200],tail:[28,-114] };
 for (const side of ['Left','Right']) for (const joint of ['shoulder','elbow','wrist']) pivot[joint+side]=[0,0];
 export class Avatar implements AnimationHost {
@@ -17,6 +18,7 @@ export class Avatar implements AnimationHost {
   private gaze = {x:0,y:0}; private gazeTarget = {x:0,y:0};
   private frameStage = new Container();
   private frameMotion?: Extract<Motion, {kind:'frame_animation'}>;
+  private frameOverlays?: ReturnType<typeof createFrameOverlays>;
   private scene = new Container();
   private viewport = { ...baseViewport };
   constructor(private settings: () => Settings, private onError: (e: string, instanceId: string) => void) {}
@@ -69,7 +71,7 @@ export class Avatar implements AnimationHost {
   }
   set(id: string, property: string, value: number) { const n=this.nodes.get(id); if(!n) throw new Error(`未知角色节点：${id}`); const [x,y]=pivot[id]; if(property==='offsetX') n.x=x+value; else if(property==='offsetY') n.y=y+value; else if(property==='rotationDeg') n.rotation=value*Math.PI/180; else if(property==='scaleX') n.scale.x=value; else if(property==='scaleY') n.scale.y=value; else if(property==='alpha') n.alpha=value; }
   private resetChannels(channels: ActionChannel[]) { for(const [id,n] of this.nodes) { const channel=id==='eyes'||id==='mouth'?'face':id==='effects'?'effect':'pose'; if(!channels.includes(channel)) continue; n.position.set(...pivot[id]); n.scale.set(1); n.rotation=0; n.alpha=1; } }
-  reset() { this.resetChannels(['pose','face','effect']); this.expression('neutral'); this.fx.removeChildren().forEach(c=>c.destroy()); this.bubbleContainer.visible=false; this.frame.visible=false; this.frameMotion=undefined; this.frameStage.removeChildren().filter(c=>c!==this.frame).forEach(c=>c.destroy()); this.frameStage.addChild(this.frame); this.nodes.get('root')!.visible=true; this.app.canvas.dataset.pose='standing'; this.resize(); }
+  reset() { this.frameOverlays?.dispose(); this.frameOverlays=undefined; this.resetChannels(['pose','face','effect']); this.expression('neutral'); this.fx.removeChildren().forEach(c=>c.destroy()); this.bubbleContainer.visible=false; this.frame.visible=false; this.frameMotion=undefined; this.frameStage.removeChildren().filter(c=>c!==this.frame).forEach(c=>c.destroy()); this.frameStage.addChild(this.frame); this.nodes.get('root')!.visible=true; this.app.canvas.dataset.pose='standing'; this.resize(); }
   private expression(id: string) {
     this.face=id;this.faceWeight=1; this.app.canvas.dataset.expression=id; const g=this.expressionArt; g.clear();
     // Blush is an accent; brows, eyelids, mouth shapes and tears belong to Core meshes.
@@ -94,8 +96,9 @@ export class Avatar implements AnimationHost {
         this.nodes.get('root')!.visible=false;this.frame.visible=true;this.frameMotion=m;this.app.canvas.dataset.pose='frames';this.resize();
         this.frameStage.scale.set(m.displayScale??1);this.frameStage.position.set(-m.canvas.width*m.anchor.x*(m.displayScale??1),-m.canvas.height*m.anchor.y*(m.displayScale??1));this.frame.anchor.set(0,0);
         const layers=(m.layers??[]).map(l=>{const sprite=new Sprite(texture(l.image));sprite.pivot.set(l.pivotX,l.pivotY);sprite.position.set(l.x+l.pivotX,l.y+l.pivotY);this.frameStage.addChildAt(sprite,0);return {sprite,definition:l};});
-        update=ms=>{this.frame.texture=texture(m.frames[frameIndex(m,ms>=m.durationMs*node.repeat?m.durationMs:ms%m.durationMs)]);for(const {sprite,definition:l} of layers)sprite.rotation=l.rotationDeg*Math.PI/180*Math.sin(ms/l.periodMs*Math.PI*2);};
-        dispose=()=>{layers.forEach(l=>l.sprite.destroy());this.frame.visible=false;this.frameMotion=undefined;this.nodes.get('root')!.visible=true;this.app.canvas.dataset.pose='standing';this.resize();};
+        const overlays=createFrameOverlays(this.frameStage,m,texture);this.frameOverlays=overlays;
+        update=ms=>{const index=frameIndex(m,ms>=m.durationMs*node.repeat?m.durationMs:ms%m.durationMs);this.frame.texture=texture(m.frames[index]);overlays.update(index);for(const {sprite,definition:l} of layers)sprite.rotation=l.rotationDeg*Math.PI/180*Math.sin(ms/l.periodMs*Math.PI*2);};
+        dispose=()=>{overlays.dispose();if(this.frameOverlays===overlays)this.frameOverlays=undefined;layers.forEach(l=>l.sprite.destroy());this.frame.visible=false;this.frameMotion=undefined;this.nodes.get('root')!.visible=true;this.app.canvas.dataset.pose='standing';this.resize();};
       }
     } else if(node.type==='expression'){
       this.resetChannels(['face']);this.expression(node.expressionId);
@@ -114,7 +117,7 @@ export class Avatar implements AnimationHost {
     else if(node.type==='move_by'){const id=`${instanceId}-move`;void window.pet.moveStart(id,node.dxDip,node.dyDip,node.durationMs,node.easing).catch(e=>this.onError(String(e),instanceId));dispose=()=>{void window.pet.moveStop(id).catch(e=>this.onError(String(e),instanceId));};}
     return {update:ms=>{if(!disposed)update(ms);},dispose:()=>{if(disposed)return;disposed=true;dispose();}};
   }
-  async destroy(){this.app.destroy(true,{children:true});this.liveTexture?.destroy(true);this.live.destroy();for(const url of this.textures.keys())await Assets.unload(url);this.textures.clear();}
+  async destroy(){this.frameOverlays?.dispose();this.frameOverlays=undefined;this.app.destroy(true,{children:true});this.liveTexture?.destroy(true);this.live.destroy();for(const url of this.textures.keys())await Assets.unload(url);this.textures.clear();}
 }
 
 

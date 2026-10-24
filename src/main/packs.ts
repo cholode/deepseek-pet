@@ -1,7 +1,7 @@
 import { promises as fs } from 'node:fs';
 import path from 'node:path';
 import { randomUUID } from 'node:crypto';
-import { packSchema, motionSchema, groupSchema, guardTree, makeCatalog, relativePath, type LoadedPack, type Registry } from '../shared/schema';
+import { packSchema, motionSchema, groupSchema, guardTree, makeCatalog, relativePath, validateMotion, type LoadedPack, type Registry } from '../shared/schema';
 export function resolveSafe(root: string, file: string) { relativePath.parse(file); const target = path.resolve(root, file); const relative = path.relative(path.resolve(root), target); if (relative.startsWith('..') || path.isAbsolute(relative)) throw new Error(`路径逃逸：${file}`); return target; }
 export function imageSize(data: Buffer): { width: number; height: number } {
   if (data.length >= 24 && data.subarray(0, 8).equals(Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]))) return { width: data.readUInt32BE(16), height: data.readUInt32BE(20) };
@@ -41,11 +41,18 @@ export async function readPack(root: string, builtin: boolean, authorize: (file:
   async function json(file: string): Promise<unknown> { const resolved = resolveSafe(root, file); if (!files.has(file) || !file.endsWith('.json')) throw new Error(`清单中的 JSON 不存在：${file}`); try { return JSON.parse(await fs.readFile(resolved, 'utf8')); } catch (e) { throw new Error(`${file}：${String(e)}`); } }
   const manifest = packSchema.parse(await json('pack.json'));
   if (!builtin && manifest.id.startsWith('builtin.')) throw new Error('builtin.* 是保留命名空间');
-  const motions = await Promise.all(manifest.motions.map(async f => motionSchema.parse(await json(f))));
+  const motions = await Promise.all(manifest.motions.map(async f => { const motion=motionSchema.parse(await json(f));validateMotion(motion);return motion; }));
   const groups = await Promise.all(manifest.groups.map(async f => { const raw = await json(f); if (typeof raw === 'object' && raw && 'timeline' in raw) guardTree(raw.timeline); return groupSchema.parse(raw); }));
   const assets: Record<string, string> = {};
   for (const [file, info] of files) if (/\.(png|webp)$/i.test(file)) assets[file] = authorize(info.path);
   for (const m of motions) if (m.kind === 'frame_animation') for (const frame of m.frames) { const item = files.get(frame); if (!item || !assets[frame]) throw new Error(`缺少帧：${frame}`); const handle = await fs.open(item.path, 'r'); const buffer = Buffer.alloc(32); try { await handle.read(buffer, 0, 32, 0); } finally { await handle.close(); } const size = imageSize(buffer); if (size.width !== m.canvas.width || size.height !== m.canvas.height) throw new Error(`序列帧画布尺寸不一致：${frame}`); }
+  for (const m of motions) if (m.kind === 'frame_animation') for (const overlay of m.frameOverlays ?? []) {
+    const item=files.get(overlay.image);if(!item||!assets[overlay.image])throw new Error(`缺少叠层图集：${overlay.image}`);
+    const handle=await fs.open(item.path,'r'),buffer=Buffer.alloc(32);try{await handle.read(buffer,0,32,0);}finally{await handle.close();}
+    const size=imageSize(buffer);
+    const border=(overlay.padding??0)*2;
+    if(size.width!==(overlay.width+border)*overlay.columns||size.height!==(overlay.height+border)*Math.ceil(m.frames.length/overlay.columns))throw new Error(`逐帧叠层图集尺寸不一致：${overlay.image}`);
+  }
   return { manifest, motions, groups, assets };
 }
 export class PackStore {

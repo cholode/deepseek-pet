@@ -19,6 +19,7 @@ const commonMotion = { schemaVersion: z.literal(1), id: localId, name: z.string(
 const point = z.object({ x: finite.min(-4096).max(4096), y: finite.min(-4096).max(4096) }).strict();
 const frameOptions = {
   displayScale: finite.min(.1).max(3).optional(),
+  frameOverlays: z.array(z.object({ image: relativePath, x: finite.int().min(0).max(4096), y: finite.int().min(0).max(4096), width: finite.int().min(1).max(4096), height: finite.int().min(1).max(4096), columns: finite.int().min(1).max(240), padding: finite.int().min(0).max(8).optional() }).strict()).max(8).optional(),
   layers: z.array(z.object({ image: relativePath, x: finite.min(-4096).max(4096), y: finite.min(-4096).max(4096), pivotX: finite.min(-4096).max(4096), pivotY: finite.min(-4096).max(4096), rotationDeg: finite.min(-180).max(180), periodMs: finite.min(100).max(30000) }).strict()).max(8).optional(),
   hitAreas: z.array(z.object({ target: z.enum(['head','body']), x: finite.min(0).max(4096), y: finite.min(0).max(4096), width: finite.min(1).max(4096), height: finite.min(1).max(4096) }).strict()).max(8).optional()
 };
@@ -71,6 +72,11 @@ export function validateMotion(m: Motion): void {
     const total = m.fps ? m.frames.length * 1000 / m.fps : m.frameDurationsMs!.reduce((a, b) => a + b, 0);
     if (Math.abs(total - m.durationMs) > 1) throw new Error('序列帧总时长不匹配');
     if (m.channels.length !== 2 || !m.channels.includes('pose') || !m.channels.includes('face')) throw new Error('全身序列帧必须占用 pose 和 face');
+    for (const overlay of m.frameOverlays ?? []) {
+      if (overlay.x + overlay.width > m.canvas.width || overlay.y + overlay.height > m.canvas.height) throw new Error('逐帧叠层超出动作画布');
+      const border=(overlay.padding??0)*2;
+      if (overlay.columns > m.frames.length || overlay.columns * (overlay.width+border) > 4096 || Math.ceil(m.frames.length / overlay.columns) * (overlay.height+border) > 4096) throw new Error('逐帧叠层图集尺寸超限');
+    }
   }
 }
 export function analyze(node: ActionNode, motions: Map<string, Motion>): { channels: ActionChannel[]; duration: number } {
@@ -90,7 +96,7 @@ export function makeCatalog(registry: Registry): Catalog {
     for (const [file, url] of Object.entries(p.assets)) assets.set(`${p.manifest.id}:${file}`, url);
   }
   for (const p of registry.packs) {
-    for (const m of p.motions) if (m.kind === 'frame_animation') for (const frame of [...m.frames,...(m.layers??[]).map(l=>l.image)]) if (!assets.has(`${p.manifest.id}:${frame}`)) throw new Error(`缺少图片：${frame}`);
+    for (const m of p.motions) if (m.kind === 'frame_animation') for (const frame of [...m.frames,...(m.layers??[]).map(l=>l.image),...(m.frameOverlays??[]).map(l=>l.image)]) if (!assets.has(`${p.manifest.id}:${frame}`)) throw new Error(`缺少图片：${frame}`);
     for (const raw of p.groups) {
       guardTree(raw.timeline); const g = groupSchema.parse(raw); const a = analyze(g.timeline, motions); const id = `${p.manifest.id}:${g.id}`;
       if (groups.has(id)) throw new Error(`重复动作组：${id}`);

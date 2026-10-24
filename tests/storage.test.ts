@@ -26,6 +26,19 @@ describe('safe pack file access',()=>{
     await expect(readPack(dir,false,p=>p)).rejects.toThrow('缺少帧');
   });
   it('rejects reserved builtin namespace',async()=>{const dir=await temp();await fs.cp(path.resolve('examples/custom-action-pack'),dir,{recursive:true});const file=path.join(dir,'pack.json'),manifest=JSON.parse(await fs.readFile(file,'utf8'));manifest.id='builtin.fake';await fs.writeFile(file,JSON.stringify(manifest));await expect(readPack(dir,false,p=>p)).rejects.toThrow('保留');});
+  it('validates overlay atlas dimensions against its synchronized frame grid',async()=>{
+    const dir=await temp();await fs.cp(path.resolve('examples/custom-action-pack'),dir,{recursive:true});
+    const png=(w:number,h:number)=>{const b=Buffer.alloc(32);Buffer.from([137,80,78,71,13,10,26,10]).copy(b);b.writeUInt32BE(w,16);b.writeUInt32BE(h,20);return b;};
+    const manifest=JSON.parse(await fs.readFile(path.join(dir,'pack.json'),'utf8'));manifest.motions=['motions/overlay.json'];
+    await fs.writeFile(path.join(dir,'pack.json'),JSON.stringify(manifest));await fs.writeFile(path.join(dir,'body.png'),png(100,100));
+    await fs.writeFile(path.join(dir,'motions/overlay.json'),JSON.stringify({schemaVersion:1,id:'overlay',name:'overlay',kind:'frame_animation',avatarId:'deepblue-chibi-v1',durationMs:1000,channels:['pose','face'],frames:['body.png','body.png'],fps:2,canvas:{width:100,height:100},anchor:{x:.5,y:1},frameOverlays:[{image:'face.png',x:10,y:10,width:20,height:20,columns:2}]}));
+    await expect(readPack(dir,false,p=>p)).rejects.toThrow('缺少叠层图集');
+    await fs.writeFile(path.join(dir,'face.png'),png(20,20));await expect(readPack(dir,false,p=>p)).rejects.toThrow('图集尺寸不一致');
+    await fs.writeFile(path.join(dir,'face.png'),png(40,20));expect((await readPack(dir,false,p=>p)).motions).toHaveLength(1);
+    const motionFile=path.join(dir,'motions/overlay.json'),motion=JSON.parse(await fs.readFile(motionFile,'utf8'));motion.frameOverlays[0].padding=2;
+    await fs.writeFile(motionFile,JSON.stringify(motion));await expect(readPack(dir,false,p=>p)).rejects.toThrow('图集尺寸不一致');
+    await fs.writeFile(path.join(dir,'face.png'),png(48,24));expect((await readPack(dir,false,p=>p)).motions).toHaveLength(1);
+  });
   it('keeps imported image budgets at 256 MB and caps the shipped pack at 384 MB',async()=>{
     const dir=await temp(),header=Buffer.alloc(32);Buffer.from([137,80,78,71,13,10,26,10]).copy(header);header.writeUInt32BE(4096,16);header.writeUInt32BE(4096,20);
     for(let i=0;i<5;i++)await fs.writeFile(path.join(dir,`${i}.png`),header);

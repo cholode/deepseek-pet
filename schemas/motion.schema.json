@@ -186,6 +186,59 @@
           "minimum": 0.1,
           "maximum": 3
         },
+        "frameOverlays": {
+          "maxItems": 8,
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "image": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 240
+              },
+              "x": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 4096
+              },
+              "y": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 4096
+              },
+              "width": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 4096
+              },
+              "height": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 4096
+              },
+              "columns": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 240
+              },
+              "padding": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 8
+              }
+            },
+            "required": [
+              "image",
+              "x",
+              "y",
+              "width",
+              "height",
+              "columns"
+            ],
+            "additionalProperties": false
+          }
+        },
         "layers": {
           "maxItems": 8,
           "type": "array",
