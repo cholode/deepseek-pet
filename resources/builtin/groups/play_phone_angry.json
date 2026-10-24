@@ -1,0 +1,29 @@
+{
+  "schemaVersion": 1,
+  "id": "play_phone_angry",
+  "name": "玩手机生气",
+  "description": "看着手机皱眉、眯眼、撇嘴。独立于原来的玩手机动作，保留原坐姿、手机、手指和尾巴的 24fps 动画，4 秒后回到站立。",
+  "tags": [
+    "手机",
+    "生气",
+    "坐姿"
+  ],
+  "enabled": true,
+  "random": {
+    "eligible": false,
+    "weight": 1,
+    "cooldownMs": 90000
+  },
+  "conditions": {
+    "minIdleMs": 5000,
+    "requiresRoaming": false,
+    "requiresPointerAway": false,
+    "requiresStanding": true
+  },
+  "maxDurationMs": 4500,
+  "timeline": {
+    "type": "motion",
+    "motionId": "builtin.deepblue:play_phone_angry",
+    "repeat": 1
+  }
+}
