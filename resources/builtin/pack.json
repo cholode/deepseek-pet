@@ -4,7 +4,7 @@
   "name": "DeepBlue · 日常",
   "version": "1.3.8",
   "avatarId": "deepblue-chibi-v1",
-  "description": "原图 Live2D 正面角色、十二种站立表情、侧视步行、盖被睡眠，共 26 个动作组，含 6 种玩手机表情。",
+  "description": "原图 Live2D 正面角色、十二种站立表情、侧视步行、盖被睡眠，共 27 个动作组，含 7 种玩手机表情。",
   "motions": [
     "motions/wave.json",
     "motions/sway.json",
@@ -31,7 +31,8 @@
     "motions/play_phone_smile.json",
     "motions/play_phone_shy.json",
     "motions/play_phone_super_shy.json",
-    "motions/play_phone_sleep.json"
+    "motions/play_phone_sleep.json",
+    "motions/play_phone_surprised.json"
   ],
   "groups": [
     "groups/idle_sway.json",
@@ -59,6 +60,7 @@
     "groups/play_phone_smile.json",
     "groups/play_phone_shy.json",
     "groups/play_phone_super_shy.json",
-    "groups/play_phone_sleep.json"
+    "groups/play_phone_sleep.json",
+    "groups/play_phone_surprised.json"
   ]
 }
