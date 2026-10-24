@@ -159,3 +159,11 @@
 `sleep` 使用 24 张 880×500 PNG，`frameDurationsMs` 每项 150ms，共 3600ms；动作组循环四次。`layers` 中独立尾巴以 `(684.5,347)` 为支点、±6.5° 连续摆动，周期同为 3600ms。1.2.6 的 `displayScale` 为 `0.64`（原为 `0.44`），`sleepy.origin` 为 `(-71.68,-246.4)`，对应放大后的头部上方；Z 仍由独立 effect 通道管理，未烘焙进图片。入口 `requiresStanding` 和结束/取消清理语义不变。
 
 序列帧使用自身画布和显示比例计算所需透明窗口，不按动作 ID 判断。基础设计窗口为 340×420；超过基础窗口时添加边距，最大设计尺寸为 1024×1024。睡姿窗口为 502×420，再乘用户大小设置；命中区仍按素材坐标定义，随同一个场景变换缩放。结束或取消恢复基础窗口，主进程按底边中心定位，并执行工作区边界约束。
+
+## GIF 转图片序列示例
+
+内置 `curtsy_sway` 展示 GIF 接入：先把 GIF 完整合成并提取为同尺寸 RGBA PNG，保留单帧延迟；运动中的人物不逐帧重新居中，避免抠图引入跳动。`motions/curtsy_sway.json` 使用 `frame_animation`，27 个 `frames` 对应 27 个 100ms 的 `frameDurationsMs`，`durationMs` 为 2700；组只重复一次，占用 pose 和 face 通道。PNG、motion、group 和清单即可增加动作，无需新增动作枚举或专用执行器。
+
+`anchor` 设置在原图脚底的固定位置，`displayScale` 用于与站立角色匹配大小；头部、身体 `hitAreas` 同步适配。组声明 `requiresStanding: true`，自然结束、中止和重载均经通用执行器恢复站立。应用加载 PNG/WebP，不直接执行或播放外部 GIF。
+
+1.3.4 对 `curtsy_sway` 的 27 张 PNG 做统一亮度与肤色校准；motion、锚点、命中区和时序无需修改。

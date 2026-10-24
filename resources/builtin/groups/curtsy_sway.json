@@ -1,0 +1,28 @@
+{
+  "schemaVersion": 1,
+  "id": "curtsy_sway",
+  "name": "提裙摇摇",
+  "description": "闭眼提着裙摆轻轻摇晃，保留原 GIF 的 27 帧、2.7 秒节奏；播放一次后回到站立。",
+  "tags": [
+    "日常",
+    "提裙"
+  ],
+  "enabled": true,
+  "random": {
+    "eligible": true,
+    "weight": 1,
+    "cooldownMs": 60000
+  },
+  "conditions": {
+    "minIdleMs": 3000,
+    "requiresRoaming": false,
+    "requiresPointerAway": false,
+    "requiresStanding": true
+  },
+  "maxDurationMs": 3200,
+  "timeline": {
+    "type": "motion",
+    "motionId": "builtin.deepblue:curtsy_sway",
+    "repeat": 1
+  }
+}

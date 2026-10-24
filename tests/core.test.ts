@@ -15,7 +15,7 @@ function host(){const starts:string[]=[];const disposed:string[]=[];return {star
 function runtime(){return new PetRuntime(structuredClone(registry),structuredClone(defaults),structuredClone(desktop),host());}
 function group(timeline:ActionNode):GroupInfo { const catalog=makeCatalog(registry);return{...catalog.groups.values().next().value!,timeline,maxDurationMs:30000}; }
 describe('schema and JSON extension',()=>{
-  it('loads 19 distinct builtin groups and both motion formats',()=>{const c=makeCatalog(registry);expect(c.groups.size).toBe(19);expect(new Set([...c.groups.values()].map(g=>JSON.stringify(g.timeline))).size).toBe(19);expect([...c.motions.values()].some(m=>m.kind==='frame_animation')).toBe(true);});
+  it('loads 20 distinct builtin groups and both motion formats',()=>{const c=makeCatalog(registry);expect(c.groups.size).toBe(20);expect(new Set([...c.groups.values()].map(g=>JSON.stringify(g.timeline))).size).toBe(20);expect([...c.motions.values()].some(m=>m.kind==='frame_animation')).toBe(true);});
   it('imports the supplied custom motion and group without changing TS',async()=>{const p=await readPack(path.resolve('examples/custom-action-pack'),false,p=>p);const r=runtime();r.replaceRegistry({revision:2,packs:[...registry.packs,p]});expect(r.port('manual').listCapabilities().find(g=>g.groupId==='user.celebrations:celebrate')?.available).toBe(true);expect(r.catalog.motions.has('user.celebrations:gentle_nod')).toBe(true);});
   it('rejects unknown fields and negative durations',()=>{const g=registry.packs[0].groups[0];expect(groupSchema.safeParse({...g,script:'evil'}).success).toBe(false);expect(groupSchema.safeParse({...g,timeline:{type:'wait',durationMs:-1}}).success).toBe(false);});
   it('validates optional expression fades within the leaf duration',()=>{
@@ -26,13 +26,27 @@ describe('schema and JSON extension',()=>{
   });
   it('rejects excessive depth before recursive schema parsing',()=>{let n:ActionNode={type:'wait',durationMs:1};for(let i=0;i<10;i++)n={type:'sequence',children:[n]};expect(()=>guardTree(n)).toThrow('深度');});
   it('rejects excessive node count',()=>{expect(()=>guardTree({children:Array.from({length:130},()=>({type:'wait'}))})).toThrow('128');});
-  it('rejects an unknown motion and leaves previous registry intact',()=>{const r=runtime();const bad=structuredClone(registry);bad.packs[0].groups[0].timeline={type:'motion',motionId:'missing:bad',repeat:1};expect(()=>r.replaceRegistry(bad)).toThrow('未知 motion');expect(r.registry.revision).toBe(1);expect(r.catalog.groups.size).toBe(19);});
+  it('rejects an unknown motion and leaves previous registry intact',()=>{const r=runtime();const bad=structuredClone(registry);bad.packs[0].groups[0].timeline={type:'motion',motionId:'missing:bad',repeat:1};expect(()=>r.replaceRegistry(bad)).toThrow('未知 motion');expect(r.registry.revision).toBe(1);expect(r.catalog.groups.size).toBe(20);});
   it('rejects duplicate group IDs and channel conflicts',()=>{const bad=structuredClone(registry);bad.packs[0].groups.push(bad.packs[0].groups[0]);expect(()=>makeCatalog(bad)).toThrow('重复动作组');const conflict=structuredClone(registry);conflict.packs[0].groups[0].timeline={type:'parallel',children:[{type:'motion',motionId:'builtin.deepblue:wave',repeat:1},{type:'motion',motionId:'builtin.deepblue:sway',repeat:1}]};expect(()=>makeCatalog(conflict)).toThrow('通道冲突');});
   it('requires actual motion channels and increasing keyframes',()=>{const m=structuredClone(registry.packs[0].motions[0]);if(m.kind!=='rig_timeline')throw new Error();m.channels=['face'];expect(()=>validateMotion(m)).toThrow('通道');m.channels=['pose'];m.tracks[0].keyframes[1].timeMs=0;expect(()=>validateMotion(m)).toThrow('递增');});
   it('requires alpha limits, positive finite repeat and watchdog margin',()=>{const m=structuredClone(registry.packs[0].motions[0]);if(m.kind!=='rig_timeline')throw new Error();m.tracks[0].property='alpha';expect(()=>validateMotion(m)).toThrow('alpha');const g=registry.packs[0].groups[0];expect(groupSchema.safeParse({...g,timeline:{type:'motion',motionId:'builtin.deepblue:wave',repeat:Infinity}}).success).toBe(false);const bad=structuredClone(registry);bad.packs[0].groups[0].maxDurationMs=1;expect(()=>makeCatalog(bad)).toThrow('看门狗');});
   it('rejects frame ambiguity and missing assets',()=>{const m=structuredClone(registry.packs[0].motions.find(m=>m.kind==='frame_animation')!);if(m.kind!=='frame_animation')throw new Error();m.fps=20;m.frameDurationsMs=[200,200,200,200];expect(()=>validateMotion(m)).toThrow('只能选择');const bad=structuredClone(registry);delete bad.packs[0].assets['assets/frame-0.png'];expect(()=>makeCatalog(bad)).toThrow('缺少图片');expect(motionSchema.safeParse({...m,frames:[]}).success).toBe(false);});
 });
 describe('timeline lifecycle',()=>{
+  it('preserves GIF frame delays, completes once and clears the frame pose on cancellation',()=>{
+    const c=makeCatalog(registry),g=c.groups.get('builtin.deepblue:curtsy_sway')!,m=c.motions.get('builtin.deepblue:curtsy_sway')!;
+    if(m.kind!=='frame_animation')throw Error('GIF action must use a frame sequence');
+    expect(m.frames).toHaveLength(27);expect(m.frameDurationsMs).toEqual(Array(27).fill(100));
+    expect([0,99,100,2599,2600,2700].map(t=>frameIndex(m,t))).toEqual([0,0,1,25,26,26]);
+    expect(g.expectedDurationMs).toBe(2700);expect(g.channels.sort()).toEqual(['face','pose']);
+    for(const cancel of [false,true]){
+      const h=host(),done=vi.fn(),runner=new ActionGroupRunner(g,'gif','manual',c,h,done);
+      runner.tick(0);runner.tick(cancel?1300:2699);expect(done).not.toHaveBeenCalled();
+      if(cancel)runner.cancel();else runner.tick(1);
+      expect(h.disposed).toEqual(['motion']);expect(h.reset).toHaveBeenCalledOnce();
+      expect(done).toHaveBeenCalledWith(cancel?'cancelled':'completed',undefined);
+    }
+  });
   it('delays steam until the hands rise and cleans every super-shy channel on cancellation',()=>{
     const c=makeCatalog(registry),g=c.groups.get('builtin.deepblue:super_shy')!;
     expect(g.channels.sort()).toEqual(['effect','face','pose']);

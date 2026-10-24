@@ -90,3 +90,17 @@ resources/icon.png 与 icon.ico 延续项目内原始鲸鱼图标。scripts/asse
 ### 1.2.3 腿根接缝修正
 
 侧视腿层向上延伸到原裁切画布 y=699，延伸部分藏在裙摆后；去除腿图层中误带入的旧裙摆边线、白边和原有裁切阴影，并按原腿肤色重建连续大腿及两侧描线。重新导出左右共 64 帧，步幅、脚底锚点、动作时长不变。制作记录位于 `art/animations/side-walk-v2/`（忽略目录）。
+
+## 1.3.3 用户 GIF 提裙动作
+
+原素材由用户提供：`1792757597436.gif`，240×320，27 帧，每帧 100ms。运行 PNG 位于 `resources/builtin/assets/curtsy-sway/00.png` 至 `26.png`，每张 720×960；对应 motion 为 `curtsy_sway`。逐帧修线与透明轮廓描摹沿原画坐标，不逐帧裁切居中，保留原始节奏。
+
+最终素材不使用 imagegen 重新设计的人物。制作过程使用 [Real-ESRGAN 的动漫视频线条修复模型](https://github.com/xinntao/Real-ESRGAN/blob/master/docs/anime_video_model.md)，将修复结果的低频 RGB 校准回原 GIF，再使用 [SkyTNT Anime Segmentation](https://github.com/SkyTNT/anime-segmentation) 生成蒙版、清除背景和地面阴影，用 [VTracer](https://github.com/neplextech/vectorizer) 拟合透明边缘曲线。保留的是原图颜色纹理与矢量轮廓，并非逐笔手绘的全矢量人物；低分辨率素材缺失的细节不能无损还原。
+
+本机使用的 [线条修复 ONNX](https://huggingface.co/skillsafe-ai/realesr-animevideov3) SHA-256 为 `78baa685a1a92cac6e14ab2af2a8ad0ef56fa48629563b1414e3a7acc54d86e2`，[分割 ONNX](https://huggingface.co/skytnt/anime-seg/blob/5b98355d5813bf5ec3c557c67888340062b2a36f/isnetis.onnx) SHA-256 为 `4dfb6fba9aaf54623162c2d6c9a8f0ff2b22b9f4b0f55208141cbdd7fc4d4b1c`。模型、依赖与制作脚本仅留在被忽略的 `art/animations/gif-curtsy-v1/`；应用依赖和发布包只增加 PNG、JSON，不调用模型或网络。
+
+原文件未附授权说明，沿用仓库已有的用户提供素材属性，不声明原创或新增第三方授权。原 GIF 的分辨率、画面动作及边缘裁切限制保持不变。
+
+### 1.3.4 与站立亮度匹配
+
+在上述原帧修线素材上做确定性色彩校准：以站立 Live2D 的实际截图为参考，统一提亮中间调和肤色，并去除白色衣料的暖灰偏色。所有 27 帧使用同一条单调曲线及平滑的衣料颜色权重，不逐帧自动曝光、不重新生成人物。RGBA 中的 alpha 逐字节保持不变，画布、位置、帧数和时长不变。校色脚本与基准帧在忽略的制作目录中；运行包只更新 PNG，无运行时滤镜或新依赖。

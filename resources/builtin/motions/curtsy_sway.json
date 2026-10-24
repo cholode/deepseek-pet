@@ -1,0 +1,95 @@
+{
+  "schemaVersion": 1,
+  "id": "curtsy_sway",
+  "name": "闭眼提裙摇摆",
+  "kind": "frame_animation",
+  "avatarId": "deepblue-chibi-v1",
+  "durationMs": 2700,
+  "channels": [
+    "pose",
+    "face"
+  ],
+  "frames": [
+    "assets/curtsy-sway/00.png",
+    "assets/curtsy-sway/01.png",
+    "assets/curtsy-sway/02.png",
+    "assets/curtsy-sway/03.png",
+    "assets/curtsy-sway/04.png",
+    "assets/curtsy-sway/05.png",
+    "assets/curtsy-sway/06.png",
+    "assets/curtsy-sway/07.png",
+    "assets/curtsy-sway/08.png",
+    "assets/curtsy-sway/09.png",
+    "assets/curtsy-sway/10.png",
+    "assets/curtsy-sway/11.png",
+    "assets/curtsy-sway/12.png",
+    "assets/curtsy-sway/13.png",
+    "assets/curtsy-sway/14.png",
+    "assets/curtsy-sway/15.png",
+    "assets/curtsy-sway/16.png",
+    "assets/curtsy-sway/17.png",
+    "assets/curtsy-sway/18.png",
+    "assets/curtsy-sway/19.png",
+    "assets/curtsy-sway/20.png",
+    "assets/curtsy-sway/21.png",
+    "assets/curtsy-sway/22.png",
+    "assets/curtsy-sway/23.png",
+    "assets/curtsy-sway/24.png",
+    "assets/curtsy-sway/25.png",
+    "assets/curtsy-sway/26.png"
+  ],
+  "frameDurationsMs": [
+    100,
+    100,
+    100,
+    100,
+    100,
+    100,
+    100,
+    100,
+    100,
+    100,
+    100,
+    100,
+    100,
+    100,
+    100,
+    100,
+    100,
+    100,
+    100,
+    100,
+    100,
+    100,
+    100,
+    100,
+    100,
+    100,
+    100
+  ],
+  "canvas": {
+    "width": 720,
+    "height": 960
+  },
+  "anchor": {
+    "x": 0.43333333333333335,
+    "y": 0.88125
+  },
+  "displayScale": 0.4666666666666666,
+  "hitAreas": [
+    {
+      "target": "head",
+      "x": 66,
+      "y": 69,
+      "width": 528,
+      "height": 432
+    },
+    {
+      "target": "body",
+      "x": 84,
+      "y": 501,
+      "width": 540,
+      "height": 345
+    }
+  ]
+}

@@ -19,7 +19,7 @@ const actions=[['confused_tilt','confused','歪头疑惑'],['sad_pout','sad','�
   const reset=()=>pet.waitForFunction(()=>document.querySelector('canvas')?.dataset.expression==='neutral'&&window.__faces.at(-1)?.values.ParamMouthActive===0&&window.__faces.at(-1)?.values.ParamTear===0);
   await request('stop_current');await wait(200);
   await pet.evaluate(()=>{const update=window.Live2DCubismCore.Model.prototype.update;window.__faces=[];window.Live2DCubismCore.Model.prototype.update=function(){const result=update.call(this);const op=id=>this.drawables.opacities[this.drawables.ids.indexOf(id)];window.__faces.push({expression:document.querySelector('canvas')?.dataset.expression,values:Object.fromEntries(this.parameters.ids.map((id,i)=>[id,this.parameters.values[i]])),oldMouth:op('Mouth'),mouth:op('MouthLip'),leftClosed:op('EyeClosedL'),rightClosed:op('EyeClosedR'),tear:op('TearL')});if(window.__faces.length>1000)window.__faces.shift();return result;};});
-  assert.equal((await get()).groups.length,19);
+  assert.equal((await get()).groups.length,20);
   await panel.getByRole('button',{name:/^动作组/}).click();
   for(const [id,face,name]of actions){
    assert.equal(await panel.getByRole('heading',{name:new RegExp('^'+name)}).count(),1);
