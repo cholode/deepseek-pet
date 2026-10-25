@@ -73,6 +73,26 @@ describe('sprite rig validation and playback',()=>{
       expect(()=>makeCatalog(r)).toThrow('拖动绑定');
     }
   });
+  it('validates inertia pivots and secondary bindings without depending on motion IDs',()=>{
+    const m=motion();m.id='renamed_motion';expect(()=>validateMotion(m)).not.toThrow();
+    m.dragInertia!.secondary[0].targetId='absent';expect(()=>validateMotion(m)).toThrow('惯性组件');
+    const n=motion();n.dragInertia!.secondary.push(n.dragInertia!.secondary[0]);expect(()=>validateMotion(n)).toThrow('惯性组件');
+    const p=motion();p.dragInertia!.pivot.x=p.canvas.width+1;expect(()=>validateMotion(p)).toThrow('惯性支点');
+    const a=motion();a.dragInertia!.maxAngleDeg=90;expect(motionSchema.safeParse(a).success).toBe(false);
+  });
+  it('keeps the suspension pivot fixed and layers secondary lag without cumulative rotation',()=>{
+    const m=motion(),stage=new Container(),rig=createSpriteRig(stage,m,()=>Texture.EMPTY),root=stage.children[0] as Container;
+    rig.update(400);const bodyIndex=m.parts.findIndex(p=>p.id==='body'),tailIndex=m.parts.findIndex(p=>p.id==='tail');
+    const body=root.children[bodyIndex].rotation,tail=root.children[tailIndex].rotation;
+    rig.applyInertia({swing:.6,trailing:.4});const once=root.children[tailIndex].rotation;
+    expect(root.rotation).toBeCloseTo(.6*m.dragInertia!.maxAngleDeg*Math.PI/180);
+    expect(root.toGlobal(m.dragInertia!.pivot).x).toBeCloseTo(m.dragInertia!.pivot.x);
+    expect(root.toGlobal(m.dragInertia!.pivot).y).toBeCloseTo(m.dragInertia!.pivot.y);
+    expect(root.children[bodyIndex].rotation).toBe(body);expect(once).not.toBe(tail);
+    rig.applyInertia({swing:.6,trailing:.4});expect(root.children[tailIndex].rotation).toBe(once);
+    rig.applyInertia({swing:0,trailing:0});expect(root.children[tailIndex].rotation).toBe(tail);expect(root.rotation).toBe(0);
+    rig.dispose();expect(()=>rig.applyInertia({swing:1,trailing:1})).not.toThrow();
+  });
   it('keeps loop endpoints identical, varies limbs independently and disposes without destroying shared textures',()=>{
     const m=motion();for(const track of m.tracks)expect(trackValue(track,0)).toBeCloseTo(trackValue(track,m.durationMs),7);
     const stage=new Container(),rig=createSpriteRig(stage,m,()=>Texture.EMPTY),parts=stage.children[0] as Container;

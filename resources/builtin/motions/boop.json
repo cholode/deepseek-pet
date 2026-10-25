@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "id": "boop",
-  "name": "boop",
+  "name": "全身缩一下",
   "kind": "rig_timeline",
   "avatarId": "deepblue-chibi-v1",
   "durationMs": 900,
@@ -10,7 +10,7 @@
   ],
   "tracks": [
     {
-      "targetId": "body",
+      "targetId": "root",
       "property": "scaleY",
       "keyframes": [
         {
@@ -19,60 +19,28 @@
           "easing": "easeInOut"
         },
         {
-          "timeMs": 300,
-          "value": 0.9,
+          "timeMs": 140,
+          "value": 0.88,
           "easing": "easeInOut"
         },
         {
-          "timeMs": 600,
-          "value": 1.06,
+          "timeMs": 200,
+          "value": 0.88,
+          "easing": "easeInOut"
+        },
+        {
+          "timeMs": 440,
+          "value": 1.025,
+          "easing": "easeInOut"
+        },
+        {
+          "timeMs": 700,
+          "value": 1,
           "easing": "easeInOut"
         },
         {
           "timeMs": 900,
           "value": 1,
-          "easing": "easeInOut"
-        }
-      ]
-    },
-    {
-      "targetId": "armLeft",
-      "property": "rotationDeg",
-      "keyframes": [
-        {
-          "timeMs": 0,
-          "value": 0,
-          "easing": "easeInOut"
-        },
-        {
-          "timeMs": 450,
-          "value": 20,
-          "easing": "easeInOut"
-        },
-        {
-          "timeMs": 900,
-          "value": 0,
-          "easing": "easeInOut"
-        }
-      ]
-    },
-    {
-      "targetId": "armRight",
-      "property": "rotationDeg",
-      "keyframes": [
-        {
-          "timeMs": 0,
-          "value": 0,
-          "easing": "easeInOut"
-        },
-        {
-          "timeMs": 450,
-          "value": -20,
-          "easing": "easeInOut"
-        },
-        {
-          "timeMs": 900,
-          "value": 0,
           "easing": "easeInOut"
         }
       ]

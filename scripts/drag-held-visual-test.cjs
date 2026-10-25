@@ -33,29 +33,30 @@ const fs=require('node:fs/promises'),path=require('node:path'),http=require('nod
   const page=await browser.newPage({viewport:{width:510,height:630}}),errors=[];page.on('pageerror',e=>errors.push(e.message));
   await page.goto(`http://127.0.0.1:${server.address().port}`);await page.evaluate(()=>start());
   const standing=await page.evaluate(()=>({image:draw(),state:inspect()}));await fs.writeFile(path.join(dir,'standing.png'),Buffer.from(standing.image,'base64'));
-  await page.evaluate(()=>begin());const frames=[],contact=[],selected=[0,8,16,24,32,40,48,56,64,72,80,83];
+  await page.evaluate(()=>begin());const heldViewport=await page.evaluate(()=>inspect());await page.setViewportSize({width:heldViewport.width,height:heldViewport.height});const frames=[],contact=[],selected=[0,8,16,24,32,40,48,56,64,72,80,83];
   let first;
   for(let i=0;i<84;i++){
    const sample=await page.evaluate(dt=>{runner.tick(dt);return{image:draw(),state:inspect()};},i?1000/24:0);
-   assert.equal(sample.state.pose,'sprite-rig');assert.equal(sample.state.width,standing.state.width);assert.equal(sample.state.height,standing.state.height);assert.equal(sample.state.children,2);
+   assert.equal(sample.state.pose,'sprite-rig');assert.equal(sample.state.width,heldViewport.width);assert.equal(sample.state.height,heldViewport.height);assert.equal(sample.state.children,2);
    const png=Buffer.from(sample.image,'base64');if(!first)first=png;
-   frames.push(await sharp(png).raw().toBuffer());
+   const cropped=await sharp(png).extract({left:Math.floor((heldViewport.width-standing.state.width)/2),top:heldViewport.height-standing.state.height,width:standing.state.width,height:standing.state.height}).png().toBuffer();
+   frames.push(await sharp(cropped).raw().toBuffer());
    if(selected.includes(i)){
     await fs.writeFile(path.join(dir,`frame-${i}.png`),png);
-    contact.push({input:await sharp(png).resize(255,315).png().toBuffer(),left:(contact.length%4)*255,top:Math.floor(contact.length/4)*315});
+    contact.push({input:await sharp(cropped).resize(255,315).png().toBuffer(),left:(contact.length%4)*255,top:Math.floor(contact.length/4)*315});
    }
   }
   const seam=await page.evaluate(()=>{const handle=avatar.frameStage.children[1];runner.leaves[0].handle.update(3500);draw();return avatar.app.canvas.toDataURL('image/png').split(',')[1];});
   assert.deepEqual(await sharp(Buffer.from(seam,'base64')).raw().toBuffer(),await sharp(first).raw().toBuffer());
-  const done=await page.evaluate(()=>{runner.tick(50);draw();return{state:inspect(),statuses};});assert.deepEqual(done.statuses,['completed']);assert.equal(done.state.pose,'standing');assert.equal(done.state.children,1);
+  const done=await page.evaluate(()=>{runner.tick(50);draw();return{state:inspect(),statuses};});assert.deepEqual(done.statuses,['completed']);assert.equal(done.state.pose,'standing');assert.equal(done.state.children,1);assert.equal(done.state.width,standing.state.width);assert.equal(done.state.height,standing.state.height);
   await page.evaluate(()=>{begin();runner.tick(500);draw();runner.cancel();draw();});assert.equal((await page.evaluate(()=>inspect())).children,1);
   const delays=frames.map((_,i)=>Math.round((i+1)*1000/24)-Math.round(i*1000/24));
   await sharp(Buffer.concat(frames),{raw:{width:510,height:630*frames.length,channels:4,pageHeight:630}}).webp({quality:95,alphaQuality:100,delay:delays,loop:0,effort:3}).toFile(path.join(dir,'drag-held.webp'));
   const gifFrames=await Promise.all(frames.map(f=>sharp(f,{raw:{width:510,height:630,channels:4}}).resize(340,420).raw().toBuffer()));
   await sharp(Buffer.concat(gifFrames),{raw:{width:340,height:420*frames.length,channels:4,pageHeight:420}}).gif({delay:delays.map((_,i)=>(Math.round((i+1)*100/24)-Math.round(i*100/24))*10),loop:0,effort:3,dither:.3}).toFile(path.join(dir,'drag-held.gif'));
   await sharp({create:{width:1020,height:945,channels:4,background:'#e8edf5'}}).composite(contact).png().toFile(path.join(dir,'contact.png'));
-  await fs.writeFile(path.join(dir,'preview.html'),`<!doctype html><html lang="zh-CN"><meta charset="utf-8"><title>小蓝 · 拖动动画</title><style>body{margin:28px;background:#e8edf5;color:#344466;font:16px "Microsoft YaHei"}h1{font-size:26px}main{display:flex;gap:20px;flex-wrap:wrap}figure{margin:0;background:#fff9;border:1px solid #ccd6e5;border-radius:18px}img{display:block;width:340px;max-width:90vw}figcaption{text-align:center;padding:14px}button{font:inherit;padding:8px 18px;margin:12px 10px 20px 0;border-radius:9px;border:1px solid #b4c4da;background:white}</style><h1>小蓝 · 被拎起挣动</h1><p>握拳抗议 · 双腿悬空轻蹬 · 后发和低位鲸尾摆动。按住拖动时循环，松手回到站立。</p><button id="toggle">暂停</button><button onclick="document.body.style.background=document.body.style.background?'':'#202735'">切换背景</button><main><figure><img src="standing.png"><figcaption>程序中的站立造型</figcaption></figure><figure><img id="motion" src="drag-held.webp"><figcaption>重绘后的拖动动作 · 3.5 秒循环</figcaption></figure></main><script>let paused=false;toggle.onclick=()=>{paused=!paused;motion.src=paused?'frame-16.png':'drag-held.webp';toggle.textContent=paused?'播放':'暂停'};</script></html>`);
-  assert.deepEqual(errors,[]);const report={frames:84,durationMs:3500,pixelIdenticalLoopEndpoints:true,completedAndCancelled:true,unchangedViewport:true,errors};
+  await fs.writeFile(path.join(dir,'preview.html'),`<!doctype html><html lang="zh-CN"><meta charset="utf-8"><title>大肥鱼 · 拖动动画</title><style>body{margin:28px;background:#e8edf5;color:#344466;font:16px "Microsoft YaHei"}h1{font-size:26px}main{display:flex;gap:20px;flex-wrap:wrap}figure{margin:0;background:#fff9;border:1px solid #ccd6e5;border-radius:18px}img{display:block;width:340px;max-width:90vw}figcaption{text-align:center;padding:14px}button{font:inherit;padding:8px 18px;margin:12px 10px 20px 0;border-radius:9px;border:1px solid #b4c4da;background:white}</style><h1>大肥鱼 · 被拎起挣动</h1><p>握拳抗议 · 双腿悬空轻蹬 · 后发和低位鲸尾摆动。按住拖动时循环，松手回到站立。</p><button id="toggle">暂停</button><button onclick="document.body.style.background=document.body.style.background?'':'#202735'">切换背景</button><main><figure><img src="standing.png"><figcaption>程序中的站立造型</figcaption></figure><figure><img id="motion" src="drag-held.webp"><figcaption>重绘后的拖动动作 · 3.5 秒循环</figcaption></figure></main><script>let paused=false;toggle.onclick=()=>{paused=!paused;motion.src=paused?'frame-16.png':'drag-held.webp';toggle.textContent=paused?'播放':'暂停'};</script></html>`);
+  assert.deepEqual(errors,[]);const report={frames:84,durationMs:3500,pixelIdenticalLoopEndpoints:true,completedAndCancelled:true,stableHeldViewport:true,restoredViewport:true,errors};
   await fs.writeFile(path.join(dir,'visual-report.json'),JSON.stringify(report,null,2));console.log(JSON.stringify(report));
  }finally{await browser.close();server.close();}
 })().catch(e=>{console.error(e);process.exitCode=1;});

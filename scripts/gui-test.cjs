@@ -14,7 +14,7 @@ const assert = require('node:assert/strict');
   for(const p of app.windows()) { p.on('pageerror', e => console.log('PAGE ERROR',e.message)); p.on('console', m => { if(m.type()==='error') console.log('BROWSER ERROR',m.text()); }); }
   await pet.waitForSelector('canvas', { timeout: 30000 });
   const panel = app.windows().find(p => p.url().includes('page=panel')) || await app.waitForEvent('window');
-  await panel.waitForFunction(() => document.body.textContent.includes('你的小蓝'));
+  await panel.waitForFunction(() => document.body.textContent.includes('你的大肥鱼'));
   await new Promise(r => setTimeout(r, 3000));
   const report={startedAt:new Date().toISOString(),checks:[],samples:[]};
   const check=(name)=>{report.checks.push(name);console.log('PASS',name);};

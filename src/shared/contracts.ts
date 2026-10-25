@@ -13,7 +13,9 @@ export type PetEvent = { type: 'interaction'; occurredAtUnixMs: number; payload:
 export interface PetControlPort { getSnapshot(): PetSnapshot; listCapabilities(): readonly GroupCapability[]; submit(command: PetCommand): Promise<CommandReceipt> }
 export interface BehaviorContext { control: PetControlPort; subscribe(listener: (event: PetEvent) => void): () => void }
 export interface IBehaviorDriver { readonly mode: PetMode; readonly status: DriverStatus; start(context: BehaviorContext): Promise<void>; pause(): void; resume(): void; stop(): Promise<void> }
-export interface DesktopState { visible: boolean; dragging: boolean; pointerNear: boolean; position: { x: number; y: number }; suspended: boolean; pointer?: { x: number; y: number } }
+/** Main-process monotonic sample in screen DIP; independent of window clamping. */
+export interface DragSample { x: number; timeMs: number; gestureId: number }
+export interface DesktopState { visible: boolean; dragging: boolean; pointerNear: boolean; position: { x: number; y: number }; suspended: boolean; pointer?: { x: number; y: number }; dragSample?: DragSample }
 export interface DebugState { failedGroups: string[]; snapshot: PetSnapshot; groups: GroupInfo[]; errors: string[]; candidateCount: number; nextInMs: number; events: PetEvent[] }
 export interface Bootstrap { registry: Registry; settings: Settings; desktop: DesktopState; errors: string[] }
 export type PanelRequest = { type: 'command'; command: PetCommand } | { type: 'pause'; value: boolean } | { type: 'mode'; mode: PetMode };

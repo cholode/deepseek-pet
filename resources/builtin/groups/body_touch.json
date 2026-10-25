@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "id": "body_touch",
-  "name": "戳戳肚子",
-  "description": "被戳到后缩一下身子，露出惊讶的表情。",
+  "name": "全身缩一下",
+  "description": "被碰到后全身竖直压缩一下，宽度保持不变；头发、尾巴和四肢同步，露出惊讶表情后轻轻弹回。",
   "tags": [
     "互动"
   ],

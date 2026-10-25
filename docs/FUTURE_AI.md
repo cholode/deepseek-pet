@@ -1,10 +1,16 @@
 # 未来 AI 接口（本轮禁用）
 
+下一阶段方案见 [大肥鱼大模型宠物系统设计](大肥鱼大模型宠物系统设计.md)，涵盖模型、MCP、软件和游戏适配。该文件是设计稿，当前运行模式与下述实现状态不变。
+
 当前只有普通驱动。界面 AI 项禁用。`checkMode('ai')` 和绑定 AI 来源的命令入口返回 `MODE_NOT_AVAILABLE`，检查发生在停止正常驱动之前。因此错误的 AI 切换不会破坏普通模式。
 
 1.3.13 目录增加“被拎起挣动”，共有 33 组。组件动画与拖动绑定仍通过同一有限动作执行器；系统在用户拖动期间重新提交有限周期，非系统来源仍返回 `DRAG_LOCKED`。没有新增 AI 权限或模型服务。
 
+1.3.19 仅放宽真实用户的拖动范围；动作命令及未来 AI 的 `move_by` 继续受工作区限制，不开放任意窗口位置写入。
+
 ## 已实现的契约
+
+1.3.17 的拖动惯性只消费主进程的鼠标采样与动作包的受限数值参数。它不增加动作能力、AI 权限或外部服务；AI 模式仍不可用。
 
 - `src/shared/contracts.ts`：PetCommand、CommandReceipt、PetSnapshot、GroupCapability、PetControlPort、PetEvent、BehaviorContext、IBehaviorDriver。
 - `src/renderer/pet/PetRuntime.ts`：`port(source)` 绑定来源；`submit` 校验协议、命令 ID、到期、权限、可用性、频率和优先级。

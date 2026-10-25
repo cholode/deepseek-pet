@@ -18,6 +18,17 @@
     "y": 1
   },
   "displayScale": 0.4371584699453552,
+  "dragInertia": {
+    "pivot": {"x":305,"y":105},
+    "maxAngleDeg":40,
+    "secondary": [
+      {"targetId":"hair-left","rotationFactor":0.15},
+      {"targetId":"hair-right","rotationFactor":0.15},
+      {"targetId":"tail","rotationFactor":0.3},
+      {"targetId":"leg-left","rotationFactor":0.08},
+      {"targetId":"leg-right","rotationFactor":0.08}
+    ]
+  },
   "parts": [
     {
       "id": "hair-left",

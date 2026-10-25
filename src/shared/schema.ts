@@ -33,6 +33,7 @@ const frameOptions = {
 export const motionSchema = z.discriminatedUnion('kind', [
   z.object({ ...commonMotion, kind: z.literal('rig_timeline'), tracks: z.array(track).min(1).max(60) }).strict(),
   z.object({ ...commonMotion, ...spriteLayout, kind: z.literal('sprite_rig'),
+    dragInertia: z.object({ pivot: z.object({x:finite.min(0).max(4096),y:finite.min(0).max(4096)}).strict(), maxAngleDeg:finite.min(0).max(45), secondary:z.array(z.object({targetId:localId,rotationFactor:finite.min(-1).max(1)}).strict()).max(32) }).strict().optional(),
     parts: z.array(z.object({ id: localId, image: relativePath, x: finite.min(-4096).max(4096), y: finite.min(-4096).max(4096), pivotX: finite.min(-4096).max(4096), pivotY: finite.min(-4096).max(4096), scaleX: spriteScale, scaleY: spriteScale }).strict()).min(1).max(32),
     tracks: z.array(track.extend({targetId: localId})).min(1).max(128)
   }).strict(),
@@ -72,6 +73,14 @@ export function validateMotion(m: Motion): void {
     const keys = new Set<string>(); const required = new Set<ActionChannel>();
     const partIds = m.kind === 'sprite_rig' ? new Set(m.parts.map(p => p.id)) : undefined;
     if (m.kind === 'sprite_rig' && partIds!.size !== m.parts.length) throw new Error(`${m.id}: 组件 ID 重复`);
+    if (m.kind === 'sprite_rig' && m.dragInertia) {
+      if (m.dragInertia.pivot.x > m.canvas.width || m.dragInertia.pivot.y > m.canvas.height) throw new Error('惯性支点超出动作画布');
+      const ids = new Set<string>();
+      for (const part of m.dragInertia.secondary) {
+        if (!partIds!.has(part.targetId) || ids.has(part.targetId)) throw new Error('惯性组件未知或重复');
+        ids.add(part.targetId);
+      }
+    }
     for (const t of m.tracks) {
       if (partIds && !partIds.has(t.targetId)) throw new Error(`${m.id}: 未知组件 ${t.targetId}`);
       const key = `${t.targetId}.${t.property}`; if (keys.has(key)) throw new Error(`${m.id}: 重复轨道`); keys.add(key);

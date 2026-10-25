@@ -1,6 +1,7 @@
 import { Container, Sprite, type Texture } from 'pixi.js';
 import { ease } from '../../shared/geometry';
 import type { Motion } from '../../shared/schema';
+import type { DragSway } from './drag-inertia';
 
 export type SpriteRig = Extract<Motion, {kind:'sprite_rig'}>;
 type SpriteTrack = SpriteRig['tracks'][number];
@@ -25,9 +26,11 @@ export function createSpriteRig(stage: Container, motion: SpriteRig, texture: (f
     return {sprite, definition, tracks: motion.tracks.filter(t => t.targetId === definition.id)};
   });
   stage.addChild(container);
-  let disposed = false;
+  let disposed = false, lastTime = 0;
+  let sway: DragSway = {swing:0,trailing:0};
   const update = (time: number) => {
     if (disposed) return;
+    lastTime = time;
     for (const {sprite, definition: p, tracks} of parts) {
       sprite.position.set(p.x, p.y); sprite.scale.set(p.scaleX, p.scaleY); sprite.rotation = 0; sprite.alpha = 1;
       for (const track of tracks) {
@@ -41,8 +44,16 @@ export function createSpriteRig(stage: Container, motion: SpriteRig, texture: (f
           case 'alpha': sprite.alpha = value; break;
         }
       }
+      const inertia = motion.dragInertia;
+      if (inertia) sprite.rotation += sway.trailing * inertia.maxAngleDeg * (inertia.secondary.find(s => s.targetId === p.id)?.rotationFactor ?? 0) * Math.PI / 180;
+    }
+    const inertia = motion.dragInertia;
+    if (inertia) {
+      container.pivot.set(inertia.pivot.x, inertia.pivot.y);
+      container.position.copyFrom(container.pivot);
+      container.rotation = sway.swing * inertia.maxAngleDeg * Math.PI / 180;
     }
   };
   update(0);
-  return {update, dispose() { if (disposed) return; disposed = true; container.destroy({children:true}); }};
+  return {update, applyInertia(value: DragSway) { if(disposed)return; sway=value; update(lastTime); }, dispose() { if (disposed) return; disposed = true; container.destroy({children:true}); }};
 }

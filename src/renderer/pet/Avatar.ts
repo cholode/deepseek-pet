@@ -1,8 +1,8 @@
 import { Application, Assets, Container, Graphics, Rectangle, Sprite, Text, Texture } from 'pixi.js';
 import 'pixi.js/unsafe-eval'; // Pixi's static uniform polyfill: works WITHOUT CSP unsafe-eval.
-import { avatarScale, baseViewport, dimensions, ease, frameViewport } from '../../shared/geometry';
+import { avatarScale, baseViewport, dimensions, ease, frameViewport, rigViewport } from '../../shared/geometry';
 import { type Catalog, type Settings, type ActionChannel, type Motion } from '../../shared/schema';
-import type { HitRegion } from '../../shared/contracts';
+import type { DesktopState, HitRegion } from '../../shared/contracts';
 import { frameIndex, type AnimationHost, type Leaf, type RunningLeaf } from './engine';
 import { Live2DRenderer } from './live2d/Live2DRenderer';
 import { parametersFor, type RigPose } from './live2d/pose';
@@ -10,6 +10,7 @@ import { expressionEnvelope, expressionProfile } from '../../shared/expressions'
 import { steamEffect } from './steam';
 import { createFrameOverlays } from './frame-overlays';
 import { createSpriteRig } from './sprite-rig';
+import { DragInertia } from './drag-inertia';
 const pivot: Record<string, [number, number]> = { root: [0,0], body: [0,-145], head: [0,-205], hairBack:[0,-300],hairFront:[0,-305],armLeft:[-49,-193],armRight:[49,-193],eyes:[0,-240],mouth:[0,-208],effects:[0,-200],tail:[28,-114] };
 for (const side of ['Left','Right']) for (const joint of ['shoulder','elbow','wrist']) pivot[joint+side]=[0,0];
 export class Avatar implements AnimationHost {
@@ -19,6 +20,9 @@ export class Avatar implements AnimationHost {
   private gaze = {x:0,y:0}; private gazeTarget = {x:0,y:0};
   private frameStage = new Container();
   private frameMotion?: Extract<Motion, {kind:'frame_animation'|'sprite_rig'}>;
+  private spriteRig?: ReturnType<typeof createSpriteRig>;
+  private dragInertia = new DragInertia();
+  private dragging = false;
   private frameOverlays?: ReturnType<typeof createFrameOverlays>;
   private scene = new Container();
   private viewport = { ...baseViewport };
@@ -46,7 +50,9 @@ export class Avatar implements AnimationHost {
   useCatalog(_catalog: Catalog) { this.reset(); }
   async releaseUnused(catalog: Catalog) { const used = new Set(catalog.assets.values()); for (const url of this.textures.keys()) if (!used.has(url)) { this.textures.delete(url); await Assets.unload(url); } }
   resize() {
-    const size=this.settings().size, viewport=this.frameMotion?frameViewport(this.frameMotion.canvas,this.frameMotion.displayScale??1):baseViewport;
+    const size=this.settings().size,m=this.frameMotion,viewport=m?.kind==='sprite_rig'&&m.dragInertia
+      ?rigViewport(m.canvas,m.displayScale??1,m.dragInertia,m.anchor)
+      :m?frameViewport(m.canvas,m.displayScale??1):this.dragging?this.viewport:baseViewport;
     const changed=viewport.width!==this.viewport.width||viewport.height!==this.viewport.height;
     this.viewport={...viewport}; const pixels=dimensions(size,viewport);
     this.app.renderer.resize(pixels.width,pixels.height); this.scene.scale.set(size); this.placement.position.set(viewport.width/2,viewport.height-15); this.app.ticker.maxFPS=this.settings().fps;
@@ -59,7 +65,15 @@ export class Avatar implements AnimationHost {
     return (['head','body'] as const).map(target => { const node=this.nodes.get(target)!; const r=node.hitArea as Rectangle; const points=[[r.x,r.y],[r.x+r.width,r.y],[r.x,r.y+r.height],[r.x+r.width,r.y+r.height]].map(([x,y])=>node.toGlobal({x,y})); const x=Math.min(...points.map(p=>p.x)),y=Math.min(...points.map(p=>p.y));return {target,x,y,width:Math.max(...points.map(p=>p.x))-x,height:Math.max(...points.map(p=>p.y))-y}; });
   }
   setGaze(clientX: number,clientY=210*this.settings().size) { const s=this.settings().size;this.gazeTarget={x:Math.max(-1,Math.min(1,((clientX/s-(this.viewport.width-340)/2)/340-.5)*2)),y:Math.max(-1,Math.min(1,((clientY/s-(this.viewport.height-420))/420-.47)*2))}; }
+  setDragState(desktop: DesktopState) {
+    this.dragging=desktop.dragging && desktop.visible && !desktop.suspended && !this.settings().fixedPosition;
+    this.dragInertia.receive(this.dragging, desktop.dragSample);
+  }
   idle(delta: number, occupied: ActionChannel[]) {
+    const sway = this.dragInertia.step(delta);
+    this.spriteRig?.applyInertia(sway);
+    this.app.canvas.dataset.dragSwing = sway.swing.toFixed(4);
+    this.app.canvas.dataset.dragTrailing = sway.trailing.toFixed(4);
     this.time+=Math.min(delta,100); this.overlay.scale.set(this.pressed?.965:1); this.overlay.y=this.pressed?3:0;
     const follow=1-Math.exp(-Math.min(delta,100)/130);this.gaze.x+=(this.gazeTarget.x-this.gaze.x)*follow;this.gaze.y+=(this.gazeTarget.y-this.gaze.y)*follow;
     if(this.frameMotion)return; // The sleeping figure and its independent tail use the same action runner.
@@ -72,7 +86,7 @@ export class Avatar implements AnimationHost {
   }
   set(id: string, property: string, value: number) { const n=this.nodes.get(id); if(!n) throw new Error(`未知角色节点：${id}`); const [x,y]=pivot[id]; if(property==='offsetX') n.x=x+value; else if(property==='offsetY') n.y=y+value; else if(property==='rotationDeg') n.rotation=value*Math.PI/180; else if(property==='scaleX') n.scale.x=value; else if(property==='scaleY') n.scale.y=value; else if(property==='alpha') n.alpha=value; }
   private resetChannels(channels: ActionChannel[]) { for(const [id,n] of this.nodes) { const channel=id==='eyes'||id==='mouth'?'face':id==='effects'?'effect':'pose'; if(!channels.includes(channel)) continue; n.position.set(...pivot[id]); n.scale.set(1); n.rotation=0; n.alpha=1; } }
-  reset() { this.frameOverlays?.dispose(); this.frameOverlays=undefined; this.resetChannels(['pose','face','effect']); this.expression('neutral'); this.fx.removeChildren().forEach(c=>c.destroy()); this.bubbleContainer.visible=false; this.frame.visible=false; this.frameMotion=undefined; this.frameStage.removeChildren().filter(c=>c!==this.frame).forEach(c=>c.destroy()); this.frameStage.addChild(this.frame); this.nodes.get('root')!.visible=true; this.app.canvas.dataset.pose='standing'; this.resize(); }
+  reset() { this.spriteRig=undefined; this.frameOverlays?.dispose(); this.frameOverlays=undefined; this.resetChannels(['pose','face','effect']); this.expression('neutral'); this.fx.removeChildren().forEach(c=>c.destroy()); this.bubbleContainer.visible=false; this.frame.visible=false; this.frameMotion=undefined; this.frameStage.removeChildren().filter(c=>c!==this.frame).forEach(c=>c.destroy()); this.frameStage.addChild(this.frame); this.nodes.get('root')!.visible=true; this.app.canvas.dataset.pose='standing'; this.resize(); }
   private expression(id: string) {
     this.face=id;this.faceWeight=1; this.app.canvas.dataset.expression=id; const g=this.expressionArt; g.clear();
     // Blush is an accent; brows, eyelids, mouth shapes and tears belong to Core meshes.
@@ -97,9 +111,9 @@ export class Avatar implements AnimationHost {
         this.nodes.get('root')!.visible=false;this.frame.visible=m.kind==='frame_animation';this.frameMotion=m;this.app.canvas.dataset.pose=m.kind==='sprite_rig'?'sprite-rig':'frames';this.resize();
         this.frameStage.scale.set(m.displayScale??1);this.frameStage.position.set(-m.canvas.width*m.anchor.x*(m.displayScale??1),-m.canvas.height*m.anchor.y*(m.displayScale??1));this.frame.anchor.set(0,0);
         if(m.kind==='sprite_rig'){
-          const rig=createSpriteRig(this.frameStage,m,texture);
+          const rig=createSpriteRig(this.frameStage,m,texture);this.spriteRig=rig;
           update=ms=>rig.update(ms>=m.durationMs*node.repeat?m.durationMs:ms%m.durationMs);
-          dispose=()=>{rig.dispose();this.frameMotion=undefined;this.nodes.get('root')!.visible=true;this.app.canvas.dataset.pose='standing';this.resize();};
+          dispose=()=>{rig.dispose();if(this.spriteRig===rig)this.spriteRig=undefined;this.frameMotion=undefined;this.nodes.get('root')!.visible=true;this.app.canvas.dataset.pose='standing';this.resize();};
         } else {
         const layers=(m.layers??[]).map(l=>{const sprite=new Sprite(texture(l.image));sprite.pivot.set(l.pivotX,l.pivotY);sprite.position.set(l.x+l.pivotX,l.y+l.pivotY);this.frameStage.addChildAt(sprite,0);return {sprite,definition:l};});
         const overlays=createFrameOverlays(this.frameStage,m,texture);this.frameOverlays=overlays;
