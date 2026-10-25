@@ -17,6 +17,13 @@ const keyframe = z.object({ timeMs: finite.min(0).max(30000), value: finite.min(
 const track = z.object({ targetId: z.enum(nodes), property: z.enum(['offsetX', 'offsetY', 'rotationDeg', 'scaleX', 'scaleY', 'alpha']), keyframes: z.array(keyframe).min(2).max(120) }).strict();
 const commonMotion = { schemaVersion: z.literal(1), id: localId, name: z.string().min(1).max(100), avatarId: z.literal(AVATAR), durationMs: duration, channels: z.array(channelSchema).min(1).max(5) };
 const point = z.object({ x: finite.min(-4096).max(4096), y: finite.min(-4096).max(4096) }).strict();
+const spriteScale = finite.min(-3).max(3).refine(v => Math.abs(v) >= .1, '缩放绝对值至少 0.1');
+const spriteLayout = {
+  canvas: z.object({ width: finite.int().min(1).max(4096), height: finite.int().min(1).max(4096) }).strict(),
+  anchor: z.object({ x: finite.min(0).max(1), y: finite.min(0).max(1) }).strict(),
+  displayScale: finite.min(.1).max(3).optional(),
+  hitAreas: z.array(z.object({ target: z.enum(['head','body']), x: finite.min(0).max(4096), y: finite.min(0).max(4096), width: finite.min(1).max(4096), height: finite.min(1).max(4096) }).strict()).max(8).optional()
+};
 const frameOptions = {
   displayScale: finite.min(.1).max(3).optional(),
   frameOverlays: z.array(z.object({ image: relativePath, x: finite.int().min(0).max(4096), y: finite.int().min(0).max(4096), width: finite.int().min(1).max(4096), height: finite.int().min(1).max(4096), columns: finite.int().min(1).max(240), padding: finite.int().min(0).max(8).optional() }).strict()).max(8).optional(),
@@ -25,6 +32,10 @@ const frameOptions = {
 };
 export const motionSchema = z.discriminatedUnion('kind', [
   z.object({ ...commonMotion, kind: z.literal('rig_timeline'), tracks: z.array(track).min(1).max(60) }).strict(),
+  z.object({ ...commonMotion, ...spriteLayout, kind: z.literal('sprite_rig'),
+    parts: z.array(z.object({ id: localId, image: relativePath, x: finite.min(-4096).max(4096), y: finite.min(-4096).max(4096), pivotX: finite.min(-4096).max(4096), pivotY: finite.min(-4096).max(4096), scaleX: spriteScale, scaleY: spriteScale }).strict()).min(1).max(32),
+    tracks: z.array(track.extend({targetId: localId})).min(1).max(128)
+  }).strict(),
   z.object({ ...commonMotion, ...frameOptions, kind: z.literal('frame_animation'), frames: z.array(relativePath).min(1).max(240), fps: finite.min(1).max(60).optional(), frameDurationsMs: z.array(duration).max(240).optional(), canvas: z.object({ width: finite.int().min(1).max(4096), height: finite.int().min(1).max(4096) }).strict(), anchor: z.object({ x: finite.min(0).max(1), y: finite.min(0).max(1) }).strict() }).strict()
 ]);
 export type Motion = z.infer<typeof motionSchema>;
@@ -39,7 +50,7 @@ export const nodeSchema: z.ZodType<ActionNode> = z.lazy(() => z.discriminatedUni
   z.object({ type: z.literal('bubble'), text: z.string().min(1).max(120), durationMs: duration }).strict(),
   z.object({ type: z.literal('wait'), durationMs: duration }).strict()
 ]));
-export const groupSchema = z.object({ schemaVersion: z.literal(1), id: localId, name: z.string().min(1).max(100), description: z.string().max(1000), tags: z.array(z.string().max(40)).max(20), enabled: z.boolean(), random: z.object({ eligible: z.boolean(), weight: finite.min(0).max(1000), cooldownMs: finite.min(0).max(86400000) }).strict(), conditions: z.object({ minIdleMs: finite.min(0).max(86400000), requiresRoaming: z.boolean(), requiresPointerAway: z.boolean(), requiresStanding: z.boolean().optional() }).strict(), maxDurationMs: duration, timeline: nodeSchema }).strict();
+export const groupSchema = z.object({ schemaVersion: z.literal(1), id: localId, name: z.string().min(1).max(100), description: z.string().max(1000), tags: z.array(z.string().max(40)).max(20), enabled: z.boolean(), interaction: z.enum(['drag-hold','drag-release']).optional(), random: z.object({ eligible: z.boolean(), weight: finite.min(0).max(1000), cooldownMs: finite.min(0).max(86400000) }).strict(), conditions: z.object({ minIdleMs: finite.min(0).max(86400000), requiresRoaming: z.boolean(), requiresPointerAway: z.boolean(), requiresStanding: z.boolean().optional() }).strict(), maxDurationMs: duration, timeline: nodeSchema }).strict();
 export type Group = z.infer<typeof groupSchema>;
 export const packSchema = z.object({ schemaVersion: z.literal(1), id: localId, name: z.string().min(1).max(100), version: z.string().max(40), avatarId: z.literal(AVATAR), description: z.string().max(1000), motions: z.array(relativePath).max(500), groups: z.array(relativePath).min(1).max(500) }).strict();
 export type Pack = z.infer<typeof packSchema>;
@@ -57,15 +68,19 @@ export function guardTree(raw: unknown, depth = 0, counter = { n: 0 }): void {
 }
 export function validateMotion(m: Motion): void {
   if (new Set(m.channels).size !== m.channels.length) throw new Error(`${m.id}: 通道重复`);
-  if (m.kind === 'rig_timeline') {
+  if (m.kind === 'rig_timeline' || m.kind === 'sprite_rig') {
     const keys = new Set<string>(); const required = new Set<ActionChannel>();
+    const partIds = m.kind === 'sprite_rig' ? new Set(m.parts.map(p => p.id)) : undefined;
+    if (m.kind === 'sprite_rig' && partIds!.size !== m.parts.length) throw new Error(`${m.id}: 组件 ID 重复`);
     for (const t of m.tracks) {
+      if (partIds && !partIds.has(t.targetId)) throw new Error(`${m.id}: 未知组件 ${t.targetId}`);
       const key = `${t.targetId}.${t.property}`; if (keys.has(key)) throw new Error(`${m.id}: 重复轨道`); keys.add(key);
       required.add(t.targetId === 'eyes' || t.targetId === 'mouth' ? 'face' : t.targetId === 'effects' ? 'effect' : 'pose');
       if (t.keyframes[0].timeMs !== 0 || t.keyframes.at(-1)!.timeMs !== m.durationMs) throw new Error(`${m.id}: 关键帧必须包含 0 与结束时间`);
       t.keyframes.forEach((k, i) => { if (i && k.timeMs <= t.keyframes[i - 1].timeMs) throw new Error(`${m.id}: 关键帧时间必须递增`); if (t.property === 'alpha' && (k.value < 0 || k.value > 1)) throw new Error('alpha 必须在 0～1'); if ((t.property === 'scaleX' || t.property === 'scaleY') && (Math.abs(k.value) < 0.1 || Math.abs(k.value) > 3)) throw new Error('缩放绝对值必须在 0.1～3'); });
     }
-    if (m.channels.length !== required.size || m.channels.some(c => !required.has(c))) throw new Error(`${m.id}: motion 通道与轨道不一致`);
+    if (m.kind === 'sprite_rig') { if (m.channels.length !== 2 || !m.channels.includes('pose') || !m.channels.includes('face')) throw new Error('全身组件动画必须占用 pose 和 face'); }
+    else if (m.channels.length !== required.size || m.channels.some(c => !required.has(c))) throw new Error(`${m.id}: motion 通道与轨道不一致`);
   } else {
     if (Boolean(m.fps) === Boolean(m.frameDurationsMs)) throw new Error(`${m.id}: fps 和单帧时长必须且只能选择一项`);
     if (m.frameDurationsMs && m.frameDurationsMs.length !== m.frames.length) throw new Error('单帧时长数量不匹配');
@@ -96,15 +111,19 @@ export function makeCatalog(registry: Registry): Catalog {
     for (const [file, url] of Object.entries(p.assets)) assets.set(`${p.manifest.id}:${file}`, url);
   }
   for (const p of registry.packs) {
-    for (const m of p.motions) if (m.kind === 'frame_animation') for (const frame of [...m.frames,...(m.layers??[]).map(l=>l.image),...(m.frameOverlays??[]).map(l=>l.image)]) if (!assets.has(`${p.manifest.id}:${frame}`)) throw new Error(`缺少图片：${frame}`);
+    for (const m of p.motions) for (const frame of motionImages(m)) if (!assets.has(`${p.manifest.id}:${frame}`)) throw new Error(`缺少图片：${frame}`);
     for (const raw of p.groups) {
       guardTree(raw.timeline); const g = groupSchema.parse(raw); const a = analyze(g.timeline, motions); const id = `${p.manifest.id}:${g.id}`;
       if (groups.has(id)) throw new Error(`重复动作组：${id}`);
       if (g.maxDurationMs < a.duration + 100) throw new Error(`${g.name}: 看门狗需比预计时长多至少 100ms`);
+      if (g.interaction && (a.channels.includes('movement') || g.conditions.requiresStanding || g.random.eligible)) throw new Error(`${g.name}: 拖动绑定不能移动窗口、要求站立或参与随机待机`);
       groups.set(id, { ...g, groupId: id, packId: p.manifest.id, packName: p.manifest.name, channels: a.channels, expectedDurationMs: a.duration });
     }
   }
   return { groups, motions, assets };
 }
-export function effective(g: GroupInfo, s: Settings): GroupInfo { const o = s.overrides[g.groupId]; return { ...g, enabled: o?.enabled ?? g.enabled, random: { eligible: o?.eligible ?? g.random.eligible, weight: o?.weight ?? g.random.weight, cooldownMs: o?.cooldownMs ?? g.random.cooldownMs } }; }
+export function motionImages(m: Motion): string[] {
+  return m.kind === 'sprite_rig' ? m.parts.map(p => p.image) : m.kind === 'frame_animation' ? [...m.frames,...(m.layers??[]).map(l=>l.image),...(m.frameOverlays??[]).map(l=>l.image)] : [];
+}
+export function effective(g: GroupInfo, s: Settings): GroupInfo { const o = s.overrides[g.groupId]; return { ...g, enabled: o?.enabled ?? g.enabled, random: { eligible: !g.interaction && (o?.eligible ?? g.random.eligible), weight: o?.weight ?? g.random.weight, cooldownMs: o?.cooldownMs ?? g.random.cooldownMs } }; }
 

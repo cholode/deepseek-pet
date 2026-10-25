@@ -8,7 +8,7 @@ export class PetRuntime {
   constructor(public registry: Registry, public settings: Settings, public desktop: DesktopState, private host: AnimationHost) {
     this.catalog = makeCatalog(registry); this.driver = new NormalBehaviorDriver(() => [...this.catalog.groups.values()], () => ({ settings: this.settings, lastInteraction: this.lastInteraction, pointerNear: this.desktop.pointerNear, quarantined: this.quarantined }));
   }
-  async start() { await this.driver.start({ control: this.port('normal'), subscribe: f => this.subscribe(f) }); this.syncDriver(); }
+  async start() { await this.driver.start({ control: this.port('normal'), subscribe: f => this.subscribe(f) }); this.syncDriver(); this.ensureDragAction(); }
   subscribe(f: (e: PetEvent) => void) { this.listeners.add(f); return () => { this.listeners.delete(f); }; }
   private emit(e: PetEvent) { this.events = [...this.events, e].slice(-60); for (const fn of this.listeners) fn(e); }
   log(message: string) { this.errors = [...this.errors, message].slice(-40); }
@@ -42,12 +42,20 @@ export class PetRuntime {
     }
     this.cache.set(key, { content, result }); if (this.cache.size > 256) this.cache.delete(this.cache.keys().next().value!); return result;
   }
-  tick(delta: number) { if (delta > 1500) { this.current?.cancel(); this.host.reset(); this.driver.refresh(); return; } this.current?.tick(Math.min(100, delta)); }
+  tick(delta: number) { if (delta > 1500) { this.current?.cancel(); this.host.reset(); this.driver.refresh(); return; } this.current?.tick(Math.min(100, delta)); this.ensureDragAction(); }
   setMode(mode: 'normal' | 'ai') { return checkMode(mode); }
-  setSettings(settings: Settings) { if (settings.fixedPosition && this.current?.group.channels.includes('movement')) this.current.cancel(); this.settings = settings; this.syncDriver(); }
+  setSettings(settings: Settings) { if (settings.fixedPosition && this.current?.group.channels.includes('movement')) this.current.cancel(); this.settings = settings; if(this.current?.group.interaction && !effective(this.current.group, settings).enabled)this.current.cancel(); this.syncDriver(); }
   private syncDriver() { if (this.settings.paused || !this.desktop.visible || this.desktop.dragging || this.desktop.suspended) this.driver.pause(); else { this.driver.resume(); this.driver.refresh(); } }
-  setDesktop(desktop: DesktopState) { const previous = this.desktop; this.desktop = desktop; if ((!desktop.visible || desktop.suspended || desktop.dragging) && this.current) this.current.cancel();
-    if (previous.dragging !== desktop.dragging) { this.interact('desktop', desktop.dragging ? 'drag-start' : 'drag-end'); if (!desktop.dragging && desktop.visible && !desktop.suspended) this.play('builtin.deepblue:drag_release', 'system'); }
+  private playInteraction(binding: 'drag-hold' | 'drag-release') {
+    const group = [...this.catalog.groups.values()].map(g => effective(g, this.settings)).find(g => g.interaction === binding && g.enabled && !this.quarantined.has(g.groupId));
+    if (group) this.play(group.groupId, 'system');
+  }
+  private ensureDragAction() {
+    if (this.desktop.dragging && this.desktop.visible && !this.desktop.suspended && !this.current) this.playInteraction('drag-hold');
+  }
+  setDesktop(desktop: DesktopState) { const previous = this.desktop; this.desktop = desktop; if ((!desktop.visible || desktop.suspended || previous.dragging !== desktop.dragging) && this.current) this.current.cancel();
+    if (previous.dragging !== desktop.dragging) { this.interact('desktop', desktop.dragging ? 'drag-start' : 'drag-end'); if (!desktop.dragging && desktop.visible && !desktop.suspended) this.playInteraction('drag-release'); }
+    this.ensureDragAction();
     if (previous.visible !== desktop.visible || previous.dragging !== desktop.dragging || previous.suspended !== desktop.suspended) this.syncDriver();
   }
   interact(target: 'head' | 'body' | 'desktop', gesture: 'click' | 'drag-start' | 'drag-end' = 'click') { this.lastInteraction = Date.now(); this.emit({ type: 'interaction', occurredAtUnixMs: Date.now(), payload: { target, gesture, clickCount: gesture === 'click' ? 1 : 0 } }); }

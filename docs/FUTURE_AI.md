@@ -2,6 +2,8 @@
 
 当前只有普通驱动。界面 AI 项禁用。`checkMode('ai')` 和绑定 AI 来源的命令入口返回 `MODE_NOT_AVAILABLE`，检查发生在停止正常驱动之前。因此错误的 AI 切换不会破坏普通模式。
 
+1.3.13 目录增加“被拎起挣动”，共有 33 组。组件动画与拖动绑定仍通过同一有限动作执行器；系统在用户拖动期间重新提交有限周期，非系统来源仍返回 `DRAG_LOCKED`。没有新增 AI 权限或模型服务。
+
 ## 已实现的契约
 
 - `src/shared/contracts.ts`：PetCommand、CommandReceipt、PetSnapshot、GroupCapability、PetControlPort、PetEvent、BehaviorContext、IBehaviorDriver。

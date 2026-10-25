@@ -1,0 +1,28 @@
+{
+  "schemaVersion": 1,
+  "id": "drag_held",
+  "name": "被拎起挣动",
+  "description": "按住拖动时握拳抗议，双腿悬空轻蹬，后发与低位鲸尾独立摆动；松手回到站立。",
+  "tags": [
+    "互动",
+    "拖动"
+  ],
+  "enabled": true,
+  "interaction": "drag-hold",
+  "random": {
+    "eligible": false,
+    "weight": 0,
+    "cooldownMs": 0
+  },
+  "conditions": {
+    "minIdleMs": 0,
+    "requiresRoaming": false,
+    "requiresPointerAway": false
+  },
+  "maxDurationMs": 3800,
+  "timeline": {
+    "type": "motion",
+    "motionId": "builtin.deepblue:drag_held",
+    "repeat": 1
+  }
+}

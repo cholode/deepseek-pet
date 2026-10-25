@@ -181,6 +181,280 @@
             ]
           }
         },
+        "canvas": {
+          "type": "object",
+          "properties": {
+            "width": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 4096
+            },
+            "height": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 4096
+            }
+          },
+          "required": [
+            "width",
+            "height"
+          ],
+          "additionalProperties": false
+        },
+        "anchor": {
+          "type": "object",
+          "properties": {
+            "x": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 1
+            },
+            "y": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 1
+            }
+          },
+          "required": [
+            "x",
+            "y"
+          ],
+          "additionalProperties": false
+        },
+        "displayScale": {
+          "type": "number",
+          "minimum": 0.1,
+          "maximum": 3
+        },
+        "hitAreas": {
+          "maxItems": 8,
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "target": {
+                "type": "string",
+                "enum": [
+                  "head",
+                  "body"
+                ]
+              },
+              "x": {
+                "type": "number",
+                "minimum": 0,
+                "maximum": 4096
+              },
+              "y": {
+                "type": "number",
+                "minimum": 0,
+                "maximum": 4096
+              },
+              "width": {
+                "type": "number",
+                "minimum": 1,
+                "maximum": 4096
+              },
+              "height": {
+                "type": "number",
+                "minimum": 1,
+                "maximum": 4096
+              }
+            },
+            "required": [
+              "target",
+              "x",
+              "y",
+              "width",
+              "height"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "kind": {
+          "type": "string",
+          "const": "sprite_rig"
+        },
+        "parts": {
+          "minItems": 1,
+          "maxItems": 32,
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string",
+                "pattern": "^[a-zA-Z0-9_.-]{1,80}$"
+              },
+              "image": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 240
+              },
+              "x": {
+                "type": "number",
+                "minimum": -4096,
+                "maximum": 4096
+              },
+              "y": {
+                "type": "number",
+                "minimum": -4096,
+                "maximum": 4096
+              },
+              "pivotX": {
+                "type": "number",
+                "minimum": -4096,
+                "maximum": 4096
+              },
+              "pivotY": {
+                "type": "number",
+                "minimum": -4096,
+                "maximum": 4096
+              },
+              "scaleX": {
+                "type": "number",
+                "minimum": -3,
+                "maximum": 3
+              },
+              "scaleY": {
+                "type": "number",
+                "minimum": -3,
+                "maximum": 3
+              }
+            },
+            "required": [
+              "id",
+              "image",
+              "x",
+              "y",
+              "pivotX",
+              "pivotY",
+              "scaleX",
+              "scaleY"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "tracks": {
+          "minItems": 1,
+          "maxItems": 128,
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "targetId": {
+                "type": "string",
+                "pattern": "^[a-zA-Z0-9_.-]{1,80}$"
+              },
+              "property": {
+                "type": "string",
+                "enum": [
+                  "offsetX",
+                  "offsetY",
+                  "rotationDeg",
+                  "scaleX",
+                  "scaleY",
+                  "alpha"
+                ]
+              },
+              "keyframes": {
+                "minItems": 2,
+                "maxItems": 120,
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "timeMs": {
+                      "type": "number",
+                      "minimum": 0,
+                      "maximum": 30000
+                    },
+                    "value": {
+                      "type": "number",
+                      "minimum": -2000,
+                      "maximum": 2000
+                    },
+                    "easing": {
+                      "type": "string",
+                      "enum": [
+                        "linear",
+                        "easeInOut",
+                        "easeOut"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "timeMs",
+                    "value",
+                    "easing"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            },
+            "required": [
+              "targetId",
+              "property",
+              "keyframes"
+            ],
+            "additionalProperties": false
+          }
+        }
+      },
+      "required": [
+        "schemaVersion",
+        "id",
+        "name",
+        "avatarId",
+        "durationMs",
+        "channels",
+        "canvas",
+        "anchor",
+        "kind",
+        "parts",
+        "tracks"
+      ],
+      "additionalProperties": false
+    },
+    {
+      "type": "object",
+      "properties": {
+        "schemaVersion": {
+          "type": "number",
+          "const": 1
+        },
+        "id": {
+          "type": "string",
+          "pattern": "^[a-zA-Z0-9_.-]{1,80}$"
+        },
+        "name": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 100
+        },
+        "avatarId": {
+          "type": "string",
+          "const": "deepblue-chibi-v1"
+        },
+        "durationMs": {
+          "type": "number",
+          "minimum": 1,
+          "maximum": 30000
+        },
+        "channels": {
+          "minItems": 1,
+          "maxItems": 5,
+          "type": "array",
+          "items": {
+            "type": "string",
+            "enum": [
+              "pose",
+              "face",
+              "movement",
+              "effect",
+              "bubble"
+            ]
+          }
+        },
         "displayScale": {
           "type": "number",
           "minimum": 0.1,

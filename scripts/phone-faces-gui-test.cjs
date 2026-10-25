@@ -20,7 +20,7 @@ const wait=ms=>new Promise(r=>setTimeout(r,ms));
   await command('stop_current');await standing();await wait(200);
   const size=await pet.evaluate(()=>({w:innerWidth,h:innerHeight}));
   const pack=await panel.evaluate(async()=>(await window.pet.bootstrap()).registry.packs.find(p=>p.manifest.id==='builtin.deepblue'));
-  assert.equal(pack.manifest.version,require('../package.json').version);assert.equal(pack.groups.length,32);
+  assert.equal(pack.manifest.version,require('../package.json').version);assert.equal(pack.groups.length,33);
   const groups=pack.groups.filter(g=>/^play_phone(?:_|$)/.test(g.id));assert.equal(groups.length,12);
   const base=pack.motions.find(m=>m.id==='play_phone');assert.equal(base.frames.length,96);
   await panel.getByRole('button',{name:/^动作组/}).click();

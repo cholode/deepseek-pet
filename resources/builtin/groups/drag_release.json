@@ -13,7 +13,7 @@
     "cooldownMs": 12000
   },
   "conditions": {
-    "minIdleMs": 2000,
+    "minIdleMs": 0,
     "requiresRoaming": false,
     "requiresPointerAway": false
   },
@@ -22,5 +22,6 @@
     "type": "motion",
     "motionId": "builtin.deepblue:settle",
     "repeat": 1
-  }
+  },
+  "interaction": "drag-release"
 }

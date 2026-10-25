@@ -9,6 +9,7 @@ import { parametersFor, type RigPose } from './live2d/pose';
 import { expressionEnvelope, expressionProfile } from '../../shared/expressions';
 import { steamEffect } from './steam';
 import { createFrameOverlays } from './frame-overlays';
+import { createSpriteRig } from './sprite-rig';
 const pivot: Record<string, [number, number]> = { root: [0,0], body: [0,-145], head: [0,-205], hairBack:[0,-300],hairFront:[0,-305],armLeft:[-49,-193],armRight:[49,-193],eyes:[0,-240],mouth:[0,-208],effects:[0,-200],tail:[28,-114] };
 for (const side of ['Left','Right']) for (const joint of ['shoulder','elbow','wrist']) pivot[joint+side]=[0,0];
 export class Avatar implements AnimationHost {
@@ -17,7 +18,7 @@ export class Avatar implements AnimationHost {
   private faceWeight=1;
   private gaze = {x:0,y:0}; private gazeTarget = {x:0,y:0};
   private frameStage = new Container();
-  private frameMotion?: Extract<Motion, {kind:'frame_animation'}>;
+  private frameMotion?: Extract<Motion, {kind:'frame_animation'|'sprite_rig'}>;
   private frameOverlays?: ReturnType<typeof createFrameOverlays>;
   private scene = new Container();
   private viewport = { ...baseViewport };
@@ -93,12 +94,18 @@ export class Avatar implements AnimationHost {
       if(m.kind==='rig_timeline'){this.resetChannels(m.channels);update=ms=>{const time=ms>=m.durationMs*node.repeat?m.durationMs:ms%m.durationMs;for(const track of m.tracks){let index=track.keyframes.findIndex(k=>k.timeMs>=time);if(index<1)index=1;const a=track.keyframes[index-1],b=track.keyframes[index];const f=ease(Math.min(1,Math.max(0,(time-a.timeMs)/(b.timeMs-a.timeMs))),b.easing);this.set(track.targetId,track.property,a.value+(b.value-a.value)*f);}};dispose=()=>this.resetChannels(m.channels);}
       else {
         const texture=(file:string)=>{const url=catalog.assets.get(`${node.motionId.split(':')[0]}:${file}`);if(!url||!this.textures.has(url))throw new Error(`帧未预加载：${file}`);return this.textures.get(url)!;};
-        this.nodes.get('root')!.visible=false;this.frame.visible=true;this.frameMotion=m;this.app.canvas.dataset.pose='frames';this.resize();
+        this.nodes.get('root')!.visible=false;this.frame.visible=m.kind==='frame_animation';this.frameMotion=m;this.app.canvas.dataset.pose=m.kind==='sprite_rig'?'sprite-rig':'frames';this.resize();
         this.frameStage.scale.set(m.displayScale??1);this.frameStage.position.set(-m.canvas.width*m.anchor.x*(m.displayScale??1),-m.canvas.height*m.anchor.y*(m.displayScale??1));this.frame.anchor.set(0,0);
+        if(m.kind==='sprite_rig'){
+          const rig=createSpriteRig(this.frameStage,m,texture);
+          update=ms=>rig.update(ms>=m.durationMs*node.repeat?m.durationMs:ms%m.durationMs);
+          dispose=()=>{rig.dispose();this.frameMotion=undefined;this.nodes.get('root')!.visible=true;this.app.canvas.dataset.pose='standing';this.resize();};
+        } else {
         const layers=(m.layers??[]).map(l=>{const sprite=new Sprite(texture(l.image));sprite.pivot.set(l.pivotX,l.pivotY);sprite.position.set(l.x+l.pivotX,l.y+l.pivotY);this.frameStage.addChildAt(sprite,0);return {sprite,definition:l};});
         const overlays=createFrameOverlays(this.frameStage,m,texture);this.frameOverlays=overlays;
         update=ms=>{const index=frameIndex(m,ms>=m.durationMs*node.repeat?m.durationMs:ms%m.durationMs);this.frame.texture=texture(m.frames[index]);overlays.update(index);for(const {sprite,definition:l} of layers)sprite.rotation=l.rotationDeg*Math.PI/180*Math.sin(ms/l.periodMs*Math.PI*2);};
         dispose=()=>{overlays.dispose();if(this.frameOverlays===overlays)this.frameOverlays=undefined;layers.forEach(l=>l.sprite.destroy());this.frame.visible=false;this.frameMotion=undefined;this.nodes.get('root')!.visible=true;this.app.canvas.dataset.pose='standing';this.resize();};
+        }
       }
     } else if(node.type==='expression'){
       this.resetChannels(['face']);this.expression(node.expressionId);

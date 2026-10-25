@@ -30,6 +30,13 @@
     "enabled": {
       "type": "boolean"
     },
+    "interaction": {
+      "type": "string",
+      "enum": [
+        "drag-hold",
+        "drag-release"
+      ]
+    },
     "random": {
       "type": "object",
       "properties": {

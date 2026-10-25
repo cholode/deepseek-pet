@@ -2,6 +2,12 @@
 
 本版只导入文件夹，不导入 ZIP，不执行插件脚本。一个包至少包含 `pack.json` 和一个动作组 JSON；需要新动作时再加入 motion 或 PNG/WebP。
 
+## 组件绑定与拖动互动（1.3.13）
+
+`sprite_rig` 为第三种 motion 格式，完整示例见 `resources/builtin/motions/drag_held.json`。它与全身帧动画一样提供 `canvas`、`anchor`、`displayScale`、`hitAreas`，占用 `pose` 与 `face`。`parts` 按从后往前的绘制顺序列出独立组件，每项含唯一 `id`、包内图片 `image`、画布支点位置 `x/y`、图片内支点 `pivotX/pivotY`、基础缩放 `scaleX/scaleY`；负缩放用于镜像。`tracks.targetId` 指向组件 ID，属性为偏移、旋转、相对缩放或透明度；关键帧仍须包含 0 和 `durationMs`，时长及资源预算不变。
+
+动作组可选 `interaction: "drag-hold"` 或 `"drag-release"`。拖动开始/结束按目录顺序选择第一个启用且无故障的对应组，使用系统来源进入同一执行器。拖动仍在进行时重新播放有限周期；手动预览只播放一轮。此绑定不能包含 `movement`，不能要求站立或参加随机，随机覆盖设置也不会开启它。没有有效绑定时保留普通站姿与窗口拖动能力。禁用内置绑定后，可在自定义包中用相同元数据提供替代动作，无需改 TypeScript。
+
 ## 最短上手
 
 复制项目中的 `examples/custom-action-pack`。打开小屋 → 动作组 → 导入动作包 → 选择这个文件夹。它将注册：
