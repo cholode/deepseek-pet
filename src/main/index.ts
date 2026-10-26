@@ -9,6 +9,7 @@ import { commandSchema, type CommandReceipt, type DebugState, type DesktopState,
 import { baseViewport, clampRect, dimensions, ease, nearestArea, nearestContainedRect, resizeAtFeet } from '../shared/geometry';
 import { PackStore, readPack } from './packs';
 import { SettingsStore } from './settings';
+import { CompanionService } from './companion/service';
 
 protocol.registerSchemesAsPrivileged([{ scheme: 'petasset', privileges: { standard: true, secure: true, supportFetchAPI: true, corsEnabled: true } }]);
 if (process.env.PET_TEST_USER) app.setPath('userData', path.resolve(process.env.PET_TEST_USER));
@@ -20,6 +21,7 @@ let dragGestureId = 0;
 let movement: { id: string; from: { x: number; y: number }; to: { x: number; y: number }; started: number; ms: number; easing: string } | undefined;
 const pending = new Map<string, { resolve: (r: CommandReceipt) => void; timer: ReturnType<typeof setTimeout> }>();
 let viewport = { ...baseViewport };
+let companion: CompanionService | undefined;
 const resourceRoot = () => app.isPackaged ? path.join(process.resourcesPath, 'pet-resources') : path.join(app.getAppPath(), 'resources');
 const send = (m: RuntimeMessage) => { if (pet && !pet.isDestroyed()) pet.webContents.send('runtime', m); };
 function error(e: unknown) { const message = e instanceof Error ? e.message : String(e); console.error(message); send({ type: 'error', error: message }); }
@@ -101,7 +103,18 @@ async function boot() {
   if (settings.value.position) { pet.setPosition(Math.round(settings.value.position.x), Math.round(settings.value.position.y)); recoverPosition(); } else resetPosition();
   const icon = nativeImage.createFromPath(path.join(resourceRoot(), 'icon.png')); if (icon.isEmpty()) throw new Error('无法加载托盘图标'); tray = new Tray(icon.resize({ width: 32, height: 32 })); tray.setToolTip('大肥鱼桌宠 · 双击打开小屋'); tray.setContextMenu(menu()); tray.on('double-click', openPanel); tray.on('click', openPanel);
   pet.on('ready-to-show', () => { showPet(); }); pet.on('blur', endDrag); pet.on('close', () => app.quit());
-  handle('bootstrap', 'either', () => ({ registry: packs.registry, settings: settings.value, desktop, errors: [...packs.errors, ...(settings.error ? [settings.error] : [])] }));
+  handle('bootstrap', 'either', () => ({ registry: packs.registry, settings: settings.value, desktop, errors: [...packs.errors, ...(settings.error ? [settings.error] : [])], companionEnabled: companion?.coordinator.ready ?? false }));
+  // 陪伴服务只通过受限宿主端口感知桌宠，不直接修改窗口或人物图层。
+  companion = new CompanionService(app.getPath('userData'), {
+    now: Date.now, id: randomUUID,
+    changed: state => { panel?.webContents.send('companion-state', state); },
+    present: value => { if (!pet.isDestroyed()) pet.webContents.send('companion-presentation', value); panel?.webContents.send('companion-presentation', value); },
+    capabilities: () => (debug?.groups ?? []).map(g => ({ groupId: g.groupId, name: g.name, description: g.description, tags: g.tags, channels: g.channels, expectedDurationMs: g.expectedDurationMs, available: g.enabled && !g.interaction && !debug?.failedGroups.includes(g.groupId) })),
+    available: () => desktop.visible && !desktop.suspended && !desktop.dragging && !settings.value.paused,
+    lastInteractionAt: () => Math.max(0, ...(debug?.events.filter(e => e.type === 'interaction').map(e => e.occurredAtUnixMs) ?? []), ...(companion?.store.data.events.filter(e => e.actor === 'user').map(e => e.at) ?? []))
+  }, enabled => send({ type: 'companion-mode', enabled }));
+  await companion.start();
+  handle('companion', 'panel', raw => companion!.request(raw));
   handle('open-panel', 'either', openPanel); handle('context-menu', 'pet', () => { menu().popup({ window: pet }); }); handle('reset-position', 'either', resetPosition); handle('show-pet', 'either', showPet);
   handle('save-settings', 'panel', applySettings); handle('reset-settings', 'panel', () => applySettings(structuredClone(defaults)));
   handle('set-viewport', 'pet', raw => { const next = z.object({ width: z.number().int().min(340).max(1024), height: z.number().int().min(420).max(1024) }).strict().parse(raw); if (next.width === viewport.width && next.height === viewport.height) return; viewport = next; resizePet(); savePosition(); });
@@ -110,7 +123,7 @@ async function boot() {
   const panelRequestSchema = z.discriminatedUnion('type', [z.object({ type: z.literal('command'), command: commandSchema }).strict(), z.object({ type: z.literal('pause'), value: z.boolean() }).strict(), z.object({ type: z.literal('mode'), mode: z.enum(['normal', 'ai']) }).strict()]);
   handle('panel-request', 'panel', raw => requestRuntime({ type: 'request', request: panelRequestSchema.parse(raw) })); handle('get-debug', 'panel', () => debug);
   ipcMain.on('reply', (event, id: unknown, result: unknown) => { try { trusted(event, 'pet'); const key = z.string().uuid().parse(id); const r = z.object({ commandId: z.string(), status: z.enum(['accepted', 'rejected']), actionInstanceId: z.string().optional(), errorCode: z.string().optional(), message: z.string().optional() }).strict().parse(result); const waiter = pending.get(key); if (waiter) { clearTimeout(waiter.timer); pending.delete(key); waiter.resolve(r); } } catch (e) { error(e); } });
-  ipcMain.on('publish', (event, state: DebugState) => { try { trusted(event, 'pet'); if (!state || JSON.stringify(state).length > 1000000 || state.snapshot?.snapshotVersion !== 1 || !Array.isArray(state.groups) || !Array.isArray(state.errors)) return; debug = state; panel?.webContents.send('debug', state); } catch (e) { error(e); } });
+  ipcMain.on('publish', (event, state: DebugState) => { try { trusted(event, 'pet'); if (!state || JSON.stringify(state).length > 1000000 || state.snapshot?.snapshotVersion !== 1 || !Array.isArray(state.groups) || !Array.isArray(state.errors)) return; debug = state; companion?.observe(state.events ?? []); panel?.webContents.send('debug', state); } catch (e) { error(e); } });
   ipcMain.on('hit-regions', (event, raw: unknown) => { try { trusted(event, 'pet'); regions = z.array(z.object({ target: z.enum(['head', 'body']), x: z.number().finite().min(-1000).max(2000), y: z.number().finite().min(-1000).max(2000), width: z.number().finite().min(0).max(2000), height: z.number().finite().min(0).max(2000) }).strict()).max(8).parse(raw); } catch (e) { error(e); } });
   handle('pointer-down', 'pet', raw => { const p = z.object({x:z.number().finite(),y:z.number().finite()}).strict().parse(raw); const b = pet.getBounds(); if(!regions.some(r=>p.x>=b.x+r.x-8 && p.x<=b.x+r.x+r.width+8 && p.y>=b.y+r.y-8 && p.y<=b.y+r.y+r.height+8)) throw new Error('POINTER_OUTSIDE_PET'); press = { ...p, windowX: b.x, windowY: b.y, time: Date.now() }; });
   handle('drag-start', 'pet', () => { if (settings.value.fixedPosition || settings.value.clickThrough || !press || Date.now() - press.time > 10000) return false; if(desktop.dragging)return true; movement = undefined; dragGestureId++; desktop.dragging = true; setIgnore(false); updateDragPosition(); dragTimeout = setTimeout(endDrag, 30000); broadcastDesktop(); samplingState(); return true; });
@@ -118,12 +131,25 @@ async function boot() {
   handle('move-start', 'pet', raw => { const m = z.object({ id: z.string().min(1).max(100), dx: z.number().finite().min(-1000).max(1000), dy: z.number().finite().min(-1000).max(1000), ms: z.number().finite().min(1).max(30000), easing: z.enum(['linear', 'easeOut', 'easeInOut']) }).strict().parse(raw); if (settings.value.fixedPosition || desktop.dragging || !desktop.visible) throw new Error('MOVEMENT_LOCKED'); const b = pet.getBounds(); const to = clampRect({ ...b, x: b.x + m.dx, y: b.y + m.dy }, screen.getDisplayMatching(b).workArea); movement = { id: m.id, from: { x: b.x, y: b.y }, to, started: performance.now(), ms: m.ms, easing: m.easing }; samplingState(); });
   handle('move-stop', 'pet', id => { if (movement?.id === id) { movement = undefined; savePosition(); samplingState(); } });
   screen.on('display-added', recoverPosition); screen.on('display-removed', recoverPosition); screen.on('display-metrics-changed', recoverPosition);
-  powerMonitor.on('suspend', () => { movement = undefined; endDrag(); desktop.suspended = true; samplingState(); broadcastDesktop(); }); powerMonitor.on('resume', () => { desktop.suspended = false; recoverPosition(); samplingState(); broadcastDesktop(); });
+  powerMonitor.on('suspend', () => { movement = undefined; endDrag(); desktop.suspended = true; companion?.cancel(); samplingState(); broadcastDesktop(); }); powerMonitor.on('resume', () => { desktop.suspended = false; recoverPosition(); samplingState(); broadcastDesktop(); });
   globalShortcut.register('CommandOrControl+Alt+P', restoreInteraction);
   load(pet, 'pet'); if (process.argv.includes('--panel')) openPanel();
 }
 if (!app.requestSingleInstanceLock()) app.quit(); else { app.on('second-instance', () => { showPet(); openPanel(); }); void app.whenReady().then(boot).catch(e => { dialog.showErrorBox('大肥鱼启动失败', String(e)); app.exit(1); }); }
-app.on('before-quit', e => { if (quitReady) return; e.preventDefault(); quitReady = true; if (sampling) clearInterval(sampling); if (dragTimeout) clearTimeout(dragTimeout); movement = undefined; globalShortcut.unregisterAll(); for (const p of pending.values()) clearTimeout(p.timer); pending.clear(); if (settings) void settings.save({ ...settings.value, position: pet && !pet.isDestroyed() ? standingPosition() : desktop.position }).finally(() => app.quit()); else app.quit(); });
+app.on('before-quit', e => {
+  if (quitReady) return;
+  e.preventDefault(); quitReady = true;
+  if (sampling) clearInterval(sampling);
+  if (dragTimeout) clearTimeout(dragTimeout);
+  movement = undefined; globalShortcut.unregisterAll();
+  for (const p of pending.values()) clearTimeout(p.timer);
+  pending.clear();
+  // 等待持久化队列落盘，防止退出时丢失最后一句对话或新记忆。
+  void Promise.allSettled([
+    companion?.close(),
+    settings?.save({ ...settings.value, position: pet && !pet.isDestroyed() ? standingPosition() : desktop.position })
+  ]).finally(() => app.quit());
+});
 app.on('window-all-closed', () => app.quit());
 
 

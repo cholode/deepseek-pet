@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import type { CompanionBridge } from './companion';
 import { globalId, type Registry, type Settings, type GroupInfo, type ActionChannel } from './schema';
 export type PetMode = 'normal' | 'ai';
 export type DriverStatus = 'stopped' | 'running' | 'paused' | 'unavailable';
@@ -17,11 +18,11 @@ export interface IBehaviorDriver { readonly mode: PetMode; readonly status: Driv
 export interface DragSample { x: number; timeMs: number; gestureId: number }
 export interface DesktopState { visible: boolean; dragging: boolean; pointerNear: boolean; position: { x: number; y: number }; suspended: boolean; pointer?: { x: number; y: number }; dragSample?: DragSample }
 export interface DebugState { failedGroups: string[]; snapshot: PetSnapshot; groups: GroupInfo[]; errors: string[]; candidateCount: number; nextInMs: number; events: PetEvent[] }
-export interface Bootstrap { registry: Registry; settings: Settings; desktop: DesktopState; errors: string[] }
+export interface Bootstrap { registry: Registry; settings: Settings; desktop: DesktopState; errors: string[]; companionEnabled?: boolean }
 export type PanelRequest = { type: 'command'; command: PetCommand } | { type: 'pause'; value: boolean } | { type: 'mode'; mode: PetMode };
-export type RuntimeMessage = { type: 'settings'; settings: Settings } | { type: 'desktop'; desktop: DesktopState } | { type: 'registry'; registry: Registry; requestId: string } | { type: 'request'; request: PanelRequest; requestId: string } | { type: 'error'; error: string };
+export type RuntimeMessage = { type: 'settings'; settings: Settings } | { type: 'desktop'; desktop: DesktopState } | { type: 'registry'; registry: Registry; requestId: string } | { type: 'request'; request: PanelRequest; requestId: string } | { type: 'error'; error: string } | { type: 'companion-mode'; enabled: boolean };
 export interface HitRegion { target: 'head' | 'body'; x: number; y: number; width: number; height: number }
-export interface PetBridge {
+export interface PetBridge extends CompanionBridge {
   bootstrap(): Promise<Bootstrap>; openPanel(): Promise<void>; contextMenu(): Promise<void>; resetPosition(): Promise<void>; showPet(): Promise<void>;
   saveSettings(settings: Settings): Promise<Settings>; resetSettings(): Promise<Settings>; importPack(): Promise<{ ok: boolean; message: string }>; reloadPacks(): Promise<{ ok: boolean; message: string }>; openPacksFolder(): Promise<void>;
   panelRequest(request: PanelRequest): Promise<CommandReceipt>; getDebug(): Promise<DebugState | null>;

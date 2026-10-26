@@ -16,7 +16,8 @@
     "dist:win": "npm run build && electron-builder --win nsis portable --x64 && node scripts/release-notes.cjs",
     "schemas": "tsx scripts/schemas.ts",
     "assets": "tsx scripts/art-assets.ts",
-    "test:gui": "node scripts/gui-test.cjs"
+    "test:gui": "node scripts/gui-test.cjs",
+    "test:companion-gui": "node scripts/companion-gui-test.cjs"
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "1.32.2",

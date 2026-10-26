@@ -111,6 +111,16 @@ describe('timeline lifecycle',()=>{
   it('frame sequence advances by milliseconds and clamps its final frame',()=>{const m=registry.packs[0].motions.find(m=>m.id==='frame_magic') as Extract<Motion,{kind:'frame_animation'}>;expect([0,199,200,600,800].map(t=>frameIndex(m,t))).toEqual([0,0,1,3,3]);});
 });
 describe('command gateway and priority',()=>{
+  it('companion actions use the existing priority gate and are revoked when disabled',()=>{
+    vi.useFakeTimers();
+    const r=runtime();r.setCompanionEnabled(true);expect(r.snapshot().mode).toBe('ai');
+    expect(r.play('builtin.deepblue:greet_wave','ai').status).toBe('accepted');
+    expect(r.play('builtin.deepblue:happy_hop','manual').status).toBe('accepted');
+    expect(r.play('builtin.deepblue:greet_wave','ai').errorCode).toBe('BUSY');
+    r.current!.cancel();vi.advanceTimersByTime(100);expect(r.play('builtin.deepblue:greet_wave','ai').status).toBe('accepted');
+    r.setCompanionEnabled(false);expect(r.current).toBeNull();expect(r.snapshot().mode).toBe('normal');
+    expect(r.play('builtin.deepblue:greet_wave','ai').errorCode).toBe('MODE_NOT_AVAILABLE');
+  });
   it('sleep only enters from standing and returns to standing on completion or cancellation',()=>{
     const h=host(),r=new PetRuntime(structuredClone(registry),structuredClone(defaults),structuredClone(desktop),h);
     expect(r.play('builtin.deepblue:greet_wave','normal').status).toBe('accepted');const previous=r.current;
