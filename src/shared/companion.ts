@@ -51,7 +51,7 @@ export interface CompanionView {
   data: CompanionData; busy: boolean; ready: boolean; error?: string; notice?: string; recalls: RecallHit[];
   hasSecrets: Record<'model' | 'qq' | 'mcp', boolean>; tools: { name: string; description: string }[];
 }
-export interface CompanionPresentation { id: string; text: string; emotion: Emotion; groupId?: string; speech: CompanionConfig['speech']; source: CompanionEvent['source'] }
+export interface CompanionPresentation { id: string; text: string; emotion: Emotion; groupId?: string; speech: CompanionConfig['speech']; source: CompanionEvent['source']; phase?: 'streaming' | 'complete' | 'action' }
 export const companionRequestSchema = z.discriminatedUnion('type', [
   z.object({ type: z.literal('state') }).strict(),
   z.object({ type: z.literal('configure'), config: companionConfigSchema, secrets: z.object({ model: z.string().max(4000).optional(), qq: z.string().max(4000).optional(), mcp: z.string().max(4000).optional() }).strict().optional() }).strict(),

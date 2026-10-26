@@ -16,6 +16,8 @@ export function recallMemories(memories: Memory[], query: string, scope: 'privat
   }).filter(m => m.relevance >= 0.08 || m.pinned).sort((a, b) => b.score - a.score).slice(0, config.recallLimit).map(({ id, text, score, reason }) => ({ id, text, score, reason }));
 }
 export function remember(memories: Memory[], candidate: Memory): Memory[] {
+  // 手动确认的事实优先于自动推测，只有用户再次编辑才能覆盖同一事实。
+  if (candidate.sourceId !== 'manual' && candidate.factKey && memories.some(m => !m.deletedAt && !m.supersededBy && m.sourceId === 'manual' && m.factKey === candidate.factKey && m.scope === candidate.scope)) return memories;
   // 删除墓碑保留，自动提炼不会把用户刚忘掉的内容又写回来。
   if (memories.some(m => m.text === candidate.text && m.scope === candidate.scope)) return memories;
   if (memories.length >= 10000) throw new Error('记忆已达到一万条，请先导出和整理');

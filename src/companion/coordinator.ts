@@ -34,6 +34,15 @@ export class CompanionCoordinator {
     const turn = ++this.epoch; const controller = new AbortController(); this.active = controller; this.busy = true; this.error = undefined; this.notice = undefined;
     const live = () => !controller.signal.aborted && this.epoch === turn;
     const data = this.repository.data; const now = this.host.now();
+    const presentationId = this.host.id(); let streamed = ''; let lastStreamAt = 0;
+    const onText = source === 'initiative' ? undefined : (delta: string) => {
+      if (!live()) return;
+      streamed = (streamed + delta).slice(0, 8000);
+      if (streamed.trim() && (!lastStreamAt || Date.now() - lastStreamAt >= 30)) {
+        lastStreamAt = Date.now();
+        this.host.present({ id: presentationId, phase: 'streaming', text: streamed, emotion: 'calm', source, speech: { ...data.config.speech } });
+      }
+    };
     const event: CompanionEvent = { id, text, source, actor: source === 'initiative' ? 'system' : 'user', at: now, conversationId };
     this.add(event); this.mark(id);
     data.mood = decayMood(data.mood, data.config.mood, now);
@@ -45,7 +54,7 @@ export class CompanionCoordinator {
       const messages = buildContext(data, event, this.recalls);
       // 外部聊天和自动唤醒只能聊天；桌面用户明确启用且逐项选择的 MCP 工具才会暴露给模型。
       const definitions = source === 'desktop' && data.config.mcp.enabled ? (await this.tools.list(controller.signal)).filter(t => data.config.mcp.allowedTools.includes(t.name)) : [];
-      let result = await this.model.complete(messages, data.config.model, controller.signal, definitions);
+      let result = await this.model.complete(messages, data.config.model, controller.signal, definitions, onText);
       let calls = 0; const outcomes: string[] = [];
       for (let round = 0; result.calls.length && round < 2; round++) {
         if (!live()) return '';
@@ -63,7 +72,8 @@ export class CompanionCoordinator {
           outcomes.push(`${call.function.name}: ${output.slice(0, 1000)}`);
           messages.push({ role: 'tool', tool_call_id: call.id, content: output.slice(0, 12000) });
         }
-        result = await this.model.complete(messages, data.config.model, controller.signal, definitions);
+        streamed = ''; lastStreamAt = 0;
+        result = await this.model.complete(messages, data.config.model, controller.signal, definitions, onText);
       }
       if (result.calls.length) throw new Error('工具步骤达到上限，已停止继续执行');
       if (!live()) return '';
@@ -72,6 +82,9 @@ export class CompanionCoordinator {
       if (source === 'initiative' && reply.includes('[安静]')) return '';
       this.add({ id: this.host.id(), at: this.host.now(), source, actor: 'pet', conversationId, text: reply, causeId: id });
       await this.repository.save(); this.changed();
+      if (!live()) return '';
+      // 正文完成后立即展示/朗读，记忆评价在后面进行，不阻塞用户看到回复。
+      this.host.present({ id: presentationId, phase: 'complete', text: reply, emotion: 'calm', source, speech: { ...data.config.speech } });
       let emotion: Emotion = 'calm';
       // 评价只看真实外部事件和工具结果，避免对自己的伤心措辞反复加分形成反馈循环。
       if (source !== 'initiative' && (data.config.mood.enabled || data.config.memory.automatic)) {
@@ -84,25 +97,29 @@ export class CompanionCoordinator {
           const clean = assessment.text.trim().replace(/^```(?:json)?\s*/, '').replace(/\s*```$/, '');
           const a = appraisalSchema.parse(JSON.parse(clean));
           if (a.confidence >= 0.65) {
-            emotion = data.config.mood.enabled ? a.emotion : 'calm';
-            data.mood = applyEmotion(data.mood, id, a.emotion, a.delta, a.reason, a.confidence, data.config.mood, this.host.now());
+            const nextMood = applyEmotion(data.mood, id, a.emotion, a.delta, a.reason, a.confidence, data.config.mood, this.host.now());
+            let nextMemories = data.memories;
             // 群聊记录不自动升级成个人档案，手动公开记忆必须由桌面设置页明确选择。
             if (data.config.memory.automatic && source !== 'qq-group') for (const memory of a.memories) {
               if (!text.includes(memory.evidence)) continue;
-              data.memories = remember(data.memories, { ...memory, id: this.host.id(), scope: 'private', pinned: false, importance: 0.6, createdAt: now, eventAt: now, sourceId: id });
+              nextMemories = remember(nextMemories, { ...memory, id: this.host.id(), scope: 'private', pinned: false, importance: 0.6, createdAt: now, eventAt: now, sourceId: id });
             }
+            // 一次评价整体生效，避免记忆校验失败时只留下半次心情更新。
+            data.mood = nextMood; data.memories = nextMemories;
+            emotion = data.config.mood.enabled ? a.emotion : 'calm';
           }
         } catch { if (live()) this.notice = '回复已完成，本轮情绪或记忆提炼未成功，已有状态保持不变'; }
       }
       if (!live()) return '';
       await this.repository.save();
+      if (!live()) return '';
       const available = this.host.capabilities().filter(g => g.available && !g.channels.includes('movement'));
       const tagMap: Record<Emotion, string[]> = { happy: ['开心', '招呼', '微笑'], calm: ['点头'], curious: ['好奇', '疑惑'], confused: ['疑惑'], shy: ['害羞'], frustrated: ['抗议', '难过'], sleepy: ['困倦', '困'] };
       const group = available.find(g => tagMap[emotion].some(tag => `${g.name} ${g.tags.join(' ')}`.includes(tag)));
-      this.host.present({ id: this.host.id(), text: reply, emotion, groupId: group?.groupId, source, speech: { ...data.config.speech } });
+      this.host.present({ id: presentationId, phase: 'action', text: reply, emotion, groupId: group?.groupId, source, speech: { ...data.config.speech } });
       return reply;
     } catch (e) {
-      if (live()) { this.error = e instanceof Error ? e.message : '智能陪伴发生错误'; throw new Error(this.error); }
+      if (live()) { this.host.present(null); this.error = e instanceof Error ? e.message : '智能陪伴发生错误'; throw new Error(this.error); }
       return '';
     } finally { if (this.epoch === turn) { this.busy = false; this.active = undefined; this.changed(); } }
   }
