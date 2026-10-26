@@ -13,7 +13,7 @@ const appraisalSchema = z.object({
 export class CompanionCoordinator {
   busy = false; error?: string; notice?: string; recalls: RecallHit[] = [];
   private active?: AbortController; private epoch = 0;
-  constructor(readonly repository: RepositoryPort, private model: ModelPort, readonly tools: ToolPort, private host: CompanionHost) {}
+  constructor(readonly repository: RepositoryPort, private model: ModelPort, readonly tools: ToolPort, private host: CompanionHost, private software?: ToolPort) {}
   get ready() { return this.repository.data.config.enabled && Boolean(this.repository.data.config.model.model.trim()); }
   view(): CompanionView {
     const data = structuredClone(this.repository.data);
@@ -53,7 +53,11 @@ export class CompanionCoordinator {
       await this.repository.save();
       const messages = buildContext(data, event, this.recalls);
       // 外部聊天和自动唤醒只能聊天；桌面用户明确启用且逐项选择的 MCP 工具才会暴露给模型。
-      const definitions = source === 'desktop' && data.config.mcp.enabled ? (await this.tools.list(controller.signal)).filter(t => data.config.mcp.allowedTools.includes(t.name)) : [];
+      const legacy = source === 'desktop' && data.config.mcp.enabled ? (await this.tools.list(controller.signal)).filter(t => data.config.mcp.allowedTools.includes(t.name)) : [];
+      const software = source === 'desktop' && this.software ? await this.software.list(controller.signal) : [];
+      const definitions = [...legacy, ...software];
+      if (new Set(definitions.map(t => t.name)).size !== definitions.length) throw new Error('工具名称冲突，请调整 MCP 授权');
+      if (definitions.length > 100) throw new Error('已授权工具超过 100 项，请减少启用的能力');
       let result = await this.model.complete(messages, data.config.model, controller.signal, definitions, onText);
       let calls = 0; const outcomes: string[] = [];
       for (let round = 0; result.calls.length && round < 2; round++) {
@@ -67,7 +71,7 @@ export class CompanionCoordinator {
           if (JSON.stringify(args).length > 20000) throw new Error('工具参数过大');
           calls++;
           let output: string;
-          try { output = await this.tools.call(call.function.name, args, controller.signal); }
+          try { output = await (software.some(t => t.name === call.function.name) ? this.software! : this.tools).call(call.function.name, args, controller.signal); }
           catch (e) { if (!live()) return ''; output = `工具失败：${e instanceof Error ? e.message : '连接异常'}`; }
           outcomes.push(`${call.function.name}: ${output.slice(0, 1000)}`);
           messages.push({ role: 'tool', tool_call_id: call.id, content: output.slice(0, 12000) });

@@ -1,4 +1,4 @@
-# 大肥鱼智能陪伴 · 1.4.5
+# 大肥鱼智能陪伴 · 1.5.0
 
 ## 日记
 
@@ -112,7 +112,7 @@ flowchart LR
 
 首次发现不等于授权，修改服务地址会清空旧授权。群聊、私聊和主动搭话不能调用 MCP。停止按钮会取消请求并阻止后续步骤，已被外部软件执行的操作不会自动撤销。授权某个工具代表允许桌面会话中调用该工具，当前没有每一次调用的额外审批弹窗。
 
-本版完成了连接、发现、授权、执行、反馈的通路。并未内置通用鼠标键盘控制器、游戏画面理解、长期游戏规划或胜负验证；具体能力取决于接入的 MCP 服务，模型也需要支持函数调用。目前不支持 stdio、旧 SSE、OAuth 自动登录或多个同时连接的 MCP 服务。
+本版完成了连接、发现、授权、执行、反馈的通路。并未内置通用鼠标键盘控制器、游戏画面理解、长期游戏规划或胜负验证；具体能力取决于接入的 MCP 服务，模型也需要支持函数调用。旧的此设置区只管理一个 HTTP 服务；1.5.0 新增的“可操作软件”支持多个 stdio / Streamable HTTP 插件，仍不支持旧 SSE 或 OAuth 自动登录。
 
 ## QQ 与主动搭话
 
@@ -134,3 +134,7 @@ QQ 私聊的目标 QQ 和绑定用户必须相同；群聊还需 @ 机器人或�
 - [dsh-tts-bridge](https://github.com/Yuuyuko-uu/dsh-tts-bridge)：语音作为独立能力；本实现使用本地系统语音。
 - [dsh-qq-bridge](https://github.com/Yuuyuko-uu/dsh-qq-bridge)：渠道桥接；本实现隔离群聊记忆并限制绑定用户。
 - [MCP TypeScript SDK](https://github.com/modelcontextprotocol/typescript-sdk)、[DeepSeek 对话 API](https://api-docs.deepseek.com/api/create-chat-completion/)：协议实现参考。
+
+## 1.5.0 可操作软件
+
+小屋侧栏新增“可操作软件”，通过独立插件库关联多个软件目录。本地 stdio 或 MCP Streamable HTTP 插件的工具在连接后按实际能力显示，用户授权后参与桌面聊天调用，不受旧单端点 MCP 开关控制。QQ、主动搭话与日记仍不能操作软件。此版没有内置具体软件适配，完整流程与边界见 [SOFTWARE_PLUGINS.md](SOFTWARE_PLUGINS.md)。

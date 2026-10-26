@@ -1,4 +1,4 @@
-import { app, BrowserWindow, dialog, globalShortcut, ipcMain, Menu, nativeImage, net, powerMonitor, protocol, screen, shell, Tray } from 'electron';
+import { app, BrowserWindow, dialog, globalShortcut, ipcMain, Menu, nativeImage, net, powerMonitor, protocol, safeStorage, screen, shell, Tray } from 'electron';
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { promises as fs } from 'node:fs';
@@ -16,6 +16,7 @@ import { quickPetStatus } from './pet-chat-status';
 import { DiaryService } from './diary/service';
 import { defaultDiaryDirectory } from './diary/files';
 import { CompatibleModel } from './companion/model';
+import { SoftwareService } from './software/service';
 
 protocol.registerSchemesAsPrivileged([{ scheme: 'petasset', privileges: { standard: true, secure: true, supportFetchAPI: true, corsEnabled: true } }]);
 if (process.env.PET_TEST_USER) app.setPath('userData', path.resolve(process.env.PET_TEST_USER));
@@ -29,6 +30,7 @@ const pending = new Map<string, { resolve: (r: CommandReceipt) => void; timer: R
 let viewport = { ...baseViewport };
 let companion: CompanionService | undefined;
 let diary: DiaryService | undefined;
+let software: SoftwareService | undefined;
 let chatWindows: PetChatWindows | undefined;
 const resourceRoot = () => app.isPackaged ? path.join(process.resourcesPath, 'pet-resources') : path.join(app.getAppPath(), 'resources');
 const send = (m: RuntimeMessage) => { if (pet && !pet.isDestroyed()) pet.webContents.send('runtime', m); };
@@ -121,6 +123,19 @@ async function boot() {
     alwaysOnTop: () => settings.value.alwaysOnTop,
     activity: open => { desktop.chatting = open; if (open && movement) { movement = undefined; savePosition(); } broadcastDesktop(); }
   });
+  software = new SoftwareService(app.getPath('userData'), {
+    changed: state => { if (panel && !panel.isDestroyed()) panel.webContents.send('software-state', state); },
+    cancelChat: () => companion?.cancel(),
+    choose: async (kind, current) => {
+      const result = await dialog.showOpenDialog(panel ?? pet, { title: kind === 'plugin' ? '选择下载并解压的插件目录（包含 software-plugin.json）' : kind === 'runtime' ? '选择插件使用的 Node.js 或 Python 可执行文件' : '选择软件所在目录', defaultPath: current || undefined,
+        properties: kind === 'runtime' ? ['openFile'] : ['openDirectory'], ...(kind === 'runtime' ? { filters: [{ name: '可执行文件', extensions: ['exe'] }] } : {}) });
+      return result.canceled ? undefined : result.filePaths[0];
+    },
+    seal: async value => { if (!(await safeStorage.isAsyncEncryptionAvailable())) throw new Error('系统密钥加密不可用，未保存明文凭证'); return (await safeStorage.encryptStringAsync(value)).toString('base64'); },
+    unseal: async value => { try { return (await safeStorage.decryptStringAsync(Buffer.from(value, 'base64'))).result; } catch { throw new Error('插件凭证无法解密，请重新填写'); } }
+  });
+  await software.start();
+  handle('software', 'panel', raw => software!.request(raw));
   companion = new CompanionService(app.getPath('userData'), {
     now: Date.now, id: randomUUID,
     changed: state => { panel?.webContents.send('companion-state', state); chatWindows?.update(state); },
@@ -128,7 +143,7 @@ async function boot() {
     capabilities: () => (debug?.groups ?? []).map(g => ({ groupId: g.groupId, name: g.name, description: g.description, tags: g.tags, channels: g.channels, expectedDurationMs: g.expectedDurationMs, available: g.enabled && !g.interaction && !debug?.failedGroups.includes(g.groupId) })),
     available: () => desktop.visible && !desktop.suspended && !desktop.dragging && !desktop.chatting && !settings.value.paused,
     lastInteractionAt: () => Math.max(0, ...(debug?.events.filter(e => e.type === 'interaction').map(e => e.occurredAtUnixMs) ?? []), ...(companion?.store.data.events.filter(e => e.actor === 'user').map(e => e.at) ?? []))
-  }, enabled => send({ type: 'companion-mode', enabled }));
+  }, enabled => send({ type: 'companion-mode', enabled }), software);
   await companion.start();
   const diaryDefault = await defaultDiaryDirectory(
     [app.getAppPath(), process.env.PORTABLE_EXECUTABLE_DIR ?? '', path.dirname(process.execPath), ...(!app.isPackaged ? [process.cwd()] : [])],

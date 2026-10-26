@@ -134,3 +134,7 @@ Windows 本机测试采用 `pop-up-menu` 置顶级别。普通 `floating` 在本
 场景缩放移到 Pixi 根节点下的独立 `scene`，使用户大小设置实际作用于人物、特效、气泡和命中区；顶层渲染根节点的缩放此前未作用于最终画面。动作完成、取消、资源重载共用恢复基础窗口的路径。没有新增动作 ID 分支。
 
 桌宠在加载纹理前订阅 runtime 消息，加载期间暂存消息，初始化完成后按接收顺序应用，避免启动时改大小或暂停设置丢失，造成窗口与角色尺寸不一致。
+
+## 1.5.0 软件插件宿主
+
+新增独立 `SoftwareService` 实现领域层 `ToolPort`，注入 `CompanionCoordinator`，只在桌面聊天中提供已授权的软件能力。`SoftwarePlugins` 管理独立可执行插件仓库与内容指纹，`SoftwareConnection` 封装 MCP stdio/HTTP、可信目标注入及取消。小屋通过专属 IPC 管理软件目录、插件关联和授权，宠物/悬停窗口不能管理软件。没有具体软件适配器，也不改变动作执行器。完整契约、生命周期与限制见 [SOFTWARE_PLUGINS.md](SOFTWARE_PLUGINS.md)。

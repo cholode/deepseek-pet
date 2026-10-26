@@ -2,7 +2,7 @@ import { randomUUID } from 'node:crypto';
 import path from 'node:path';
 import { companionRequestSchema, type CompanionRequest, type CompanionResponse, type CompanionView } from '../../shared/companion';
 import type { PetEvent } from '../../shared/contracts';
-import type { CompanionHost } from '../../companion/ports';
+import type { CompanionHost, ToolPort } from '../../companion/ports';
 import { CompanionCoordinator } from '../../companion/coordinator';
 import { recallMemories, remember } from '../../companion/memory';
 import { applyEmotion, initialMood } from '../../companion/mood';
@@ -18,12 +18,12 @@ export class CompanionService {
   private mcp: McpTools; private qq: OneBotChannel; private timer?: ReturnType<typeof setInterval>;
   private polling = false; private closed = false; private external = new AbortController(); private toolList: CompanionView['tools'] = [];
   private handling = false; private lastQqErrorAt = 0;
-  constructor(directory: string, private host: CompanionHost, private mode: (enabled: boolean) => void) {
+  constructor(directory: string, private host: CompanionHost, private mode: (enabled: boolean) => void, private software?: ToolPort) {
     this.store = new CompanionStore(path.join(directory, 'companion.json'));
     this.secrets = new SecretStore(path.join(directory, 'companion-secrets.json'));
     this.mcp = new McpTools(() => this.store.data.config.mcp, () => this.secrets.get('mcp'));
     this.qq = new OneBotChannel(() => this.store.data.config.qq, () => this.secrets.get('qq'));
-    this.coordinator = new CompanionCoordinator(this.store, new CompatibleModel(() => this.secrets.get('model')), this.mcp, { ...host, changed: () => this.publish() });
+    this.coordinator = new CompanionCoordinator(this.store, new CompatibleModel(() => this.secrets.get('model')), this.mcp, { ...host, changed: () => this.publish() }, software);
   }
   async start() {
     await this.store.load();
@@ -121,5 +121,5 @@ export class CompanionService {
       if (!signal.aborted) await this.coordinator.tick();
     } finally { this.polling = false; }
   }
-  async close() { this.closed = true; if (this.timer) clearInterval(this.timer); this.cancel(); await this.mcp.close(); await this.store.flush(); }
+  async close() { this.closed = true; if (this.timer) clearInterval(this.timer); this.cancel(); await Promise.all([this.mcp.close(), this.software?.close()]); await this.store.flush(); }
 }

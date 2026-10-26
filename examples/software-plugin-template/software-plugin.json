@@ -1,0 +1,14 @@
+{
+  "schemaVersion": 1,
+  "id": "example.software-adapter",
+  "name": "软件插件开发模板",
+  "version": "0.1.0",
+  "description": "仅包含 MCP 接入骨架，没有实现任何具体软件操作。",
+  "author": "",
+  "transport": {
+    "type": "stdio",
+    "runtime": "node",
+    "entry": "server.mjs",
+    "args": ["${softwareDirectory}"]
+  }
+}
