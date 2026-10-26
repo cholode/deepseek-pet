@@ -1,12 +1,21 @@
 body.quick-chat-page,body.speech-bubble-page{background:transparent;overflow:hidden;color:#294363}
 body.quick-chat-page #root,body.speech-bubble-page #root{min-height:0}
-.quick-chat{margin:4px;height:50px;padding:6px 7px 6px 12px;display:flex;align-items:center;gap:8px;background:#f8fbff;border:1px solid #abcaf0;border-radius:11px;box-shadow:0 2px 5px #183e6b22;font:14px/1.5 "Microsoft YaHei",sans-serif}
+.quick-shell{margin:4px;display:flex;flex-direction:column;gap:6px;font:14px/1.5 "Microsoft YaHei",sans-serif}.quick-shell [hidden]{display:none!important}
+.quick-chat{height:50px;padding:6px 7px 6px 12px;display:flex;align-items:center;gap:8px;background:#f8fbff;border:1px solid #abcaf0;border-radius:11px;box-shadow:0 2px 5px #183e6b22;font:14px/1.5 "Microsoft YaHei",sans-serif}
 .quick-chat:focus-within{border-color:#538dd8;box-shadow:0 0 0 2px #79a6df24}
 .quick-chat textarea{display:block;flex:1;min-width:0;width:0;height:34px;min-height:0;padding:6px 0;margin:0;resize:none;overflow:auto;border:0;background:transparent;outline:none;color:#294363;font:14px/22px "Microsoft YaHei",sans-serif;user-select:text;scrollbar-width:none}
 .quick-chat textarea::placeholder{color:#8a9fb8;font-size:12px}
 .quick-send{flex:none;width:34px;height:34px;padding:0;display:grid;place-items:center;border:0;border-radius:8px;background:#3979c9;color:white;cursor:pointer}
 .quick-send:disabled{opacity:.42;cursor:default}.quick-send:hover:not(:disabled){background:#2c69b5}
 .quick-chat.has-error{border-color:#cf6b7b}.quick-error{position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%)}
+.quick-menu{align-self:center;height:30px;display:flex;gap:3px;padding:3px;background:#f8fbfff5;border:1px solid #c3d6ed;border-radius:9px;box-shadow:0 2px 4px #183e6b16}
+.quick-menu button{display:flex;align-items:center;justify-content:center;gap:5px;min-width:76px;height:22px;padding:0 12px;border:0;border-radius:6px;background:transparent;color:#6c819b;cursor:pointer;font:12px/22px "Microsoft YaHei",sans-serif}
+.quick-menu button:hover{background:#edf3fb;color:#376bab}.quick-menu button[aria-selected="true"]{background:#dfebfb;color:#2865b3}.quick-menu button:focus-visible{outline:2px solid #538dd8;outline-offset:1px}
+.pet-status{height:180px;padding:10px 12px;display:flex;flex-direction:column;gap:12px;border:1px solid #abcaf0;border-radius:12px;background:linear-gradient(135deg,#f8fbff,#eff5ff);box-shadow:0 2px 5px #183e6b22;color:#294363}
+.pet-status header{display:flex;align-items:center;justify-content:space-between;gap:12px;height:24px;margin:0;padding:0;flex:none}.pet-status header strong{font-size:14px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.pet-status header>span{display:flex;align-items:center;gap:5px;flex:none;font-size:11px;color:#6c819b}.pet-status header i{width:5px;height:5px;background:#66a494;border-radius:50%}.pet-status header .is-busy i{background:#4b8bdc}
+.pet-status-mood{margin:0}.pet-status-mood>div{display:flex;justify-content:space-between;align-items:center;font-size:12px;line-height:18px}.pet-status-mood small{font-size:11px;color:#738ba7}
+.pet-status-mood progress{display:block;width:100%;height:5px;margin-top:5px;appearance:none;border:0;border-radius:3px;overflow:hidden;background:#dfe9f5}.pet-status-mood progress::-webkit-progress-bar{background:#dfe9f5}.pet-status-mood progress::-webkit-progress-value{background:linear-gradient(90deg,#93b8e8,#538cda);border-radius:3px}
+.pet-status dl{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:8px 16px;margin:0}.pet-status dl>div{min-width:0}.pet-status dt{font-size:10px;line-height:15px;color:#8193aa}.pet-status dd{margin:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:12px;line-height:18px;color:#345578}
 .speech-shell{position:relative;padding:16px;box-sizing:border-box;filter:drop-shadow(0 2px 3px #174c8728)}
 .speech-bubble{padding:10px 14px;min-height:44px;max-height:264px;box-sizing:border-box;background:#3979c9;color:#fff;border:1px solid #93bdf2;border-radius:10px;font:400 14px/1.65 "Microsoft YaHei",sans-serif}
 .speech-content{white-space:pre-wrap;overflow-wrap:anywhere;max-height:240px;overflow:hidden}

@@ -1,10 +1,13 @@
 import { clampRect, type Rect } from './geometry';
 import type { HitRegion } from './contracts';
-import type { SpeechTail } from './pet-chat';
+import type { QuickChatTab, SpeechTail } from './pet-chat';
 
 const overlap = (a: Rect, b: Rect) => Math.max(0, Math.min(a.x + a.width, b.x + b.width) - Math.max(a.x, b.x)) * Math.max(0, Math.min(a.y + a.height, b.y + b.height) - Math.max(a.y, b.y));
 export interface ChatAnchors { head: Rect; figure: Rect; feet: { x: number; y: number } }
-export const inputBarSize = { width: 320, height: 58 };
+// 输入区/状态卡共用脚下菜单，原生窗口按选中页调整，避免留下挡鼠标的透明区域。
+export const inputBarSize = { width: 320, height: 94 };
+export const statusPanelSize = { width: 320, height: 224 };
+export const quickPanelSize = (tab: QuickChatTab) => tab === 'status' ? statusPanelSize : inputBarSize;
 
 // 使用实际姿态的命中区域，排除透明画布；睡觉、坐下和角色缩放也沿用同一套锚点。
 export function chatAnchors(window: Rect, regions: readonly HitRegion[]): ChatAnchors {
@@ -18,8 +21,9 @@ export function chatAnchors(window: Rect, regions: readonly HitRegion[]): ChatAn
     feet: { x: window.x + window.width / 2, y: window.y + bottom } };
 }
 
-export function inputBarLayout(anchor: ChatAnchors, area: Rect) {
-  const size = { width: Math.min(inputBarSize.width, area.width), height: Math.min(inputBarSize.height, area.height) };
+export function inputBarLayout(anchor: ChatAnchors, area: Rect, tab: QuickChatTab = 'chat') {
+  const panel = quickPanelSize(tab);
+  const size = { width: Math.min(panel.width, area.width), height: Math.min(panel.height, area.height) };
   const desired = { ...size, x: anchor.feet.x - size.width / 2, y: anchor.feet.y + 3 };
   return { bounds: clampRect(desired, area), lift: Math.ceil(Math.max(0, desired.y + size.height - area.y - area.height)) };
 }

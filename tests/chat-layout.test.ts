@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { chatAnchors, inputBarLayout, speechBubbleLayout, HoverChatPolicy } from '../src/shared/chat-layout';
+import { chatAnchors, inputBarLayout, quickPanelSize, speechBubbleLayout, HoverChatPolicy } from '../src/shared/chat-layout';
 import type { Rect } from '../src/shared/geometry';
 
 const intersects = (a: Rect, b: Rect) => a.x < b.x + b.width && b.x < a.x + a.width && a.y < b.y + b.height && b.y < a.y + a.height;
@@ -25,15 +25,15 @@ describe('悬停聊天与独立气泡布局', () => {
     expect(p.update(10500, true, false, false, false)).toBe(true);
   });
   it.each([{ x: 0, y: 0, width: 1920, height: 1040 }, { x: -1920, y: -500, width: 1920, height: 1040 }])('角落与负坐标屏幕内都完整显示 $x', area => {
-    for (const x of [area.x, area.x + area.width - 340]) for (const y of [area.y, area.y + area.height - 420]) {
+    for (const tab of ['chat', 'status'] as const) for (const x of [area.x, area.x + area.width - 340]) for (const y of [area.y, area.y + area.height - 420]) {
       const pet = { x, y, width: 340, height: 420 };
-      const lift = inputBarLayout(chatAnchors(pet, regions), area).lift;
+      const lift = inputBarLayout(chatAnchors(pet, regions), area, tab).lift;
       const anchor = chatAnchors({ ...pet, y: pet.y - lift }, regions);
       const bubble = speechBubbleLayout(anchor, { width: 352, height: 296 }, area).bounds;
-      const chat = inputBarLayout(anchor, area).bounds;
+      const chat = inputBarLayout(anchor, area, tab).bounds;
       for (const rect of [bubble, chat]) { expect(rect.x).toBeGreaterThanOrEqual(area.x); expect(rect.y).toBeGreaterThanOrEqual(area.y); expect(rect.x + rect.width).toBeLessThanOrEqual(area.x + area.width); expect(rect.y + rect.height).toBeLessThanOrEqual(area.y + area.height); expect(intersects(rect, anchor.figure)).toBe(false); }
       expect(intersects(bubble, chat)).toBe(false);
-      expect(chat.y).toBe(anchor.feet.y + 3); expect(chat.height).toBe(58);
+      expect(chat.y).toBe(anchor.feet.y + 3); expect(chat.height).toBe(quickPanelSize(tab).height);
     }
   });
   it('气泡随内容伸缩，尖角保持在实际头顶 6px 处，排除画布空白', () => {
@@ -54,7 +54,7 @@ describe('悬停聊天与独立气泡布局', () => {
   });
   it('靠底部只抬起输入条需要的高度，关闭时可恢复原位置', () => {
     const area = { x: 0, y: 0, width: 1920, height: 1040 }, pet = { x: 800, y: 620, width: 340, height: 420 };
-    const layout = inputBarLayout(chatAnchors(pet, regions), area); expect(layout.lift).toBe(50);
+    const layout = inputBarLayout(chatAnchors(pet, regions), area); expect(layout.lift).toBe(86);
     const raised = chatAnchors({ ...pet, y: pet.y - layout.lift }, regions);
     expect(inputBarLayout(raised, area).lift).toBe(0); expect(inputBarLayout(raised, area).bounds.y).toBe(raised.feet.y + 3);
   });

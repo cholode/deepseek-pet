@@ -1,7 +1,7 @@
 import { BrowserWindow, screen, type IpcMainEvent, type IpcMainInvokeEvent } from 'electron';
 import type { CompanionPresentation, CompanionView } from '../shared/companion';
-import type { QuickChatState, SpeechBubbleState } from '../shared/pet-chat';
-import { chatAnchors, inputBarLayout, inputBarSize, speechBubbleLayout, HoverChatPolicy } from '../shared/chat-layout';
+import type { QuickChatState, QuickChatTab, QuickPetStatus, SpeechBubbleState } from '../shared/pet-chat';
+import { chatAnchors, inputBarLayout, quickPanelSize, speechBubbleLayout, HoverChatPolicy } from '../shared/chat-layout';
 import type { HitRegion } from '../shared/contracts';
 import type { Rect } from '../shared/geometry';
 
@@ -10,6 +10,7 @@ interface Host {
   secure(window: BrowserWindow): void; load(window: BrowserWindow, page: string): void;
   visible(): boolean; alwaysOnTop(): boolean; activity(open: boolean): void;
   regions(): readonly HitRegion[]; movePet(x: number, y: number): void;
+  status(): QuickPetStatus;
 }
 export class PetChatWindows {
   private chat?: BrowserWindow; private bubble?: BrowserWindow;
@@ -18,13 +19,25 @@ export class PetChatWindows {
   private bubbleSize = { width: 230, height: 92 }; private bubbleTimer?: ReturnType<typeof setTimeout>;
   private speech: SpeechBubbleState | null = null;
   private lifted?: { from: Rect; to: Rect };
-  private current: QuickChatState = { name: '大肥鱼', ready: false, busy: false, reply: '', streaming: false };
+  private current: QuickChatState = { name: '大肥鱼', ready: false, busy: false, reply: '', streaming: false, tab: 'chat', status: null };
   constructor(private host: Host) {}
   isSender(event: IpcMainEvent | IpcMainInvokeEvent, kind: 'chat' | 'bubble') {
     const window = kind === 'chat' ? this.chat : this.bubble;
     return Boolean(window && !window.isDestroyed() && event.sender === window.webContents && event.senderFrame === event.sender.mainFrame);
   }
-  state() { return { ...this.current }; }
+  state() { return { ...this.current, status: this.host.status() }; }
+  refreshStatus() {
+    const status = this.host.status();
+    if (JSON.stringify(status) === JSON.stringify(this.current.status)) return;
+    this.current.status = status; this.chat?.webContents.send('quick-chat-state', this.current);
+  }
+  selectTab(tab: QuickChatTab) {
+    if (this.current.tab === tab) return;
+    this.current.tab = tab;
+    // 从高卡片切回短输入条时只撤销本窗口造成的上移，保留用户后来调整的位置。
+    this.restorePosition(); this.align();
+    this.chat?.webContents.send('quick-chat-state', this.state());
+  }
   bubbleState() { return this.speech; }
   hold(value: boolean) { this.held = value; }
   dismiss() { this.policy.dismiss(); this.chat?.hide(); this.restorePosition(); this.setActivity(false); }
@@ -38,11 +51,12 @@ export class PetChatWindows {
   private setActivity(value: boolean) { if (value !== this.active) { this.active = value; this.host.activity(value); } }
   update(view: CompanionView) {
     const reply = [...view.data.events].reverse().find(e => e.actor === 'pet' && e.conversationId === 'desktop')?.text ?? '';
-    this.current = { ...this.current, name: view.data.config.persona.name, ready: view.ready, busy: view.busy, error: view.error, reply: this.current.streaming ? this.current.reply : reply };
+    this.current = { ...this.current, name: view.data.config.persona.name, ready: view.ready, busy: view.busy, error: view.error, reply: this.current.streaming ? this.current.reply : reply, status: this.host.status() };
     this.chat?.webContents.send('quick-chat-state', this.current);
   }
   private create(kind: 'chat' | 'bubble') {
-    const window = new BrowserWindow({ width: kind === 'chat' ? inputBarSize.width : this.bubbleSize.width, height: kind === 'chat' ? inputBarSize.height : this.bubbleSize.height,
+    const size = kind === 'chat' ? quickPanelSize(this.current.tab) : this.bubbleSize;
+    const window = new BrowserWindow({ width: size.width, height: size.height,
       show: false, frame: false, transparent: true, backgroundColor: '#00000000', hasShadow: false, resizable: false,
       maximizable: false, minimizable: false, skipTaskbar: true, focusable: kind === 'chat', title: kind === 'chat' ? '大肥鱼 · 悬停聊天' : '大肥鱼 · 聊天气泡',
       webPreferences: { preload: this.host.preload, contextIsolation: true, sandbox: true, nodeIntegration: false } });
@@ -50,7 +64,7 @@ export class PetChatWindows {
     if (kind === 'bubble') { window.setIgnoreMouseEvents(true); this.bubble = window; }
     else { this.chat = window; window.on('close', e => { e.preventDefault(); this.dismiss(); }); }
     window.webContents.on('did-finish-load', () => {
-      if (kind === 'chat') { this.chatLoaded = true; window.webContents.send('quick-chat-state', this.current); }
+      if (kind === 'chat') { this.chatLoaded = true; window.webContents.send('quick-chat-state', this.state()); }
       else { this.bubbleLoaded = true; window.webContents.send('speech-bubble', this.speech); }
       this.align();
     });
@@ -86,7 +100,7 @@ export class PetChatWindows {
     if (this.lifted && Object.entries(this.lifted.to).some(([key, value]) => bounds[key as keyof Rect] !== value)) this.lifted = undefined;
     let anchor = chatAnchors(bounds, this.host.regions());
     if (this.chat && this.policy.open && this.host.visible()) {
-      const lift = Math.min(inputBarLayout(anchor, area).lift, Math.max(0, bounds.y - area.y));
+      const lift = Math.min(inputBarLayout(anchor, area, this.current.tab).lift, Math.max(0, bounds.y - area.y));
       if (lift > 0) {
         const from = this.lifted?.from ?? bounds; this.host.movePet(bounds.x, bounds.y - lift);
         bounds = pet.getBounds(); this.lifted = { from, to: bounds }; anchor = chatAnchors(bounds, this.host.regions());
@@ -105,7 +119,7 @@ export class PetChatWindows {
       }
       if (this.bubbleLoaded && this.host.visible() && !this.bubble.isVisible()) this.bubble.showInactive();
     }
-    if (this.chat && this.policy.open) place(this.chat, inputBarLayout(anchor, area).bounds);
+    if (this.chat && this.policy.open) place(this.chat, inputBarLayout(anchor, area, this.current.tab).bounds);
   }
   topmost(value: boolean) { this.chat?.setAlwaysOnTop(value, 'pop-up-menu'); this.bubble?.setAlwaysOnTop(value, 'pop-up-menu'); }
   hideSpeech() { this.speech = null; this.bubble?.hide(); }

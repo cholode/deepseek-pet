@@ -12,6 +12,7 @@ import { SettingsStore } from './settings';
 import { CompanionService } from './companion/service';
 import { PetChatWindows } from './pet-chat-windows';
 import { quickChatRequestSchema, type QuickChatResponse } from '../shared/pet-chat';
+import { quickPetStatus } from './pet-chat-status';
 
 protocol.registerSchemesAsPrivileged([{ scheme: 'petasset', privileges: { standard: true, secure: true, supportFetchAPI: true, corsEnabled: true } }]);
 if (process.env.PET_TEST_USER) app.setPath('userData', path.resolve(process.env.PET_TEST_USER));
@@ -111,6 +112,7 @@ async function boot() {
   // 陪伴服务只通过受限宿主端口感知桌宠，不直接修改窗口或人物图层。
   chatWindows = new PetChatWindows({ pet: () => pet, preload: path.join(__dirname, '../preload/index.js'), secure: secureWindow, load,
     regions: () => regions, movePet: (x, y) => { positionPet(x, y); broadcastDesktop(); },
+    status: () => quickPetStatus(companion?.store.data, debug, desktop, settings.value),
     visible: () => desktop.visible && !desktop.suspended && !desktop.dragging,
     alwaysOnTop: () => settings.value.alwaysOnTop,
     activity: open => { desktop.chatting = open; if (open && movement) { movement = undefined; savePosition(); } broadcastDesktop(); }
@@ -129,6 +131,7 @@ async function boot() {
   ipcMain.handle('quick-chat', async (event, raw): Promise<QuickChatResponse> => {
     if (!chatWindows?.isSender(event, 'chat')) throw new Error('IPC_FORBIDDEN');
     const request = quickChatRequestSchema.parse(raw);
+    if (request.type === 'tab') chatWindows.selectTab(request.tab);
     if (request.type === 'hold') chatWindows.hold(request.value);
     if (request.type === 'dismiss') chatWindows.dismiss();
     if (request.type === 'settings') {
@@ -153,7 +156,7 @@ async function boot() {
   const panelRequestSchema = z.discriminatedUnion('type', [z.object({ type: z.literal('command'), command: commandSchema }).strict(), z.object({ type: z.literal('pause'), value: z.boolean() }).strict(), z.object({ type: z.literal('mode'), mode: z.enum(['normal', 'ai']) }).strict()]);
   handle('panel-request', 'panel', raw => requestRuntime({ type: 'request', request: panelRequestSchema.parse(raw) })); handle('get-debug', 'panel', () => debug);
   ipcMain.on('reply', (event, id: unknown, result: unknown) => { try { trusted(event, 'pet'); const key = z.string().uuid().parse(id); const r = z.object({ commandId: z.string(), status: z.enum(['accepted', 'rejected']), actionInstanceId: z.string().optional(), errorCode: z.string().optional(), message: z.string().optional() }).strict().parse(result); const waiter = pending.get(key); if (waiter) { clearTimeout(waiter.timer); pending.delete(key); waiter.resolve(r); } } catch (e) { error(e); } });
-  ipcMain.on('publish', (event, state: DebugState) => { try { trusted(event, 'pet'); if (!state || JSON.stringify(state).length > 1000000 || state.snapshot?.snapshotVersion !== 1 || !Array.isArray(state.groups) || !Array.isArray(state.errors)) return; debug = state; companion?.observe(state.events ?? []); panel?.webContents.send('debug', state); } catch (e) { error(e); } });
+  ipcMain.on('publish', (event, state: DebugState) => { try { trusted(event, 'pet'); if (!state || JSON.stringify(state).length > 1000000 || state.snapshot?.snapshotVersion !== 1 || !Array.isArray(state.groups) || !Array.isArray(state.errors)) return; debug = state; companion?.observe(state.events ?? []); chatWindows?.refreshStatus(); panel?.webContents.send('debug', state); } catch (e) { error(e); } });
   ipcMain.on('hit-regions', (event, raw: unknown) => { try { trusted(event, 'pet'); regions = z.array(z.object({ target: z.enum(['head', 'body']), x: z.number().finite().min(-1000).max(2000), y: z.number().finite().min(-1000).max(2000), width: z.number().finite().min(0).max(2000), height: z.number().finite().min(0).max(2000) }).strict()).max(8).parse(raw); } catch (e) { error(e); } });
   handle('pointer-down', 'pet', raw => { const p = z.object({x:z.number().finite(),y:z.number().finite()}).strict().parse(raw); const b = pet.getBounds(); if(!regions.some(r=>p.x>=b.x+r.x-8 && p.x<=b.x+r.x+r.width+8 && p.y>=b.y+r.y-8 && p.y<=b.y+r.y+r.height+8)) throw new Error('POINTER_OUTSIDE_PET'); press = { ...p, windowX: b.x, windowY: b.y, time: Date.now() }; });
   handle('drag-start', 'pet', () => { if (settings.value.fixedPosition || settings.value.clickThrough || !press || Date.now() - press.time > 10000) return false; if(desktop.dragging)return true; movement = undefined; dragGestureId++; desktop.dragging = true; setIgnore(false); updateDragPosition(); dragTimeout = setTimeout(endDrag, 30000); broadcastDesktop(); samplingState(); return true; });
