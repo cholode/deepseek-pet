@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { companionDefaults, emotionLabels, emotionNames, type CompanionConfig, type CompanionRequest, type CompanionView, type CompanionPresentation } from '../../shared/companion';
 import { CompanionSettings } from './CompanionSettings';
+import { DiaryPanel } from './DiaryPanel';
 import './companion.css';
 
 // UI 仅发送受限请求；所有模型调用、记忆写入和渠道权限在主进程服务中执行。
@@ -41,9 +42,10 @@ export function CompanionPanel() {
   if (!state) return <div className="loading">正在读取陪伴状态…{note}</div>;
   const disabled = pending || state.busy;
   return <div className="companion-panel">
-    <div className="companion-tabs">{[['chat', '和她聊天'], ['memory', '共同记忆'], ['mood', '心情与约定'], ['settings', '陪伴设置']].map(([id, label]) => <button key={id} className={tab === id ? 'active' : ''} onClick={() => setTab(id)}>{label}</button>)}<span>{state.busy ? '正在想…' : state.ready ? '智能陪伴已启用' : '等待配置模型'}</span></div>
+    <div className="companion-tabs">{[['chat', '和她聊天'], ['memory', '共同记忆'], ['mood', '心情与约定'], ['diary', '日记'], ['settings', '陪伴设置']].map(([id, label]) => <button key={id} className={tab === id ? 'active' : ''} onClick={() => setTab(id)}>{label}</button>)}<span>{state.busy ? '正在想…' : state.ready ? '智能陪伴已启用' : '等待配置模型'}</span></div>
     {(note || state.error) && <div className="notice" role="status">{note || state.error}</div>}
     {state.notice && <p className="companion-help">{state.notice}</p>}
+    {tab === 'diary' && <DiaryPanel ready={state.ready} name={state.data.config.persona.name}/>}
     {tab === 'chat' && <section className="settings-card companion-chat">
       {!state.ready && <div className="companion-empty"><h3>让大肥鱼认识你</h3><p>在陪伴设置里连接本地或远程模型，就可以聊天、记住共同经历，并让表情跟着心情变化。</p><button className="primary" onClick={() => setTab('settings')}>配置智能陪伴</button></div>}
       <div className="companion-messages" aria-live="polite">{state.data.events.map(e => <article className={`companion-message ${e.actor}`} key={e.id}><small>{e.actor === 'pet' ? state.data.config.persona.name : e.actor === 'system' ? '自主唤醒' : '你'} · {e.source === 'desktop' ? '桌面' : e.source} · {new Date(e.at).toLocaleTimeString()}</small><p>{e.text}</p></article>)}{stream && <article className="companion-message pet"><small>{state.data.config.persona.name} · 正在说…</small><p>{stream.text}</p></article>}<div ref={bottom}/></div>

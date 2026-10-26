@@ -13,6 +13,9 @@ import { CompanionService } from './companion/service';
 import { PetChatWindows } from './pet-chat-windows';
 import { quickChatRequestSchema, type QuickChatResponse } from '../shared/pet-chat';
 import { quickPetStatus } from './pet-chat-status';
+import { DiaryService } from './diary/service';
+import { defaultDiaryDirectory } from './diary/files';
+import { CompatibleModel } from './companion/model';
 
 protocol.registerSchemesAsPrivileged([{ scheme: 'petasset', privileges: { standard: true, secure: true, supportFetchAPI: true, corsEnabled: true } }]);
 if (process.env.PET_TEST_USER) app.setPath('userData', path.resolve(process.env.PET_TEST_USER));
@@ -25,6 +28,7 @@ let movement: { id: string; from: { x: number; y: number }; to: { x: number; y: 
 const pending = new Map<string, { resolve: (r: CommandReceipt) => void; timer: ReturnType<typeof setTimeout> }>();
 let viewport = { ...baseViewport };
 let companion: CompanionService | undefined;
+let diary: DiaryService | undefined;
 let chatWindows: PetChatWindows | undefined;
 const resourceRoot = () => app.isPackaged ? path.join(process.resourcesPath, 'pet-resources') : path.join(app.getAppPath(), 'resources');
 const send = (m: RuntimeMessage) => { if (pet && !pet.isDestroyed()) pet.webContents.send('runtime', m); };
@@ -126,6 +130,21 @@ async function boot() {
     lastInteractionAt: () => Math.max(0, ...(debug?.events.filter(e => e.type === 'interaction').map(e => e.occurredAtUnixMs) ?? []), ...(companion?.store.data.events.filter(e => e.actor === 'user').map(e => e.at) ?? []))
   }, enabled => send({ type: 'companion-mode', enabled }));
   await companion.start();
+  const diaryDefault = await defaultDiaryDirectory(
+    [app.getAppPath(), process.env.PORTABLE_EXECUTABLE_DIR ?? '', path.dirname(process.execPath), ...(!app.isPackaged ? [process.cwd()] : [])],
+    process.env.PORTABLE_EXECUTABLE_DIR || path.join(app.getPath('documents'), '大肥鱼日记')
+  );
+  diary = new DiaryService(path.join(app.getPath('userData'), 'diary-settings.json'), diaryDefault, new CompatibleModel(() => companion!.secrets.get('model')), {
+    now: () => Date.now(), data: () => companion!.store.data, chatBusy: () => companion?.coordinator.busy ?? false,
+    changed: state => { if (panel && !panel.isDestroyed()) panel.webContents.send('diary-state', state); },
+    chooseDirectory: async current => {
+      const result = await dialog.showOpenDialog(panel ?? pet, { title: '选择日记保存目录', defaultPath: current, properties: ['openDirectory', 'createDirectory'] });
+      return result.canceled ? undefined : result.filePaths[0];
+    },
+    openDirectory: async directory => { const message = await shell.openPath(directory); if (message) throw new Error(message); }
+  });
+  await diary.start();
+  handle('diary', 'panel', raw => diary!.request(raw));
   chatWindows.update(companion.view());
   // 悬停窗口仅开放发送/停止和跳转设置，不能借此调用完整管理 IPC。
   ipcMain.handle('quick-chat', async (event, raw): Promise<QuickChatResponse> => {
@@ -164,9 +183,10 @@ async function boot() {
   handle('move-start', 'pet', raw => { const m = z.object({ id: z.string().min(1).max(100), dx: z.number().finite().min(-1000).max(1000), dy: z.number().finite().min(-1000).max(1000), ms: z.number().finite().min(1).max(30000), easing: z.enum(['linear', 'easeOut', 'easeInOut']) }).strict().parse(raw); if (settings.value.fixedPosition || desktop.dragging || !desktop.visible) throw new Error('MOVEMENT_LOCKED'); const b = pet.getBounds(); const to = clampRect({ ...b, x: b.x + m.dx, y: b.y + m.dy }, screen.getDisplayMatching(b).workArea); movement = { id: m.id, from: { x: b.x, y: b.y }, to, started: performance.now(), ms: m.ms, easing: m.easing }; samplingState(); });
   handle('move-stop', 'pet', id => { if (movement?.id === id) { movement = undefined; savePosition(); samplingState(); } });
   screen.on('display-added', recoverPosition); screen.on('display-removed', recoverPosition); screen.on('display-metrics-changed', recoverPosition);
-  powerMonitor.on('suspend', () => { movement = undefined; endDrag(); desktop.suspended = true; companion?.cancel(); samplingState(); broadcastDesktop(); }); powerMonitor.on('resume', () => { desktop.suspended = false; recoverPosition(); samplingState(); broadcastDesktop(); });
+  powerMonitor.on('suspend', () => { movement = undefined; endDrag(); desktop.suspended = true; companion?.cancel(); diary?.suspend(); samplingState(); broadcastDesktop(); }); powerMonitor.on('resume', () => { desktop.suspended = false; recoverPosition(); diary?.resume(); samplingState(); broadcastDesktop(); });
   globalShortcut.register('CommandOrControl+Alt+P', restoreInteraction);
   load(pet, 'pet'); if (process.argv.includes('--panel')) openPanel();
+  diary.startAutomatic();
 }
 if (!app.requestSingleInstanceLock()) app.quit(); else { app.on('second-instance', () => { showPet(); openPanel(); }); void app.whenReady().then(boot).catch(e => { dialog.showErrorBox('大肥鱼启动失败', String(e)); app.exit(1); }); }
 app.on('before-quit', e => {
@@ -181,6 +201,7 @@ app.on('before-quit', e => {
   // 等待持久化队列落盘，防止退出时丢失最后一句对话或新记忆。
   void Promise.allSettled([
     companion?.close(),
+    diary?.close(),
     settings?.save({ ...settings.value, position: pet && !pet.isDestroyed() ? standingPosition() : desktop.position })
   ]).finally(() => app.quit());
 });

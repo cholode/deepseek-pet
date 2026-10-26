@@ -2,7 +2,10 @@ import { contextBridge, ipcRenderer } from 'electron';
 import type { PetBridge, RuntimeMessage, DebugState } from '../shared/contracts';
 import type { CompanionView, CompanionPresentation } from '../shared/companion';
 import type { QuickChatState, SpeechBubbleState } from '../shared/pet-chat';
+import type { DiaryView } from '../shared/diary';
 const bridge: PetBridge = {
+  diary: request => ipcRenderer.invoke('diary', request),
+  onDiary: fn => { const listener = (_e: Electron.IpcRendererEvent, state: DiaryView) => fn(state); ipcRenderer.on('diary-state', listener); return () => ipcRenderer.removeListener('diary-state', listener); },
   quickChat: request => ipcRenderer.invoke('quick-chat', request),
   onQuickChat: fn => { const listener = (_e: Electron.IpcRendererEvent, state: QuickChatState) => fn(state); ipcRenderer.on('quick-chat-state', listener); return () => { ipcRenderer.removeListener('quick-chat-state', listener); }; },
   speechBubbleState: () => ipcRenderer.invoke('speech-bubble-state'),

@@ -1,6 +1,6 @@
 {
   "name": "deepblue-desktop-pet",
-  "version": "1.4.3",
+  "version": "1.4.5",
   "description": "支持可选智能陪伴、记忆与 MCP 的大肥鱼桌宠",
   "author": "DeepBlue contributors",
   "license": "UNLICENSED",
@@ -18,7 +18,9 @@
     "assets": "tsx scripts/art-assets.ts",
     "test:gui": "node scripts/gui-test.cjs",
     "test:companion-gui": "node scripts/companion-gui-test.cjs",
-    "test:hover-chat-gui": "node scripts/hover-chat-gui-test.cjs"
+    "test:hover-chat-gui": "node scripts/hover-chat-gui-test.cjs",
+    "test:diary-gui": "node scripts/diary-gui-test.cjs",
+    "test:diary-auto-gui": "node scripts/diary-auto-gui-test.cjs"
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "1.32.2",

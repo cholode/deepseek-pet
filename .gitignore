@@ -4,6 +4,9 @@ release/
 .test-user/
 test-results/
 *.log
+# 用户的本地日记，不提交到 GitHub，也不随应用打包。
+大肥鱼日记-*.md
+.fish-diary-*.tmp
 
 .dev-test-user/
 .package-test-user/
