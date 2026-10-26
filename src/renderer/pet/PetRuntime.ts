@@ -48,7 +48,7 @@ export class PetRuntime {
   tick(delta: number) { if (delta > 1500) { this.current?.cancel(); this.host.reset(); this.driver.refresh(); return; } this.current?.tick(Math.min(100, delta)); this.ensureDragAction(); }
   setMode(mode: 'normal' | 'ai') { return mode === 'ai' && this.companionEnabled ? { available: true as const } : checkMode(mode); }
   setSettings(settings: Settings) { if (settings.fixedPosition && this.current?.group.channels.includes('movement')) this.current.cancel(); this.settings = settings; if(this.current?.group.interaction && !effective(this.current.group, settings).enabled)this.current.cancel(); this.syncDriver(); }
-  private syncDriver() { if (this.settings.paused || !this.desktop.visible || this.desktop.dragging || this.desktop.suspended) this.driver.pause(); else { this.driver.resume(); this.driver.refresh(); } }
+  private syncDriver() { if (this.settings.paused || !this.desktop.visible || this.desktop.dragging || this.desktop.suspended || this.desktop.chatting) this.driver.pause(); else { this.driver.resume(); this.driver.refresh(); } }
   private playInteraction(binding: 'drag-hold' | 'drag-release') {
     const group = [...this.catalog.groups.values()].map(g => effective(g, this.settings)).find(g => g.interaction === binding && g.enabled && !this.quarantined.has(g.groupId));
     if (group) this.play(group.groupId, 'system');
@@ -57,9 +57,11 @@ export class PetRuntime {
     if (this.desktop.dragging && this.desktop.visible && !this.desktop.suspended && !this.current) this.playInteraction('drag-hold');
   }
   setDesktop(desktop: DesktopState) { const previous = this.desktop; this.desktop = desktop; if ((!desktop.visible || desktop.suspended || previous.dragging !== desktop.dragging) && this.current) this.current.cancel();
+    // 交谈期间暂停随机散步，不影响摸头、拖动和 AI 回复表情。
+    if (desktop.chatting && this.current?.source === 'normal') this.current.cancel();
     if (previous.dragging !== desktop.dragging) { this.interact('desktop', desktop.dragging ? 'drag-start' : 'drag-end'); if (!desktop.dragging && desktop.visible && !desktop.suspended) this.playInteraction('drag-release'); }
     this.ensureDragAction();
-    if (previous.visible !== desktop.visible || previous.dragging !== desktop.dragging || previous.suspended !== desktop.suspended) this.syncDriver();
+    if (previous.visible !== desktop.visible || previous.dragging !== desktop.dragging || previous.suspended !== desktop.suspended || previous.chatting !== desktop.chatting) this.syncDriver();
   }
   interact(target: 'head' | 'body' | 'desktop', gesture: 'click' | 'drag-start' | 'drag-end' = 'click') { this.lastInteraction = Date.now(); this.emit({ type: 'interaction', occurredAtUnixMs: Date.now(), payload: { target, gesture, clickCount: gesture === 'click' ? 1 : 0 } }); }
   play(groupId: string, source: CommandSource) { return this.submit({ protocolVersion: 1, commandId: `local-${++this.serial}-${Date.now()}`, type: 'play_group', groupId }, source); }

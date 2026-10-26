@@ -1,7 +1,13 @@
 import { contextBridge, ipcRenderer } from 'electron';
 import type { PetBridge, RuntimeMessage, DebugState } from '../shared/contracts';
 import type { CompanionView, CompanionPresentation } from '../shared/companion';
+import type { QuickChatState, SpeechBubbleState } from '../shared/pet-chat';
 const bridge: PetBridge = {
+  quickChat: request => ipcRenderer.invoke('quick-chat', request),
+  onQuickChat: fn => { const listener = (_e: Electron.IpcRendererEvent, state: QuickChatState) => fn(state); ipcRenderer.on('quick-chat-state', listener); return () => { ipcRenderer.removeListener('quick-chat-state', listener); }; },
+  speechBubbleState: () => ipcRenderer.invoke('speech-bubble-state'),
+  sizeSpeechBubble: size => ipcRenderer.invoke('speech-bubble-size', size),
+  onSpeechBubble: fn => { const listener = (_e: Electron.IpcRendererEvent, state: SpeechBubbleState | null) => fn(state); ipcRenderer.on('speech-bubble', listener); return () => { ipcRenderer.removeListener('speech-bubble', listener); }; },
   companion: request => ipcRenderer.invoke('companion', request),
   onCompanion: fn => { const listener = (_e: Electron.IpcRendererEvent, state: CompanionView) => fn(state); ipcRenderer.on('companion-state', listener); return () => ipcRenderer.removeListener('companion-state', listener); },
   onPresentation: fn => { const listener = (_e: Electron.IpcRendererEvent, value: CompanionPresentation | null) => fn(value); ipcRenderer.on('companion-presentation', listener); return () => ipcRenderer.removeListener('companion-presentation', listener); },

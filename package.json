@@ -17,7 +17,8 @@
     "schemas": "tsx scripts/schemas.ts",
     "assets": "tsx scripts/art-assets.ts",
     "test:gui": "node scripts/gui-test.cjs",
-    "test:companion-gui": "node scripts/companion-gui-test.cjs"
+    "test:companion-gui": "node scripts/companion-gui-test.cjs",
+    "test:hover-chat-gui": "node scripts/hover-chat-gui-test.cjs"
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "1.32.2",

@@ -10,6 +10,8 @@ import { baseViewport, clampRect, dimensions, ease, nearestArea, nearestContaine
 import { PackStore, readPack } from './packs';
 import { SettingsStore } from './settings';
 import { CompanionService } from './companion/service';
+import { PetChatWindows } from './pet-chat-windows';
+import { quickChatRequestSchema, type QuickChatResponse } from '../shared/pet-chat';
 
 protocol.registerSchemesAsPrivileged([{ scheme: 'petasset', privileges: { standard: true, secure: true, supportFetchAPI: true, corsEnabled: true } }]);
 if (process.env.PET_TEST_USER) app.setPath('userData', path.resolve(process.env.PET_TEST_USER));
@@ -22,6 +24,7 @@ let movement: { id: string; from: { x: number; y: number }; to: { x: number; y: 
 const pending = new Map<string, { resolve: (r: CommandReceipt) => void; timer: ReturnType<typeof setTimeout> }>();
 let viewport = { ...baseViewport };
 let companion: CompanionService | undefined;
+let chatWindows: PetChatWindows | undefined;
 const resourceRoot = () => app.isPackaged ? path.join(process.resourcesPath, 'pet-resources') : path.join(app.getAppPath(), 'resources');
 const send = (m: RuntimeMessage) => { if (pet && !pet.isDestroyed()) pet.webContents.send('runtime', m); };
 function error(e: unknown) { const message = e instanceof Error ? e.message : String(e); console.error(message); send({ type: 'error', error: message }); }
@@ -62,7 +65,7 @@ function endDrag() {
   positionPet(bounds.x+target.x-standing.x,bounds.y+target.y-standing.y);
   savePosition(); broadcastDesktop();
 }
-function samplingState() { if (sampling) clearInterval(sampling); sampling = undefined; if (!desktop.visible || desktop.suspended) return; if (settings.value.clickThrough && !movement && !desktop.dragging) { setIgnore(true); return; }
+function samplingState() { if (sampling) clearInterval(sampling); sampling = undefined; if (!desktop.visible || desktop.suspended) { chatWindows?.suspend(); return; } if (settings.value.clickThrough && !movement && !desktop.dragging) { chatWindows?.suspend(); setIgnore(true); return; }
   sampling = setInterval(() => {
     if (pet.isDestroyed()) return; const cursor = screen.getCursorScreenPoint(); const bounds = pet.getBounds();
     desktop.pointer={x:cursor.x-bounds.x,y:cursor.y-bounds.y};
@@ -70,13 +73,14 @@ function samplingState() { if (sampling) clearInterval(sampling); sampling = und
     else if (movement) { const m = movement; const t = Math.min(1, (performance.now() - m.started) / m.ms); const f = ease(t, m.easing); place(m.from.x + (m.to.x - m.from.x) * f, m.from.y + (m.to.y - m.from.y) * f); if (t === 1) { movement = undefined; savePosition(); } }
     const hit = regions.some(r => cursor.x >= bounds.x + r.x && cursor.x <= bounds.x + r.x + r.width && cursor.y >= bounds.y + r.y && cursor.y <= bounds.y + r.y + r.height);
     desktop.pointerNear = regions.some(r => cursor.x >= bounds.x + r.x - 75 && cursor.x <= bounds.x + r.x + r.width + 75 && cursor.y >= bounds.y + r.y - 75 && cursor.y <= bounds.y + r.y + r.height + 75);
+    chatWindows?.sample(cursor, hit, desktop.dragging || settings.value.clickThrough);
     setIgnore(desktop.dragging ? false : settings.value.clickThrough || !hit); broadcastDesktop();
   }, 34);
 }
 function showPet() { desktop.visible = true; pet.showInactive(); broadcastDesktop(); samplingState(); }
 function restoreInteraction() { void applySettings({ ...settings.value, clickThrough: false }).then(showPet).catch(error); }
 function menu() { return Menu.buildFromTemplate([{ label: '打开桌宠小屋', click: openPanel }, { label: '恢复交互', click: restoreInteraction }, { label: '显示桌宠', click: showPet }, { label: '隐藏桌宠', click: () => { endDrag(); movement = undefined; desktop.visible = false; pet.hide(); samplingState(); broadcastDesktop(); } }, { label: '重置位置', click: resetPosition }, { type: 'separator' }, { label: settings.value.paused ? '恢复自动行为' : '暂停自动行为', click: () => { void applySettings({ ...settings.value, paused: !settings.value.paused }).catch(error); } }, { label: '退出', click: () => app.quit() }]); }
-async function applySettings(raw: unknown) { const next = settingsSchema.parse(raw); await settings.save(next); if (next.fixedPosition) { movement = undefined; endDrag(); } pet.setAlwaysOnTop(next.alwaysOnTop, 'pop-up-menu'); resizePet(); savePosition(); send({ type: 'settings', settings: settings.value }); panel?.webContents.send('runtime', { type: 'settings', settings: settings.value }); samplingState(); tray?.setContextMenu(menu()); return settings.value; }
+async function applySettings(raw: unknown) { const next = settingsSchema.parse(raw); await settings.save(next); if (next.fixedPosition) { movement = undefined; endDrag(); } pet.setAlwaysOnTop(next.alwaysOnTop, 'pop-up-menu'); chatWindows?.topmost(next.alwaysOnTop); if (!next.bubbles) chatWindows?.hideSpeech(); resizePet(); savePosition(); send({ type: 'settings', settings: settings.value }); panel?.webContents.send('runtime', { type: 'settings', settings: settings.value }); samplingState(); tray?.setContextMenu(menu()); return settings.value; }
 function requestRuntime(message: { type: 'request'; request: PanelRequest } | { type: 'registry'; registry: Registry }): Promise<CommandReceipt> { const id = randomUUID(); return new Promise(resolve => { const timer = setTimeout(() => { pending.delete(id); resolve({ commandId: id, status: 'rejected', errorCode: 'RUNTIME_TIMEOUT', message: '桌宠未及时响应，请重试' }); }, 15000); pending.set(id, { resolve, timer }); send({ ...message, requestId: id }); }); }
 async function reload() { const next = await packs.candidate(); const result = await requestRuntime({ type: 'registry', registry: next }); if (result.status === 'rejected') throw new Error(result.message ?? result.errorCode); packs.commit(next); panel?.webContents.send('runtime', { type: 'registry', registry: next, requestId: '' }); for (const e of packs.errors) error(e); return { ok: packs.errors.length === 0, message: packs.errors.length ? `有效包已更新；以下包保留旧版：${packs.errors.join('\n')}` : '动作包重新加载成功' }; }
 async function importPack() {
@@ -105,15 +109,41 @@ async function boot() {
   pet.on('ready-to-show', () => { showPet(); }); pet.on('blur', endDrag); pet.on('close', () => app.quit());
   handle('bootstrap', 'either', () => ({ registry: packs.registry, settings: settings.value, desktop, errors: [...packs.errors, ...(settings.error ? [settings.error] : [])], companionEnabled: companion?.coordinator.ready ?? false }));
   // 陪伴服务只通过受限宿主端口感知桌宠，不直接修改窗口或人物图层。
+  chatWindows = new PetChatWindows({ pet: () => pet, preload: path.join(__dirname, '../preload/index.js'), secure: secureWindow, load,
+    regions: () => regions, movePet: (x, y) => { positionPet(x, y); broadcastDesktop(); },
+    visible: () => desktop.visible && !desktop.suspended && !desktop.dragging,
+    alwaysOnTop: () => settings.value.alwaysOnTop,
+    activity: open => { desktop.chatting = open; if (open && movement) { movement = undefined; savePosition(); } broadcastDesktop(); }
+  });
   companion = new CompanionService(app.getPath('userData'), {
     now: Date.now, id: randomUUID,
-    changed: state => { panel?.webContents.send('companion-state', state); },
-    present: value => { if (!pet.isDestroyed()) pet.webContents.send('companion-presentation', value); panel?.webContents.send('companion-presentation', value); },
+    changed: state => { panel?.webContents.send('companion-state', state); chatWindows?.update(state); },
+    present: value => { if (!pet.isDestroyed()) pet.webContents.send('companion-presentation', value); panel?.webContents.send('companion-presentation', value); chatWindows?.present(value, settings.value.bubbles); },
     capabilities: () => (debug?.groups ?? []).map(g => ({ groupId: g.groupId, name: g.name, description: g.description, tags: g.tags, channels: g.channels, expectedDurationMs: g.expectedDurationMs, available: g.enabled && !g.interaction && !debug?.failedGroups.includes(g.groupId) })),
-    available: () => desktop.visible && !desktop.suspended && !desktop.dragging && !settings.value.paused,
+    available: () => desktop.visible && !desktop.suspended && !desktop.dragging && !desktop.chatting && !settings.value.paused,
     lastInteractionAt: () => Math.max(0, ...(debug?.events.filter(e => e.type === 'interaction').map(e => e.occurredAtUnixMs) ?? []), ...(companion?.store.data.events.filter(e => e.actor === 'user').map(e => e.at) ?? []))
   }, enabled => send({ type: 'companion-mode', enabled }));
   await companion.start();
+  chatWindows.update(companion.view());
+  // 悬停窗口仅开放发送/停止和跳转设置，不能借此调用完整管理 IPC。
+  ipcMain.handle('quick-chat', async (event, raw): Promise<QuickChatResponse> => {
+    if (!chatWindows?.isSender(event, 'chat')) throw new Error('IPC_FORBIDDEN');
+    const request = quickChatRequestSchema.parse(raw);
+    if (request.type === 'hold') chatWindows.hold(request.value);
+    if (request.type === 'dismiss') chatWindows.dismiss();
+    if (request.type === 'settings') {
+      chatWindows.dismiss(); openPanel();
+      if (panel!.webContents.isLoading()) panel!.webContents.once('did-finish-load', () => panel?.webContents.send('runtime', { type: 'open-companion' }));
+      else panel!.webContents.send('runtime', { type: 'open-companion' });
+    }
+    if (request.type === 'send' || request.type === 'cancel') {
+      const response = await companion!.request(request.type === 'send' ? { type: 'chat', text: request.text } : { type: 'cancel' });
+      return { ok: response.ok, message: response.message, state: chatWindows.state() };
+    }
+    return { ok: true, state: chatWindows.state() };
+  });
+  ipcMain.handle('speech-bubble-state', event => { if (!chatWindows?.isSender(event, 'bubble')) throw new Error('IPC_FORBIDDEN'); return chatWindows.bubbleState(); });
+  ipcMain.handle('speech-bubble-size', (event, raw) => { if (!chatWindows?.isSender(event, 'bubble')) throw new Error('IPC_FORBIDDEN'); chatWindows.resizeBubble(z.object({ width: z.number().int().min(120).max(440), height: z.number().int().min(48).max(320) }).strict().parse(raw)); });
   handle('companion', 'panel', raw => companion!.request(raw));
   handle('open-panel', 'either', openPanel); handle('context-menu', 'pet', () => { menu().popup({ window: pet }); }); handle('reset-position', 'either', resetPosition); handle('show-pet', 'either', showPet);
   handle('save-settings', 'panel', applySettings); handle('reset-settings', 'panel', () => applySettings(structuredClone(defaults)));
@@ -142,6 +172,7 @@ app.on('before-quit', e => {
   if (sampling) clearInterval(sampling);
   if (dragTimeout) clearTimeout(dragTimeout);
   movement = undefined; globalShortcut.unregisterAll();
+  chatWindows?.dispose();
   for (const p of pending.values()) clearTimeout(p.timer);
   pending.clear();
   // 等待持久化队列落盘，防止退出时丢失最后一句对话或新记忆。
