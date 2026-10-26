@@ -1,3 +1,30 @@
+# AI 接口与智能陪伴 · 1.4.0
+
+1.4.0 按用户后续要求实现了可选智能陪伴，下面历史记录中的“本轮禁用”不再代表当前版本。首次启动仍关闭 AI；配置模型并启用后才开放 AI 命令来源。完整说明见 [智能陪伴使用与架构](COMPANION.md)。
+
+## 当前接口
+
+- `src/shared/companion.ts`：配置、事件、记忆、情绪、展示、受限 IPC 请求与响应的 Zod 契约。
+- `src/companion/ports.ts`：`ModelPort`、`ToolPort`、`RepositoryPort`、`CompanionHost`，核心逻辑无需 Electron 即可测试。
+- `src/main/companion/service.ts`：主进程装配、保存、QQ 检查、主动性调度。配置及聊天 IPC 只允许可信小屋窗口调用。
+- `src/main/pet-chat-windows.ts` 与 `src/renderer/chat/`：悬停输入、蓝色矩形自适应气泡与流式显示。
+- `src/renderer/pet/companion-presentation.ts`：完整回复 → 一次本地朗读；评价动作 → `PetRuntime.port('ai')`。正文流与动作事件分离。
+- `PetRuntime` 保留既有命令 ID、TTL、限频、优先级、拖动锁和取消规则。禁用智能陪伴会撤销当前 AI 动作。
+
+优先级仍为系统 100、手动 80、点击 60、AI 40、普通 10。模型不能自选来源、操作 Pixi 节点、写窗口边界或运行动作包脚本。动作映射使用当前能力目录，没有第二套动画执行器；accepted 只表示已接受，完成仍由生命周期事件表示。
+
+## 模型与工具
+
+模型适配器支持兼容 Chat Completions 的服务及 function calling。MCP 使用官方 SDK 的 Streamable HTTP；先发现，再由用户逐项授权。每轮最多四次工具操作、两轮工具交互，真实结果送回同一决策模型。QQ 和主动搭话不暴露电脑工具。
+
+取消会阻止迟到结果写入记忆或播放动作，并中断后续请求；已经在外部软件执行的操作不具备通用撤销能力。
+
+## 扩展边界
+
+目前一套模型、一台 MCP HTTP 服务、一个 QQ 会话；向量检索、SQLite、多模型路由、stdio/OAuth、多服务目录、游戏感知与持续任务规划仍是后续扩展方向。原设计文档不等于这些能力全部落地。
+
+<details><summary>1.3.x 及以前的接口历史（禁用描述仅适用于旧版本）</summary>
+
 # 未来 AI 接口（本轮禁用）
 
 下一阶段方案见 [大肥鱼大模型宠物系统设计](大肥鱼大模型宠物系统设计.md)，涵盖模型、MCP、软件和游戏适配。该文件是设计稿，当前运行模式与下述实现状态不变。
@@ -26,3 +53,5 @@
 未来模型服务不能持有 Pixi 节点、不能写窗口 bounds、不能指定命令 source 或优先级。接收结果只表示 accepted/rejected，真实完成通过 action_lifecycle 实例事件确认。取消、移动限制和拖动锁仍由同一个运行时管理。
 
 本次不安装模型 SDK，不创建 Key 设置，不提供假聊天、假回复或随机行为伪装的 AI。生成角色设定图是开发过程中的素材制作，不是应用运行时的 AI 功能。
+
+</details>
