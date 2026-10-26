@@ -2,7 +2,7 @@ import type { Memory, RecallHit, CompanionConfig } from '../shared/companion';
 // 中文按二元词组召回，英文按单词；检索实现可替换为向量索引，调用方不依赖算法。
 function terms(text: string): Set<string> {
   const lower = text.toLowerCase();
-  const words = lower.match(/[a-z0-9_]{2,}/g) ?? [];
+  const words: string[] = lower.match(/[a-z0-9_]{2,}/g) ?? [];
   for (const phrase of lower.match(/[\u4e00-\u9fff]+/g) ?? []) for (let i = 0; i < phrase.length - 1; i++) words.push(phrase.slice(i, i + 2));
   return new Set(words);
 }

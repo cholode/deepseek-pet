@@ -112,7 +112,7 @@ export class CompanionCoordinator {
     const opportunity = chooseInitiative(data, now, this.busy, this.host.lastInteractionAt());
     if (!opportunity) return;
     // 尝试前记账并落盘，失败也有冷却；重启不会重复唤醒同一个约定。
-    data.initiative = { lastAt: now, day: localDay(now), count: (data.initiative.day === localDay(now) ? data.initiative.count : 0) + 1, lastTopic: opportunity.goal?.id ?? data.memories.findLast(m => opportunity.topic.includes(m.text))?.id ?? opportunity.topic };
+    data.initiative = { lastAt: now, day: localDay(now), count: (data.initiative.day === localDay(now) ? data.initiative.count : 0) + 1, lastTopic: opportunity.goal?.id ?? [...data.memories].reverse().find(m => opportunity.topic.includes(m.text))?.id ?? opportunity.topic };
     if (opportunity.goal) opportunity.goal.lastAttemptAt = now;
     await this.repository.save();
     await this.chat(opportunity.topic, 'initiative', this.host.id(), 'desktop').catch(() => {});
