@@ -2,9 +2,9 @@
   "schemaVersion": 1,
   "id": "dafeiyu.anki-japanese",
   "name": "Anki 日语学习",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "author": "大肥鱼",
-  "description": "通过本机 AnkiConnect 陪你练习日语、保存生词和练习总结、复习卡片，并按学习计划提醒。请先打开 Anki 并安装 AnkiConnect。",
+  "description": "可按请求启动 Windows 上的 Anki，通过本机 AnkiConnect 陪练日语、记录学习、复习卡片并提醒。需安装 Anki 和 AnkiConnect，启动能力单独授权。",
   "transport": { "type": "stdio", "runtime": "node", "entry": "server.mjs", "args": [] },
   "configuration": {
     "title": "日语学习计划",

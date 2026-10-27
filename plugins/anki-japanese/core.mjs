@@ -1,6 +1,7 @@
 import { promises as fs } from 'node:fs';
 import path from 'node:path';
 import { randomUUID, createHash } from 'node:crypto';
+import { AnkiLauncher } from './launch.mjs';
 
 const defaults = { profile: '', level: '入门', dailyMinutes: 20, newCards: 5, time: '20:00', days: [1, 2, 3, 4, 5, 6, 0], deck: '大肥鱼::日语', reviewDeck: '大肥鱼::日语', logDeck: '大肥鱼::学习记录', port: 8765 };
 const text = (max = 2000) => ({ type: 'string', minLength: 1, maxLength: max });
@@ -8,6 +9,7 @@ const object = (properties, required = Object.keys(properties)) => ({ type: 'obj
 const empty = object({});
 const tokenSchema = object({ token: text(80) });
 export const tools = [
+  { name: 'anki_launch', description: '用户要求打开 Anki 或开始需要 Anki 的学习时，可启动绑定目录中的 Anki，并等待本机 AnkiConnect 就绪。无需先保存学习计划；已连接时不重复启动。只在用户提出相关任务时调用，不在闲聊或后台提醒时启动。依据 connected 区分已发起启动和已连接；失败时如实说明。不能安装 Anki 或 AnkiConnect。', inputSchema: empty },
   { name: 'anki_status', description: '读取 Anki 连接、当前用户、牌组、日语程度、学习计划、到期数量与今天的真实练习记录。开始日语练习先调用此工具，按程度用日语一次问一个问题，用中文解释纠错；Anki 未连接时不能声称已记录。', inputSchema: empty },
   { name: 'anki_settings_save', description: '保存日语学习计划及目标牌组；只能按用户明确要求修改。提醒开关由用户在小屋开启。不会修改 Anki 设置或创建卡片。', inputSchema: object({ settings: object({ profile: text(100), level: { enum: ['入门', 'N5', 'N4', 'N3', 'N2', 'N1'] }, dailyMinutes: { type: 'integer', minimum: 1, maximum: 120 }, newCards: { type: 'integer', minimum: 0, maximum: 50 }, time: text(5), days: { type: 'array', items: { type: 'integer', minimum: 0, maximum: 6 }, minItems: 1, maxItems: 7, uniqueItems: true }, deck: text(120), reviewDeck: text(120), logDeck: text(120), port: { type: 'integer', minimum: 1, maximum: 65535 } }) }) },
   { name: 'anki_practice_start', description: '开始或恢复一轮日语对话练习，返回 sessionId 和学习计划。按用户程度选话题，一次问一句并等待回答；不要代用户回答。每轮有实质回答后调用 anki_practice_record 保存真实对话、纠错与生词。长练习先记录再开新轮；不要把聊天记成正式卡片复习。', inputSchema: object({ topic: text(100) }) },
@@ -41,7 +43,7 @@ const quote = value => `"${value.replaceAll('\\', '\\\\').replaceAll('"', '\\"')
 const cardStamp = c => hash([c.cardId, c.note, c.deckName, c.type, c.queue, c.due, c.interval, c.reps, c.lapses, c.mod, c.question, c.answer]);
 
 export class AnkiPlugin {
-  constructor(directory, { request = fetch, now = Date.now } = {}) { this.directory = directory; this.file = path.join(directory, 'study.json'); this.request = request; this.now = now; this.state = { version: 1, settings: { ...defaults }, sessions: [], reviews: [] }; }
+  constructor(directory, { request = fetch, now = Date.now, softwareDirectory, launcher = new AnkiLauncher(softwareDirectory) } = {}) { this.directory = directory; this.file = path.join(directory, 'study.json'); this.request = request; this.now = now; this.launcher = launcher; this.state = { version: 1, settings: { ...defaults }, sessions: [], reviews: [] }; }
   async load() {
     await fs.mkdir(this.directory, { recursive: true });
     try {
@@ -138,6 +140,13 @@ export class AnkiPlugin {
   async call(name, args, signal) {
     const tool = tools.find(t => t.name === name); if (!tool) throw new Error('未知工具');
     validate(args, tool.inputSchema); signal?.throwIfAborted();
+    if (name === 'anki_launch') return this.launcher.open(async probeSignal => {
+      const version = await this.api('version', {}, probeSignal);
+      if (!Number.isInteger(version) || version < 6) throw new Error('需要 AnkiConnect API v6');
+      const activeProfile = await this.api('getActiveProfile', {}, probeSignal);
+      if (typeof activeProfile !== 'string' || !activeProfile) throw new Error('Anki 尚未打开用户集合');
+      return { activeProfile };
+    }, this.state.settings.profile, signal);
     if (name === 'anki_status') {
       try { return { connected: true, ...await this.status(signal) }; }
       catch (e) { signal?.throwIfAborted(); return { connected: false, settings: this.state.settings, summary: e.message }; }

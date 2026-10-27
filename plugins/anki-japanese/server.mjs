@@ -9,7 +9,7 @@ import { AnkiPlugin, tools } from './core.mjs';
 const manifest = JSON.parse(await readFile(new URL('./software-plugin.json', import.meta.url), 'utf8'));
 const directory = process.env.DAFEIYU_PLUGIN_DATA_DIRECTORY;
 if (!directory) throw new Error('需要大肥鱼提供独立插件数据目录');
-const plugin = new AnkiPlugin(directory);
+const plugin = new AnkiPlugin(directory, { softwareDirectory: process.env.DAFEIYU_SOFTWARE_DIRECTORY });
 let startupError;
 try { await plugin.load(); } catch (e) { startupError = e.message; }
 const controllers = new Map(); let queue = Promise.resolve();

@@ -1,8 +1,8 @@
-# 大肥鱼 · Anki 日语学习插件 1.0.0
+# 大肥鱼 · Anki 日语学习插件 1.1.0
 
-适配当前大肥鱼 1.5.0（含声明式插件设置与提醒），需要电脑上打开的 Anki 和 AnkiConnect。使用本机 HTTP API v6，不直接编辑 collection 数据库、不启动或安装 Anki、不主动同步到 AnkiWeb。
+适配当前大肥鱼 1.5.0（含声明式插件设置与提醒），需要已安装的 Anki 和 AnkiConnect。可按请求启动 Windows 上的 Anki，再通过本机 HTTP API v6 操作。不直接编辑 collection 数据库、不安装 Anki 或 AnkiConnect、不主动同步到 AnkiWeb。
 
-插件独立维护版本，当前为 **1.0.0**，以 `software-plugin.json` 的 `version` 为准。插件握手和独立 ZIP 使用同一版本；新增或更新本插件不增加大肥鱼主程序版本。发布记录见 [CHANGELOG.md](CHANGELOG.md)。
+插件独立维护版本，当前为 **1.1.0**，以 `software-plugin.json` 的 `version` 为准。插件握手和独立 ZIP 使用同一版本；新增或更新本插件不增加大肥鱼主程序版本。发布记录见 [CHANGELOG.md](CHANGELOG.md)。
 
 连接并授权后，可以和大肥鱼练习日语，将真实对话总结、纠错和生词记入 Anki，也能在聊天中复习卡片并自行评分。日语程度、每日用时、新卡上限、学习日、提醒时间和牌组都在小屋设置；提醒初始关闭，由你设置后开启。
 
@@ -10,14 +10,24 @@
 
 ## 在小屋连接
 
-1. 打开 Anki，确认已启用 [AnkiConnect](https://git.sr.ht/~foosoft/anki-connect)，本机默认端口 8765。
+1. 在 Anki 安装并启用 [AnkiConnect](https://git.sr.ht/~foosoft/anki-connect)，本机默认端口 8765。以后可由大肥鱼启动 Anki。
 2. 小屋 → 可操作软件 → **安装 Anki 日语学习 插件**。也可以解压独立插件 ZIP，再“导入软件插件”，选择包含 `software-plugin.json` 的文件夹。
-3. 添加软件，定位 Anki 文件夹（当前电脑可选 `D:\anki\app`），选择本插件。Node.js 运行时留空，使用大肥鱼内置运行时。
+3. 添加软件，定位 Anki 文件夹（当前电脑选 `D:\anki`，包含 `app` 和 `data`），选择本插件。Node.js 运行时留空，使用大肥鱼内置运行时。
 4. 保存软件 → 连接并读取能力 → 勾选能力 → 保存工具授权。完整陪练可用“选择全部能力”，也可只选择需要的工具。
 5. **读取计划与学习状态**，核对 Anki 用户，设置日语程度、每天对话分钟、新卡上限、学习日、提醒时间和牌组，保存学习计划。生词和日志牌组首次记录时创建。
 6. 需要提醒时再勾选 **开启计划提醒**，初始没有启用固定提醒。
 
-聊天需要在“智能陪伴”配置支持工具调用的模型。提醒无需模型，Anki 关闭时也会提醒打开学习。插件仅连接 `127.0.0.1`，端口可修改；当前不支持配置了 API key 的 AnkiConnect。软件目录用于关联，实际连接对象由本机端口和保存的 Anki 用户确定，不按安装目录猜测数据目录。
+聊天需要在“智能陪伴”配置支持工具调用的模型。提醒无需模型，Anki 关闭时也会提醒打开学习。插件仅连接 `127.0.0.1`，端口可修改；当前不支持配置了 API key 的 AnkiConnect。实际连接对象由本机端口和保存的 Anki 用户确定。
+
+## 让大肥鱼打开 Anki
+
+授权 `anki_launch` 后，可以说“帮我打开 Anki”。无需先保存学习计划；已连接时会报告当前用户，避免重复启动。只有接口确认就绪才说已连接；如果程序启动了但接口未就绪，会提示检查用户选择窗口或 AnkiConnect。
+
+启动只查找绑定目录中的 `Anki.exe` 或 `app/Anki.exe`，不搜索全盘、不接收聊天中的程序路径或命令。标准安装使用 Anki 默认数据位置；若绑定目录含有 `data/prefs21.db`，则明确使用该现有数据目录。当前电脑因此使用 `D:\anki\data`。若只绑定 `app` 而已有兄弟目录 `data`，会要求改选上一级，避免打开错误集合。其他自定义启动器或数据布局暂请手动启动。
+
+单次最多等待约 20 秒；接口未就绪不会自动再次启动，短时间重复请求也不会连续启动。停止聊天只取消等待，不强行退出已经打开的 Anki。状态查询、安装插件、连接插件和后台提醒均不会自动启动 Anki。
+
+从 1.0.0 更新：在插件库移除旧插件、导入解压后的新版，重新编辑并保存原软件关联、连接和授权。原软件关联 ID 对应的学习计划和记录保留，新增启动工具需要授权。
 
 ## 对话和学习记录
 
@@ -42,6 +52,7 @@
 
 | 工具 | 用途 | 写入 |
 |---|---|---|
+| anki_launch | 按请求启动 Anki，检查接口就绪 | 启动本机进程 |
 | anki_status | 连接、用户、牌组、计划、进行中的练习/复习 | 无 |
 | anki_settings_save | 保存学习计划 | 本地设置 |
 | anki_practice_start | 开始/恢复练习 | 本地轮次 |
@@ -59,8 +70,10 @@
 
 ## 开发与验证
 
-零依赖 Node ES module。`server.mjs` 提供 MCP JSONL，`core.mjs` 管理 AnkiConnect、计划、去重和复习凭据。运行仓库的 `npm run pack:anki` 生成独立 ZIP。
+零依赖 Node ES module。`server.mjs` 提供 MCP JSONL，`core.mjs` 管理 AnkiConnect、计划、去重和复习凭据，`launch.mjs` 负责限定目录的 Windows 启动与就绪检查。运行仓库的 `npm run pack:anki` 生成独立 ZIP。
 
 `npm test` 和 `npm run test:anki-gui` 使用隔离 Anki/模型夹具验证写入和评分，不代表真实模型教学验证。`npm run test:anki-smoke` 仅查询默认端口真实 Anki，不写卡片。
 
 插件设计和验收边界见 [架构说明](docs/ARCHITECTURE.md)，真实 Anki 流程的评估记录见 [20词流程评估](docs/USER_AUDIT.md)。本插件的使用、设计和评估文档统一维护在当前插件目录中。
+
+1.1.0 的真实 Anki 冷启动、重复请求与聊天路由测试见 [启动能力验证](docs/LAUNCH_VALIDATION.md)。
