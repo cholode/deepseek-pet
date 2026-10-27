@@ -17,6 +17,7 @@ import { DiaryService } from './diary/service';
 import { defaultDiaryDirectory } from './diary/files';
 import { CompatibleModel } from './companion/model';
 import { SoftwareService } from './software/service';
+import { softwareActionAllowed } from '../shared/action-context';
 
 protocol.registerSchemesAsPrivileged([{ scheme: 'petasset', privileges: { standard: true, secure: true, supportFetchAPI: true, corsEnabled: true } }]);
 if (process.env.PET_TEST_USER) app.setPath('userData', path.resolve(process.env.PET_TEST_USER));
@@ -40,7 +41,12 @@ function trusted(event: Electron.IpcMainInvokeEvent | Electron.IpcMainEvent, rol
   if (!valid || event.senderFrame !== event.sender.mainFrame) throw new Error('IPC_FORBIDDEN');
 }
 function handle(name: string, role: 'pet' | 'panel' | 'either', fn: (...args: unknown[]) => unknown) { ipcMain.handle(name, (event, ...args: unknown[]) => { trusted(event, role); return fn(...args); }); }
-function secureWindow(win: BrowserWindow) { win.webContents.setWindowOpenHandler(() => ({ action: 'deny' })); win.webContents.on('will-navigate', e => e.preventDefault()); win.webContents.on('will-attach-webview', e => e.preventDefault()); win.webContents.session.setPermissionRequestHandler((_wc, _perm, callback) => callback(false)); win.webContents.on('render-process-gone', (_e, info) => { movement = undefined; endDrag(); dialog.showErrorBox('桌宠渲染进程异常', `请从托盘退出并重新启动。${info.reason}`); }); }
+function recordInteraction() { desktop.lastInteractionAt = Date.now(); broadcastDesktop(); }
+function secureWindow(win: BrowserWindow) {
+  // 只记录与桌宠窗口的真实输入；模型忙碌或聊天窗保持打开不算互动。
+  win.webContents.on('before-input-event', () => recordInteraction());
+  win.webContents.on('before-mouse-event', (_event, input) => { if (input.type === 'mouseDown' || input.type === 'mouseUp' || input.type === 'mouseWheel' || input.type === 'contextMenu') recordInteraction(); });
+  win.webContents.setWindowOpenHandler(() => ({ action: 'deny' })); win.webContents.on('will-navigate', e => e.preventDefault()); win.webContents.on('will-attach-webview', e => e.preventDefault()); win.webContents.session.setPermissionRequestHandler((_wc, _perm, callback) => callback(false)); win.webContents.on('render-process-gone', (_e, info) => { movement = undefined; endDrag(); dialog.showErrorBox('桌宠渲染进程异常', `请从托盘退出并重新启动。${info.reason}`); }); }
 function load(win: BrowserWindow, page: string) { if (process.env.ELECTRON_RENDERER_URL && !app.isPackaged) void win.loadURL(`${process.env.ELECTRON_RENDERER_URL}/?page=${page}`); else void win.loadFile(path.join(__dirname, '../renderer/index.html'), { query: { page } }); }
 function openPanel() { if (panel && !panel.isDestroyed()) { panel.show(); panel.focus(); return; } panel = new BrowserWindow({ width: 1040, height: 760, minWidth: 800, minHeight: 620, title: '大肥鱼 · 桌宠小屋', backgroundColor: '#f5f7fc', autoHideMenuBar: true, icon: path.join(resourceRoot(), 'icon.png'), webPreferences: { preload: path.join(__dirname, '../preload/index.js'), contextIsolation: true, nodeIntegration: false, sandbox: true } }); secureWindow(panel); panel.on('closed', () => { panel = null; }); load(panel, 'panel'); }
 function setIgnore(value: boolean) { if (ignored === value || pet.isDestroyed()) return; ignored = value; pet.setIgnoreMouseEvents(value, { forward: true }); }
@@ -72,15 +78,20 @@ function endDrag() {
   positionPet(bounds.x+target.x-standing.x,bounds.y+target.y-standing.y);
   savePosition(); broadcastDesktop();
 }
-function samplingState() { if (sampling) clearInterval(sampling); sampling = undefined; if (!desktop.visible || desktop.suspended) { chatWindows?.suspend(); return; } if (settings.value.clickThrough && !movement && !desktop.dragging) { chatWindows?.suspend(); setIgnore(true); return; }
+function samplingState() { if (sampling) clearInterval(sampling); sampling = undefined; if (!desktop.visible || desktop.suspended) { chatWindows?.suspend(); return; }
   sampling = setInterval(() => {
     if (pet.isDestroyed()) return; const cursor = screen.getCursorScreenPoint(); const bounds = pet.getBounds();
     desktop.pointer={x:cursor.x-bounds.x,y:cursor.y-bounds.y};
     if (desktop.dragging && press) { updateDragPosition(cursor); }
     else if (movement) { const m = movement; const t = Math.min(1, (performance.now() - m.started) / m.ms); const f = ease(t, m.easing); place(m.from.x + (m.to.x - m.from.x) * f, m.from.y + (m.to.y - m.from.y) * f); if (t === 1) { movement = undefined; savePosition(); } }
     const hit = regions.some(r => cursor.x >= bounds.x + r.x && cursor.x <= bounds.x + r.x + r.width && cursor.y >= bounds.y + r.y && cursor.y <= bounds.y + r.y + r.height);
-    desktop.pointerNear = regions.some(r => cursor.x >= bounds.x + r.x - 75 && cursor.x <= bounds.x + r.x + r.width + 75 && cursor.y >= bounds.y + r.y - 75 && cursor.y <= bounds.y + r.y + r.height + 75);
+    desktop.pointerNear = !settings.value.clickThrough && regions.some(r => cursor.x >= bounds.x + r.x - 75 && cursor.x <= bounds.x + r.x + r.width + 75 && cursor.y >= bounds.y + r.y - 75 && cursor.y <= bounds.y + r.y + r.height + 75);
     chatWindows?.sample(cursor, hit, desktop.dragging || settings.value.clickThrough);
+    const panelBounds = panel?.isVisible() && !panel.isMinimized() ? panel.getBounds() : undefined;
+    const overPanel = Boolean(panelBounds && cursor.x >= panelBounds.x && cursor.x <= panelBounds.x + panelBounds.width && cursor.y >= panelBounds.y && cursor.y <= panelBounds.y + panelBounds.height);
+    const interacting = desktop.pointerNear || overPanel || Boolean(chatWindows?.isPointerOver(cursor));
+    if (interacting || desktop.interacting) desktop.lastInteractionAt = Date.now();
+    desktop.interacting = interacting;
     setIgnore(desktop.dragging ? false : settings.value.clickThrough || !hit); broadcastDesktop();
   }, 34);
 }
@@ -124,6 +135,7 @@ async function boot() {
     activity: open => { desktop.chatting = open; if (open && movement) { movement = undefined; savePosition(); } broadcastDesktop(); }
   });
   software = new SoftwareService(app.getPath('userData'), {
+    operating: active => { desktop.softwareOperating = active; broadcastDesktop(); },
     bundled: [{ id: 'dafeiyu.anki-japanese', name: 'Anki 日语学习', directory: path.join(app.isPackaged ? process.resourcesPath : app.getAppPath(), 'plugins', 'anki-japanese') }],
     canRemind: () => !desktop.suspended && !desktop.dragging && !desktop.chatting && !settings.value.paused && !companion?.coordinator.busy,
     remind: text => {
@@ -150,7 +162,7 @@ async function boot() {
     now: Date.now, id: randomUUID,
     changed: state => { panel?.webContents.send('companion-state', state); chatWindows?.update(state); },
     present: value => { if (!pet.isDestroyed()) pet.webContents.send('companion-presentation', value); panel?.webContents.send('companion-presentation', value); chatWindows?.present(value, settings.value.bubbles); },
-    capabilities: () => (debug?.groups ?? []).map(g => ({ groupId: g.groupId, name: g.name, description: g.description, tags: g.tags, channels: g.channels, expectedDurationMs: g.expectedDurationMs, available: g.enabled && !g.interaction && !debug?.failedGroups.includes(g.groupId) })),
+    capabilities: () => (debug?.groups ?? []).map(g => ({ groupId: g.groupId, name: g.name, description: g.description, tags: g.tags, channels: g.channels, expectedDurationMs: g.expectedDurationMs, available: g.enabled && !g.interaction && !debug?.failedGroups.includes(g.groupId) && softwareActionAllowed(g, { ...desktop, interacting: desktop.interacting || desktop.dragging, paused: settings.value.paused, lastInteraction: desktop.lastInteractionAt ?? Date.now() }, Date.now()) })),
     available: () => desktop.visible && !desktop.suspended && !desktop.dragging && !desktop.chatting && !settings.value.paused,
     lastInteractionAt: () => Math.max(0, ...(debug?.events.filter(e => e.type === 'interaction').map(e => e.occurredAtUnixMs) ?? []), ...(companion?.store.data.events.filter(e => e.actor === 'user').map(e => e.at) ?? []))
   }, enabled => send({ type: 'companion-mode', enabled }), software);
@@ -171,10 +183,12 @@ async function boot() {
   await diary.start();
   handle('diary', 'panel', raw => diary!.request(raw));
   chatWindows.update(companion.view());
+  ipcMain.on('user-activity', event => { try { if (!chatWindows?.isSender(event, 'chat')) trusted(event); recordInteraction(); } catch (e) { error(e); } });
   // 悬停窗口仅开放发送/停止和跳转设置，不能借此调用完整管理 IPC。
   ipcMain.handle('quick-chat', async (event, raw): Promise<QuickChatResponse> => {
     if (!chatWindows?.isSender(event, 'chat')) throw new Error('IPC_FORBIDDEN');
     const request = quickChatRequestSchema.parse(raw);
+    if (request.type === 'send' || request.type === 'cancel') recordInteraction();
     if (request.type === 'tab') chatWindows.selectTab(request.tab);
     if (request.type === 'hold') chatWindows.hold(request.value);
     if (request.type === 'dismiss') chatWindows.dismiss();

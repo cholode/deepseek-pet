@@ -5,6 +5,7 @@ import type { QuickChatState, SpeechBubbleState } from '../shared/pet-chat';
 import type { DiaryView } from '../shared/diary';
 import type { SoftwareView } from '../shared/software';
 const bridge: PetBridge = {
+  userActivity: () => ipcRenderer.send('user-activity'),
   software: request => ipcRenderer.invoke('software', request),
   onSoftware: fn => { const listener = (_e: Electron.IpcRendererEvent, state: SoftwareView) => fn(state); ipcRenderer.on('software-state', listener); return () => ipcRenderer.removeListener('software-state', listener); },
   diary: request => ipcRenderer.invoke('diary', request),

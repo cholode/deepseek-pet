@@ -17,8 +17,9 @@
   "conditions": {
     "minIdleMs": 5000,
     "requiresRoaming": false,
-    "requiresPointerAway": false,
-    "requiresStanding": true
+    "requiresPointerAway": true,
+    "requiresStanding": true,
+    "requiresSoftwareOperation": true
   },
   "maxDurationMs": 4500,
   "timeline": {

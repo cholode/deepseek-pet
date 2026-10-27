@@ -42,7 +42,7 @@ describe('timeline lifecycle',()=>{
     expect(m.frames).toEqual(original.frames);
     if(id!=='play_phone'){expect(m.frameOverlays).toHaveLength(1);expect(g.random.eligible).toBe(false);}
     expect([0,41,42,3999,4000].map(t=>frameIndex(m,t))).toEqual([0,0,1,95,95]);
-    expect(g.conditions.requiresStanding).toBe(true);expect(g.expectedDurationMs).toBe(4000);
+    expect(g.conditions).toMatchObject({ requiresStanding: true, requiresSoftwareOperation: true, requiresPointerAway: true, minIdleMs: 5000 });expect(g.expectedDurationMs).toBe(4000);
     expect(g.channels.sort()).toEqual(['face','pose']);
     for(const cancel of [false,true]){
       const h=host(),done=vi.fn(),runner=new ActionGroupRunner(g,'phone','manual',c,h,done);
@@ -151,6 +151,75 @@ describe('command gateway and priority',()=>{
   it('failed groups are isolated until successful registry replacement',()=>{const r=runtime();r.play('builtin.deepblue:greet_wave','manual');r.current!.fail('decode');expect(r.quarantined.has('builtin.deepblue:greet_wave')).toBe(true);expect(r.play('builtin.deepblue:greet_wave','manual').errorCode).toBe('GROUP_UNAVAILABLE');r.replaceRegistry({...registry,revision:2});expect(r.quarantined.size).toBe(0);});
   it('suspend-sized delta cancels movement rather than jumping time',()=>{const r=runtime();r.play('builtin.deepblue:walk_right','manual');r.tick(60000);expect(r.current).toBeNull();});
 });
+describe('software operation animation context', () => {
+  const phone = 'builtin.deepblue:play_phone';
+  it('all phone variants reject idle commands from every source, even with random overrides', () => {
+    const r = runtime(); r.setCompanionEnabled(true); r.lastInteraction = 0;
+    const phones = [...r.catalog.groups.values()].filter(g => g.id.startsWith('play_phone'));
+    expect(phones).toHaveLength(12);
+    for (const g of phones) {
+      r.settings.overrides[g.groupId] = { eligible: true, weight: 1000, cooldownMs: 0 };
+      for (const source of ['normal', 'ai', 'manual', 'interaction', 'system'] as const) expect(r.play(g.groupId, source).errorCode).toBe('CONTEXT_REQUIRED');
+      expect(r.port('ai').listCapabilities().find(c => c.groupId === g.groupId)?.available).toBe(false);
+    }
+    const state = { settings: r.settings, lastInteraction: 0, pointerNear: false, cooldowns: new Map<string, number>(), history: [], quarantined: new Set<string>() };
+    expect(candidates(phones, state, Date.now())).toEqual([]);
+    expect(candidates(phones, { ...state, softwareOperating: true }, Date.now())).toHaveLength(12);
+    expect(candidates(phones, { ...state, softwareOperating: true, interacting: true }, Date.now())).toEqual([]);
+  });
+  it('starts after five idle seconds while a busy chat window stays open; ordinary random actions stay excluded', async () => {
+    vi.useFakeTimers(); const r = runtime(); await r.start();
+    r.setDesktop({ ...desktop, softwareOperating: true, chatting: true });
+    await vi.advanceTimersByTimeAsync(4999); expect(r.current).toBeNull();
+    await vi.advanceTimersByTimeAsync(1); expect(r.current?.group.groupId).toBe(phone);
+    expect(r.current?.source).toBe('normal');
+    for (let i = 0; i < 40; i++) r.tick(100);
+    expect(r.current).toBeNull();
+    await vi.advanceTimersByTimeAsync(5000); expect(r.current).toBeNull(); // 冷却仍生效。
+    r.setDesktop({ ...desktop, softwareOperating: false });
+    expect(r.driver.status).toBe('running'); await r.dispose();
+  });
+  it.each(['operation-end', 'pointer', 'panel-or-chat-hover', 'typing', 'click', 'pause', 'disable', 'hidden', 'suspend', 'drag'] as const)('immediately clears phone layers on %s', async reason => {
+    vi.useFakeTimers(); const h = host(), r = new PetRuntime(structuredClone(registry), structuredClone(defaults), { ...desktop, softwareOperating: true }, h);
+    r.lastInteraction = Date.now() - 6000;
+    expect(r.play(phone, 'system').status).toBe('accepted');
+    const current = r.current!;
+    if (reason === 'operation-end') r.setDesktop({ ...r.desktop, softwareOperating: false });
+    if (reason === 'pointer') r.setDesktop({ ...r.desktop, pointerNear: true });
+    if (reason === 'panel-or-chat-hover') r.setDesktop({ ...r.desktop, interacting: true });
+    if (reason === 'typing') r.setDesktop({ ...r.desktop, lastInteractionAt: Date.now() });
+    if (reason === 'click') r.interact('head');
+    if (reason === 'pause') r.setSettings({ ...r.settings, paused: true });
+    if (reason === 'disable') r.setSettings({ ...r.settings, overrides: { [phone]: { enabled: false } } });
+    if (reason === 'hidden') r.setDesktop({ ...r.desktop, visible: false });
+    if (reason === 'suspend') r.setDesktop({ ...r.desktop, suspended: true });
+    if (reason === 'drag') r.setDesktop({ ...r.desktop, dragging: true });
+    expect(r.current).not.toBe(current); expect(h.reset).toHaveBeenCalledOnce();
+    expect(r.events.filter(e => e.type === 'action_lifecycle' && e.payload.groupId === phone && e.payload.status === 'cancelled')).toHaveLength(1);
+    await r.dispose();
+  });
+  it('waits again after pointer leaves and preserves user actions when a tool starts', async () => {
+    vi.useFakeTimers(); const r = runtime(); await r.start();
+    r.play('builtin.deepblue:greet_wave', 'manual'); const userAction = r.current;
+    r.setDesktop({ ...desktop, softwareOperating: true });
+    await vi.advanceTimersByTimeAsync(6000); expect(r.current).toBe(userAction);
+    r.current!.cancel(); r.setDesktop({ ...r.desktop, pointerNear: true });
+    await vi.advanceTimersByTimeAsync(10000); expect(r.current).toBeNull();
+    r.setDesktop({ ...r.desktop, pointerNear: false });
+    await vi.advanceTimersByTimeAsync(4999); expect(r.current).toBeNull();
+    await vi.advanceTimersByTimeAsync(1); expect(r.current?.group.groupId).toBe(phone);
+    r.interact('body'); expect(r.play('builtin.deepblue:happy_hop', 'interaction').status).toBe('accepted');
+    await r.dispose();
+  });
+  it('a short tool call cannot leave a queued phone animation behind', async () => {
+    vi.useFakeTimers(); const r = runtime(); await r.start();
+    r.setDesktop({ ...desktop, softwareOperating: true, chatting: true });
+    await vi.advanceTimersByTimeAsync(1000); r.setDesktop({ ...r.desktop, softwareOperating: false });
+    await vi.advanceTimersByTimeAsync(20000); expect(r.current).toBeNull(); expect(r.driver.status).toBe('paused');
+    expect(r.events.some(e => e.type === 'action_lifecycle')).toBe(false); await r.dispose();
+  });
+});
+
 describe('normal random behavior',()=>{
   function state(){return{settings:structuredClone(defaults),lastInteraction:0,pointerNear:false,cooldowns:new Map<string,number>(),history:[] as string[],quarantined:new Set<string>()};}
   function pool(){return [...makeCatalog(registry).groups.values()];}

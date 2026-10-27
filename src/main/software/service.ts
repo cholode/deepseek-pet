@@ -13,6 +13,7 @@ export interface SoftwareHost {
   seal(value: string): Promise<string>; unseal(value: string): Promise<string>;
   bundled?: { id: string; name: string; directory: string }[];
   canRemind?(): boolean; remind?(text: string): void;
+  operating?(active: boolean): void;
 }
 export function pluginResult(raw: string): unknown {
   const result = JSON.parse(raw) as { content?: { type: string; text?: string }[] };
@@ -212,17 +213,25 @@ export class SoftwareService implements ToolPort {
     const signal = AbortSignal.any([parent, this.lifecycle.signal]);
     const activity: SoftwareView['activities'][number] = { id: randomUUID(), at: Date.now(), software: entry.name, tool: tool.name, status: 'running' };
     if (!silent) { this.activities = [...this.activities, activity].slice(-50); this.publish(); }
+    let operating = false;
+    const finishOperation = () => { if (operating) { operating = false; this.host.operating?.(false); } };
+    signal.addEventListener('abort', finishOperation, { once: true });
     try {
       await this.plugins.verify(entry.pluginId);
       if (await softwareDirectory(entry.directory) !== entry.directory) throw new Error('软件目录目标已变化');
       const session = await this.ensureConnected(entry, signal); signal.throwIfAborted();
       if (!permitted() || this.statuses.get(entry.id)?.status !== 'connected') throw new Error('软件授权已变化，请重新连接并授权');
-      const result = await session.call(tool.name, args, signal); signal.throwIfAborted(); activity.status = 'completed'; return result;
+      // 连接、授权和后台提醒轮询不是用户委托的软件操作，不能触发操作中的动作。
+      if (!silent) { operating = true; this.host.operating?.(true); }
+      let result: string;
+      try { result = await session.call(tool.name, args, signal); }
+      finally { finishOperation(); }
+      signal.throwIfAborted(); activity.status = 'completed'; return result;
     } catch (e) {
       activity.status = signal.aborted ? 'cancelled' : 'failed'; activity.message = signal.aborted ? '调用已取消，已执行的外部操作不会撤销' : '插件调用失败，请检查连接、权限和目标软件';
       // 取消或超时后关闭会话，不自动重试可能已经执行的操作。
       await this.disconnect(entry.id); throw e;
-    } finally { this.invoking = false; if (!silent) this.publish(); }
+    } finally { finishOperation(); signal.removeEventListener('abort', finishOperation); this.invoking = false; if (!silent) this.publish(); }
   }
   async pollReminders() {
     if (this.closed || this.busy || this.invoking || this.polling || !this.host.remind || !this.host.canRemind?.()) return;

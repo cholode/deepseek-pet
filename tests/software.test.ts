@@ -22,7 +22,7 @@ const manifest: SoftwarePlugin = { schemaVersion: 1, id: 'test.protocol', name: 
 async function plugin(folder: string, config = manifest) { await fs.mkdir(folder, { recursive: true }); await fs.writeFile(path.join(folder, 'software-plugin.json'), JSON.stringify(config)); return folder; }
 async function service() {
   const root = await directory();
-  const host: SoftwareHost = { changed: vi.fn(), cancelChat: vi.fn(), choose: vi.fn(async () => undefined), seal: async s => `sealed:${Buffer.from(s).toString('base64')}`, unseal: async s => Buffer.from(s.slice(7), 'base64').toString() };
+  const host: SoftwareHost = { changed: vi.fn(), operating: vi.fn(), cancelChat: vi.fn(), choose: vi.fn(async () => undefined), seal: async s => `sealed:${Buffer.from(s).toString('base64')}`, unseal: async s => Buffer.from(s.slice(7), 'base64').toString() };
   const manager = new SoftwareService(path.join(root, 'user'), host); await manager.start(); cleanup.push(() => manager.close());
   return { root, host, manager };
 }
@@ -30,6 +30,7 @@ async function request(manager: SoftwareService, value: SoftwareRequest) { const
 async function httpPlugin() {
   const calls: { args: unknown; meta: unknown; token?: string }[] = [];
   let description = '回显测试消息', failing = false, response: unknown;
+  let held: Promise<void> | undefined;
   const http = createServer((req, res) => { void (async () => {
     if (req.method !== 'POST') { res.writeHead(405).end(); return; }
     const chunks = []; for await (const chunk of req) chunks.push(Buffer.from(chunk));
@@ -37,6 +38,7 @@ async function httpPlugin() {
     const server = new McpServer({ name: 'protocol-fixture', version: '1.0.0' });
     server.registerTool('echo', { description, inputSchema: { text: z.string().optional(), settings: z.record(z.string(), z.unknown()).optional() } }, async (args, extra) => {
       calls.push({ args, meta: extra._meta, token: req.headers.authorization });
+      await held;
       return { isError: failing, content: [{ type: 'text', text: JSON.stringify(response ?? args) }] };
     });
     const transport = new StreamableHTTPServerTransport({ sessionIdGenerator: undefined, enableJsonResponse: true });
@@ -44,7 +46,7 @@ async function httpPlugin() {
   })().catch(() => { if (!res.headersSent) res.writeHead(500); res.end(); }); });
   await new Promise<void>(r => http.listen(0, '127.0.0.1', r));
   cleanup.push(async () => { http.closeAllConnections(); await new Promise<void>(r => http.close(() => r())); });
-  return { url: `http://127.0.0.1:${(http.address() as { port: number }).port}/mcp`, calls, respond: (value: unknown) => { response = value; }, change: () => { description = '变更后的工具说明'; }, fail: () => { failing = true; } };
+  return { url: `http://127.0.0.1:${(http.address() as { port: number }).port}/mcp`, calls, hold: () => { let release!: () => void; held = new Promise<void>(resolve => { release = resolve; }); return release; }, respond: (value: unknown) => { response = value; }, change: () => { description = '变更后的工具说明'; }, fail: () => { failing = true; } };
 }
 async function configured(config = manifest) {
   const backend = await httpPlugin(), f = await service();
@@ -56,6 +58,34 @@ async function configured(config = manifest) {
 async function authorize(f: Awaited<ReturnType<typeof configured>>) {
   await request(f.manager, { type: 'connect', id: f.id }); await request(f.manager, { type: 'grant', id: f.id, tools: ['echo'] });
 }
+
+describe('软件动作只跟随实际工具调用', () => {
+  it('连接和未授权调用不触发；成功与失败都收起操作状态', async () => {
+    const f = await configured(); await authorize(f);
+    expect(f.host.operating).not.toHaveBeenCalled();
+    await expect(f.manager.call('missing', {}, signal())).rejects.toThrow();
+    expect(f.host.operating).not.toHaveBeenCalled();
+    await f.manager.call(f.name, {}, signal());
+    expect(vi.mocked(f.host.operating!).mock.calls).toEqual([[true], [false]]);
+    f.backend.fail(); await expect(f.manager.call(f.name, {}, signal())).rejects.toThrow();
+    expect(vi.mocked(f.host.operating!).mock.calls).toEqual([[true], [false], [true], [false]]);
+  });
+  it.each(['cancel', 'stop', 'close'] as const)('%s 立即清除进行中的工具状态，迟到结果不会重新激活', async action => {
+    const f = await configured(); await authorize(f); const release = f.backend.hold();
+    try {
+      const controller = new AbortController();
+      const pending = f.manager.call(f.name, {}, controller.signal); const rejection = expect(pending).rejects.toThrow();
+      await vi.waitFor(() => expect(f.backend.calls).toHaveLength(1));
+      expect(f.host.operating).toHaveBeenLastCalledWith(true);
+      if (action === 'cancel') controller.abort();
+      if (action === 'stop') await request(f.manager, { type: 'stop' });
+      if (action === 'close') await f.manager.close();
+      expect(f.host.operating).toHaveBeenLastCalledWith(false);
+      release(); await rejection;
+      expect(vi.mocked(f.host.operating!).mock.calls).toEqual([[true], [false]]);
+    } finally { release(); }
+  });
+});
 
 describe('插件设置页和计划提醒', () => {
   const planned: SoftwarePlugin = { ...manifest, configuration: { title: '计划', readTool: 'echo', writeTool: 'echo', fields: [] }, reminderTool: 'echo' };
@@ -79,6 +109,7 @@ describe('插件设置页和计划提醒', () => {
     await request(f.manager, { type: 'reminders', id: f.id, enabled: true });
     canRemind.mockReturnValue(false); await f.manager.pollReminders(); expect(f.backend.calls).toHaveLength(0);
     canRemind.mockReturnValue(true); await f.manager.pollReminders(); await f.manager.pollReminders(); expect(remind).toHaveBeenCalledTimes(1);
+    expect(f.host.operating).not.toHaveBeenCalled();
     await f.manager.close(); const next = new SoftwareService(path.join(f.root, 'user'), f.host); await next.start(); cleanup.push(() => next.close());
     await next.pollReminders(); expect(remind).toHaveBeenCalledTimes(1);
     f.backend.respond({ key: 'tomorrow-20:00', text: '新一天' }); await next.pollReminders(); expect(remind).toHaveBeenCalledTimes(2);

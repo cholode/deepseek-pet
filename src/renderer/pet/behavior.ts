@@ -1,11 +1,12 @@
 import { effective, type GroupInfo, type Settings } from '../../shared/schema';
+import { softwareActionAllowed, type SoftwareActionContext } from '../../shared/action-context';
 import type { BehaviorContext, DriverStatus, IBehaviorDriver, PetEvent } from '../../shared/contracts';
 export interface Clock { now(): number; setTimeout(fn: () => void, ms: number): ReturnType<typeof setTimeout>; clearTimeout(id: ReturnType<typeof setTimeout>): void }
 export const realClock: Clock = { now: () => Date.now(), setTimeout: (fn, ms) => setTimeout(fn, ms), clearTimeout: id => clearTimeout(id) };
-export interface SelectionState { settings: Settings; lastInteraction: number; pointerNear: boolean; cooldowns: Map<string, number>; history: string[]; quarantined: Set<string> }
+export interface SelectionState extends SoftwareActionContext { settings: Settings; cooldowns: Map<string, number>; history: string[]; quarantined: Set<string> }
 export function candidates(groups: GroupInfo[], state: SelectionState, now: number): GroupInfo[] {
   const s = state.settings;
-  const base = groups.map(g => effective(g, s)).filter(g => g.enabled && g.random.eligible && g.random.weight > 0 && !state.quarantined.has(g.groupId) && (!g.channels.includes('movement') || !s.fixedPosition) && now - (state.cooldowns.get(g.groupId) ?? -Infinity) >= g.random.cooldownMs && now - state.lastInteraction >= g.conditions.minIdleMs && (!g.conditions.requiresRoaming || s.roaming) && (!g.channels.includes('movement') || s.roaming) && (!g.conditions.requiresPointerAway || !state.pointerNear));
+  const base = groups.map(g => effective(g, s)).filter(g => Boolean(g.conditions.requiresSoftwareOperation) === Boolean(state.softwareOperating) && softwareActionAllowed(g, { ...state, paused: s.paused }, now) && g.enabled && g.random.eligible && g.random.weight > 0 && !state.quarantined.has(g.groupId) && (!g.channels.includes('movement') || !s.fixedPosition) && now - (state.cooldowns.get(g.groupId) ?? -Infinity) >= g.random.cooldownMs && now - state.lastInteraction >= g.conditions.minIdleMs && (!g.conditions.requiresRoaming || s.roaming) && (!g.channels.includes('movement') || s.roaming) && (!g.conditions.requiresPointerAway || !state.pointerNear));
   let history = state.history.slice(-2); let pool = base.filter(g => !history.includes(g.groupId));
   while (!pool.length && history.length) { history = history.slice(1); pool = base.filter(g => !history.includes(g.groupId)); }
   return pool;
@@ -27,7 +28,9 @@ export class NormalBehaviorDriver implements IBehaviorDriver {
   private arm() {
     this.clear(); if (this.status !== 'running' || !this.context) return;
     const snapshot = this.context.control.getSnapshot(); if (!snapshot.visible || snapshot.dragging || snapshot.currentAction) return;
-    const { settings } = this.state(); const delay = settings.intervalMinMs + this.random() * (settings.intervalMaxMs - settings.intervalMinMs); const epoch = this.epoch; this.nextAt = this.clock.now() + delay;
+    const { settings, softwareOperating } = this.state();
+    // 工具执行期间及时检查空闲门槛；仍保留单一定时器、权重、冷却和有限动作时长。
+    const delay = softwareOperating ? 250 : settings.intervalMinMs + this.random() * (settings.intervalMaxMs - settings.intervalMinMs); const epoch = this.epoch; this.nextAt = this.clock.now() + delay;
     this.timer = this.clock.setTimeout(() => { this.timer = undefined; this.nextAt = 0; if (epoch !== this.epoch || this.status !== 'running' || !this.context) return; const current = this.context.control.getSnapshot(); if (!current.visible || current.dragging || current.currentAction) { this.arm(); return; }
       const pool = candidates(this.groups(), { ...this.state(), cooldowns: this.cooldowns, history: this.history }, this.clock.now()); this.candidateCount = pool.length; const group = weighted(pool, this.random);
       if (!group) { this.arm(); return; }

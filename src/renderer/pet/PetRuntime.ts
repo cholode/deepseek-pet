@@ -1,7 +1,8 @@
-import { AVATAR, effective, makeCatalog, type Catalog, type Registry, type Settings } from '../../shared/schema';
+import { AVATAR, effective, makeCatalog, type Catalog, type Registry, type Settings, type GroupInfo } from '../../shared/schema';
 import { commandSchema, type CommandSource, type CommandReceipt, type PetControlPort, type PetEvent, type PetSnapshot, type DesktopState, type DebugState } from '../../shared/contracts';
 import { ActionGroupRunner, type AnimationHost } from './engine';
 import { NormalBehaviorDriver, checkMode } from './behavior';
+import { softwareActionAllowed } from '../../shared/action-context';
 const priorities: Record<CommandSource, number> = { system: 100, manual: 80, interaction: 60, ai: 40, normal: 10 };
 export class PetRuntime {
   private companionEnabled = false;
@@ -9,7 +10,7 @@ export class PetRuntime {
   setCompanionEnabled(enabled: boolean) { this.companionEnabled = enabled; if (!enabled && this.current?.source === 'ai') this.current.cancel(); }
   catalog: Catalog; readonly driver: NormalBehaviorDriver; current: ActionGroupRunner | null = null; lastInteraction = Date.now(); quarantined = new Set<string>(); errors: string[] = []; events: PetEvent[] = []; private listeners = new Set<(e: PetEvent) => void>(); private serial = 0; private cache = new Map<string, { content: string; result: CommandReceipt }>(); private lastSubmit = new Map<CommandSource, number>();
   constructor(public registry: Registry, public settings: Settings, public desktop: DesktopState, private host: AnimationHost) {
-    this.catalog = makeCatalog(registry); this.driver = new NormalBehaviorDriver(() => [...this.catalog.groups.values()], () => ({ settings: this.settings, lastInteraction: this.lastInteraction, pointerNear: this.desktop.pointerNear, quarantined: this.quarantined }));
+    this.catalog = makeCatalog(registry); this.driver = new NormalBehaviorDriver(() => [...this.catalog.groups.values()], () => ({ settings: this.settings, ...this.actionContext(), quarantined: this.quarantined }));
   }
   async start() { await this.driver.start({ control: this.port('normal'), subscribe: f => this.subscribe(f) }); this.syncDriver(); this.ensureDragAction(); }
   subscribe(f: (e: PetEvent) => void) { this.listeners.add(f); return () => { this.listeners.delete(f); }; }
@@ -17,7 +18,10 @@ export class PetRuntime {
   log(message: string) { this.errors = [...this.errors, message].slice(-40); }
   snapshot(): PetSnapshot { return { snapshotVersion: 1, mode: this.companionEnabled ? 'ai' : 'normal', driverStatus: this.driver.status, avatarId: AVATAR, registryRevision: this.registry.revision, visible: this.desktop.visible, dragging: this.desktop.dragging, fixedPosition: this.settings.fixedPosition, windowPositionDip: this.desktop.position, currentAction: this.current ? { actionInstanceId: this.current.instanceId, groupId: this.current.group.groupId, source: this.current.source as CommandSource, elapsedMs: this.current.elapsedMs } : null }; }
   debug(): DebugState { return { failedGroups: [...this.quarantined], snapshot: this.snapshot(), groups: [...this.catalog.groups.values()].map(g => effective(g, this.settings)), errors: this.errors, events: this.events, candidateCount: this.driver.candidateCount, nextInMs: Math.max(0, this.driver.nextAt - Date.now()) }; }
-  port(source: CommandSource): PetControlPort { return { getSnapshot: () => this.snapshot(), listCapabilities: () => [...this.catalog.groups.values()].map(raw => { const g = effective(raw, this.settings); const reason = !g.enabled ? '动作已禁用' : this.quarantined.has(g.groupId) ? '动作故障，请重新加载' : this.settings.fixedPosition && g.channels.includes('movement') ? '已固定位置' : undefined; return { groupId: g.groupId, name: g.name, description: g.description, tags: g.tags, channels: g.channels, expectedDurationMs: g.expectedDurationMs, available: !reason, unavailableReason: reason }; }), submit: async command => this.submit(command, source) }; }
+  private actionContext() { return { softwareOperating: this.desktop.softwareOperating, interacting: this.desktop.interacting || this.desktop.dragging, pointerNear: this.desktop.pointerNear, lastInteraction: this.lastInteraction, paused: this.settings.paused }; }
+  private contextReason(group: GroupInfo) { return softwareActionAllowed(group, this.actionContext(), Date.now()) ? undefined : `仅在操作软件且用户停止互动至少 ${group.conditions.minIdleMs / 1000} 秒后使用`; }
+  private cancelUnavailableContext() { if (this.current?.group.conditions.requiresSoftwareOperation && (!effective(this.current.group, this.settings).enabled || this.contextReason(this.current.group))) this.current.cancel(); }
+  port(source: CommandSource): PetControlPort { return { getSnapshot: () => this.snapshot(), listCapabilities: () => [...this.catalog.groups.values()].map(raw => { const g = effective(raw, this.settings); const reason = !g.enabled ? '动作已禁用' : this.quarantined.has(g.groupId) ? '动作故障，请重新加载' : this.contextReason(g) ?? (this.settings.fixedPosition && g.channels.includes('movement') ? '已固定位置' : undefined); return { groupId: g.groupId, name: g.name, description: g.description, tags: g.tags, channels: g.channels, expectedDurationMs: g.expectedDurationMs, available: !reason, unavailableReason: reason }; }), submit: async command => this.submit(command, source) }; }
   submit(raw: unknown, source: CommandSource): CommandReceipt {
     const parsed = commandSchema.safeParse(raw); if (!parsed.success) return { commandId: '', status: 'rejected', errorCode: 'INVALID_COMMAND', message: parsed.error.message };
     const c = parsed.data; const key = `${source}:${c.commandId}`; const content = JSON.stringify(c); const previous = this.cache.get(key);
@@ -34,6 +38,7 @@ export class PetRuntime {
       if (!g) result = reject('UNKNOWN_GROUP', '找不到动作组');
       else if (!g.enabled || this.quarantined.has(c.groupId)) result = reject('GROUP_UNAVAILABLE', '动作被禁用或发生故障');
       else if (!this.desktop.visible || this.desktop.suspended) result = reject('NOT_VISIBLE');
+      else if (this.contextReason(g)) result = reject('CONTEXT_REQUIRED', this.contextReason(g));
       else if (g.conditions.requiresStanding && this.current) result = reject('REQUIRES_STANDING', '请等当前动作结束、回到站立待机后再播放此动作');
       else if (this.settings.fixedPosition && g.channels.includes('movement')) result = reject('FIXED_POSITION', '关闭固定位置后才能播放移动动作');
       else if (Date.now() - (this.lastSubmit.get(source) ?? 0) < 90 && source !== 'system') result = reject('RATE_LIMITED', '操作太快，请稍候');
@@ -45,10 +50,10 @@ export class PetRuntime {
     }
     this.cache.set(key, { content, result }); if (this.cache.size > 256) this.cache.delete(this.cache.keys().next().value!); return result;
   }
-  tick(delta: number) { if (delta > 1500) { this.current?.cancel(); this.host.reset(); this.driver.refresh(); return; } this.current?.tick(Math.min(100, delta)); this.ensureDragAction(); }
+  tick(delta: number) { if (delta > 1500) { this.current?.cancel(); this.host.reset(); this.driver.refresh(); return; } this.cancelUnavailableContext(); this.current?.tick(Math.min(100, delta)); this.ensureDragAction(); }
   setMode(mode: 'normal' | 'ai') { return mode === 'ai' && this.companionEnabled ? { available: true as const } : checkMode(mode); }
-  setSettings(settings: Settings) { if (settings.fixedPosition && this.current?.group.channels.includes('movement')) this.current.cancel(); this.settings = settings; if(this.current?.group.interaction && !effective(this.current.group, settings).enabled)this.current.cancel(); this.syncDriver(); }
-  private syncDriver() { if (this.settings.paused || !this.desktop.visible || this.desktop.dragging || this.desktop.suspended || this.desktop.chatting) this.driver.pause(); else { this.driver.resume(); this.driver.refresh(); } }
+  setSettings(settings: Settings) { if (settings.fixedPosition && this.current?.group.channels.includes('movement')) this.current.cancel(); this.settings = settings; if(this.current?.group.interaction && !effective(this.current.group, settings).enabled)this.current.cancel(); this.cancelUnavailableContext(); this.syncDriver(); }
+  private syncDriver() { if (this.settings.paused || !this.desktop.visible || this.desktop.dragging || this.desktop.suspended || (this.desktop.softwareOperating ? this.desktop.interacting || this.desktop.pointerNear : this.desktop.chatting)) this.driver.pause(); else { this.driver.resume(); this.driver.refresh(); } }
   private playInteraction(binding: 'drag-hold' | 'drag-release') {
     const group = [...this.catalog.groups.values()].map(g => effective(g, this.settings)).find(g => g.interaction === binding && g.enabled && !this.quarantined.has(g.groupId));
     if (group) this.play(group.groupId, 'system');
@@ -57,13 +62,16 @@ export class PetRuntime {
     if (this.desktop.dragging && this.desktop.visible && !this.desktop.suspended && !this.current) this.playInteraction('drag-hold');
   }
   setDesktop(desktop: DesktopState) { const previous = this.desktop; this.desktop = desktop; if ((!desktop.visible || desktop.suspended || previous.dragging !== desktop.dragging) && this.current) this.current.cancel();
-    // 交谈期间暂停随机散步，不影响摸头、拖动和 AI 回复表情。
-    if (desktop.chatting && this.current?.source === 'normal') this.current.cancel();
+    this.lastInteraction = Math.max(this.lastInteraction, desktop.lastInteractionAt ?? 0);
+    if (desktop.interacting || desktop.pointerNear || previous.interacting !== desktop.interacting || previous.pointerNear !== desktop.pointerNear) this.lastInteraction = Date.now();
+    this.cancelUnavailableContext();
+    // 聊天窗可能只是在等待工具结果；实际交互另行判断，普通散步仍暂停。
+    if ((desktop.chatting || desktop.softwareOperating) && this.current?.source === 'normal' && !this.current.group.conditions.requiresSoftwareOperation) this.current.cancel();
     if (previous.dragging !== desktop.dragging) { this.interact('desktop', desktop.dragging ? 'drag-start' : 'drag-end'); if (!desktop.dragging && desktop.visible && !desktop.suspended) this.playInteraction('drag-release'); }
     this.ensureDragAction();
-    if (previous.visible !== desktop.visible || previous.dragging !== desktop.dragging || previous.suspended !== desktop.suspended || previous.chatting !== desktop.chatting) this.syncDriver();
+    if (previous.visible !== desktop.visible || previous.dragging !== desktop.dragging || previous.suspended !== desktop.suspended || previous.chatting !== desktop.chatting || previous.softwareOperating !== desktop.softwareOperating || previous.interacting !== desktop.interacting || previous.pointerNear !== desktop.pointerNear || previous.lastInteractionAt !== desktop.lastInteractionAt) this.syncDriver();
   }
-  interact(target: 'head' | 'body' | 'desktop', gesture: 'click' | 'drag-start' | 'drag-end' = 'click') { this.lastInteraction = Date.now(); this.emit({ type: 'interaction', occurredAtUnixMs: Date.now(), payload: { target, gesture, clickCount: gesture === 'click' ? 1 : 0 } }); }
+  interact(target: 'head' | 'body' | 'desktop', gesture: 'click' | 'drag-start' | 'drag-end' = 'click') { this.lastInteraction = Date.now(); this.cancelUnavailableContext(); this.emit({ type: 'interaction', occurredAtUnixMs: Date.now(), payload: { target, gesture, clickCount: gesture === 'click' ? 1 : 0 } }); }
   play(groupId: string, source: CommandSource) { return this.submit({ protocolVersion: 1, commandId: `local-${++this.serial}-${Date.now()}`, type: 'play_group', groupId }, source); }
   replaceRegistry(next: Registry) { const catalog = makeCatalog(next); this.current?.cancel(); this.catalog = catalog; this.registry = next; this.quarantined.clear(); this.emit({ type: 'runtime_changed', occurredAtUnixMs: Date.now(), payload: { revision: next.revision } }); this.driver.refresh(); }
   async dispose() { await this.driver.stop(); this.current?.cancel(); this.listeners.clear(); this.cache.clear(); }

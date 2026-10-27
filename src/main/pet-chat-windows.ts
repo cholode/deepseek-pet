@@ -71,9 +71,12 @@ export class PetChatWindows {
     this.host.load(window, kind === 'chat' ? 'quick-chat' : 'speech-bubble');
     return window;
   }
-  sample(cursor: { x: number; y: number }, overPet: boolean, blocked: boolean) {
+  isPointerOver(cursor: { x: number; y: number }) {
     const bounds = this.chat?.isVisible() ? this.chat.getBounds() : undefined;
-    const overChat = Boolean(bounds && cursor.x >= bounds.x && cursor.x <= bounds.x + bounds.width && cursor.y >= bounds.y && cursor.y <= bounds.y + bounds.height);
+    return Boolean(bounds && cursor.x >= bounds.x && cursor.x <= bounds.x + bounds.width && cursor.y >= bounds.y && cursor.y <= bounds.y + bounds.height);
+  }
+  sample(cursor: { x: number; y: number }, overPet: boolean, blocked: boolean) {
+    const overChat = this.isPointerOver(cursor);
     const open = this.policy.update(Date.now(), overPet, overChat, this.held || this.current.busy || Boolean(this.chat?.isFocused()), blocked);
     if (open) { this.chat ??= this.create('chat'); this.align(); if (this.chatLoaded && !this.chat.isVisible()) this.chat.showInactive(); }
     else { this.chat?.hide(); if (blocked && !this.host.visible()) this.lifted = undefined; else this.restorePosition(); }

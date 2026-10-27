@@ -142,3 +142,11 @@ Windows 本机测试采用 `pop-up-menu` 置顶级别。普通 `floating` 在本
 ## 独立插件与声明式设置
 
 `plugins/anki-japanese` 是独立、零依赖 MCP Node 插件，宿主只通过 manifest 的 configuration/reminderTool 渲染设置和检查提醒。读写设置走限定工具名和逐项授权；提醒额外开启，持久化 key，暂停、撤权、停止时不投递。Node 插件可使用 Electron 内置 Node 子进程，Python 仍需显式选择可执行文件。业务协议、笔记去重、两阶段复习和用户绑定在插件内实现，见 [插件架构说明](../plugins/anki-japanese/docs/ARCHITECTURE.md)。
+
+## 软件操作期间的动作情境
+
+`SoftwareService` 仅在真正进入非后台 `session.call` 时通知宿主 `operating(true)`，在调用返回/失败的 `finally` 和 abort 监听中通知一次 `false`，不等待连接清理。连接握手、授权、普通模型请求和后台提醒均不激活此状态。
+
+主进程将 `softwareOperating`、真实输入时间和当前鼠标互动状态传入 `DesktopState`。键盘、鼠标按键/滚轮由 Electron 窗口输入事件记录，受限的 `user-activity` IPC 补充 DOM 输入、粘贴和输入法事件，只报告活动、不传文本；采样覆盖桌宠附近、悬停聊天和可见小屋，包括鼠标穿透模式下的小屋。聊天窗口的开关仍由原悬停策略管理，不把模型忙碌导致的窗口保持误判为用户互动。
+
+通用 `requiresSoftwareOperation` 条件由共享策略同时约束候选池、能力列表和所有命令入口。统一执行器在条件失效时递归取消、复位；普通动作在软件操作期间让出自动候选池，手动/交互动作的优先级保持不变。复用原行为驱动的单一定时器，在操作期间每 250ms 检查空闲门槛，仍尊重随机资格、权重和冷却。内置十二个手机组通过 JSON 启用条件，没有新增动作 ID 分支。

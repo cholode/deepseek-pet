@@ -19,13 +19,14 @@ export interface BehaviorContext { control: PetControlPort; subscribe(listener: 
 export interface IBehaviorDriver { readonly mode: PetMode; readonly status: DriverStatus; start(context: BehaviorContext): Promise<void>; pause(): void; resume(): void; stop(): Promise<void> }
 /** Main-process monotonic sample in screen DIP; independent of window clamping. */
 export interface DragSample { x: number; timeMs: number; gestureId: number }
-export interface DesktopState { visible: boolean; dragging: boolean; pointerNear: boolean; position: { x: number; y: number }; suspended: boolean; chatting?: boolean; pointer?: { x: number; y: number }; dragSample?: DragSample }
+export interface DesktopState { visible: boolean; dragging: boolean; pointerNear: boolean; position: { x: number; y: number }; suspended: boolean; chatting?: boolean; softwareOperating?: boolean; interacting?: boolean; lastInteractionAt?: number; pointer?: { x: number; y: number }; dragSample?: DragSample }
 export interface DebugState { failedGroups: string[]; snapshot: PetSnapshot; groups: GroupInfo[]; errors: string[]; candidateCount: number; nextInMs: number; events: PetEvent[] }
 export interface Bootstrap { registry: Registry; settings: Settings; desktop: DesktopState; errors: string[]; companionEnabled?: boolean }
 export type PanelRequest = { type: 'command'; command: PetCommand } | { type: 'pause'; value: boolean } | { type: 'mode'; mode: PetMode };
 export type RuntimeMessage = { type: 'settings'; settings: Settings } | { type: 'desktop'; desktop: DesktopState } | { type: 'registry'; registry: Registry; requestId: string } | { type: 'request'; request: PanelRequest; requestId: string } | { type: 'error'; error: string } | { type: 'companion-mode'; enabled: boolean } | { type: 'open-companion' };
 export interface HitRegion { target: 'head' | 'body'; x: number; y: number; width: number; height: number }
 export interface PetBridge extends CompanionBridge, PetChatBridge, DiaryBridge, SoftwareBridge {
+  userActivity(): void;
   bootstrap(): Promise<Bootstrap>; openPanel(): Promise<void>; contextMenu(): Promise<void>; resetPosition(): Promise<void>; showPet(): Promise<void>;
   saveSettings(settings: Settings): Promise<Settings>; resetSettings(): Promise<Settings>; importPack(): Promise<{ ok: boolean; message: string }>; reloadPacks(): Promise<{ ok: boolean; message: string }>; openPacksFolder(): Promise<void>;
   panelRequest(request: PanelRequest): Promise<CommandReceipt>; getDebug(): Promise<DebugState | null>;
