@@ -9,7 +9,7 @@ export interface QuickPetStatus {
 }
 export interface QuickChatState { name: string; ready: boolean; busy: boolean; reply: string; streaming: boolean; tab: QuickChatTab; status: QuickPetStatus | null; error?: string }
 export interface SpeechTail { side: 'bottom' | 'left' | 'right'; offset: number }
-export interface SpeechBubbleState { text: string; streaming: boolean; tail?: SpeechTail }
+export interface SpeechBubbleState { id: string; text: string; streaming: boolean; tail?: SpeechTail }
 export const quickChatRequestSchema = z.discriminatedUnion('type', [
   z.object({ type: z.literal('state') }).strict(),
   z.object({ type: z.literal('tab'), tab: z.enum(['chat', 'status']) }).strict(),
@@ -22,6 +22,8 @@ export const quickChatRequestSchema = z.discriminatedUnion('type', [
 export type QuickChatRequest = z.infer<typeof quickChatRequestSchema>;
 export interface QuickChatResponse { ok: boolean; state: QuickChatState; message?: string }
 export interface PetChatBridge {
+  openChatLink(url: string): Promise<void>;
+  dismissSpeechBubble(): Promise<void>;
   quickChat(request: QuickChatRequest): Promise<QuickChatResponse>;
   onQuickChat(fn: (state: QuickChatState) => void): () => void;
   speechBubbleState(): Promise<SpeechBubbleState | null>;

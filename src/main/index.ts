@@ -12,6 +12,7 @@ import { SettingsStore } from './settings';
 import { CompanionService } from './companion/service';
 import { PetChatWindows } from './pet-chat-windows';
 import { quickChatRequestSchema, type QuickChatResponse } from '../shared/pet-chat';
+import { chatLink } from '../shared/chat-link';
 import { quickPetStatus } from './pet-chat-status';
 import { DiaryService } from './diary/service';
 import { defaultDiaryDirectory } from './diary/files';
@@ -183,7 +184,13 @@ async function boot() {
   await diary.start();
   handle('diary', 'panel', raw => diary!.request(raw));
   chatWindows.update(companion.view());
-  ipcMain.on('user-activity', event => { try { if (!chatWindows?.isSender(event, 'chat')) trusted(event); recordInteraction(); } catch (e) { error(e); } });
+  ipcMain.on('user-activity', event => { try { if (!chatWindows?.isSender(event, 'chat') && !chatWindows?.isSender(event, 'bubble')) trusted(event); recordInteraction(); } catch (e) { error(e); } });
+  ipcMain.handle('chat-open-link', async (event, raw) => {
+    if (!chatWindows?.isSender(event, 'bubble')) trusted(event, 'panel');
+    const url = chatLink(raw); if (!url) throw new Error('仅支持 HTTP(S) 网页链接');
+    recordInteraction(); await shell.openExternal(url);
+  });
+  ipcMain.handle('speech-bubble-dismiss', event => { if (!chatWindows?.isSender(event, 'bubble')) throw new Error('IPC_FORBIDDEN'); chatWindows.dismissSpeech(); });
   // 悬停窗口仅开放发送/停止和跳转设置，不能借此调用完整管理 IPC。
   ipcMain.handle('quick-chat', async (event, raw): Promise<QuickChatResponse> => {
     if (!chatWindows?.isSender(event, 'chat')) throw new Error('IPC_FORBIDDEN');

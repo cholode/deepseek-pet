@@ -18,6 +18,8 @@ export class PetChatWindows {
   private policy = new HoverChatPolicy(); private active = false;
   private bubbleSize = { width: 230, height: 92 }; private bubbleTimer?: ReturnType<typeof setTimeout>;
   private speech: SpeechBubbleState | null = null;
+  private bubbleHovered = false;
+  private dismissedSpeechId?: string;
   private lifted?: { from: Rect; to: Rect };
   private current: QuickChatState = { name: '大肥鱼', ready: false, busy: false, reply: '', streaming: false, tab: 'chat', status: null };
   constructor(private host: Host) {}
@@ -58,10 +60,10 @@ export class PetChatWindows {
     const size = kind === 'chat' ? quickPanelSize(this.current.tab) : this.bubbleSize;
     const window = new BrowserWindow({ width: size.width, height: size.height,
       show: false, frame: false, transparent: true, backgroundColor: '#00000000', hasShadow: false, resizable: false,
-      maximizable: false, minimizable: false, skipTaskbar: true, focusable: kind === 'chat', title: kind === 'chat' ? '大肥鱼 · 悬停聊天' : '大肥鱼 · 聊天气泡',
+      maximizable: false, minimizable: false, skipTaskbar: true, focusable: true, title: kind === 'chat' ? '大肥鱼 · 悬停聊天' : '大肥鱼 · 聊天气泡',
       webPreferences: { preload: this.host.preload, contextIsolation: true, sandbox: true, nodeIntegration: false } });
     this.host.secure(window); window.setAlwaysOnTop(this.host.alwaysOnTop(), 'pop-up-menu');
-    if (kind === 'bubble') { window.setIgnoreMouseEvents(true); this.bubble = window; }
+    if (kind === 'bubble') { this.bubble = window; window.on('close', e => { e.preventDefault(); this.dismissSpeech(); }); }
     else { this.chat = window; window.on('close', e => { e.preventDefault(); this.dismiss(); }); }
     window.webContents.on('did-finish-load', () => {
       if (kind === 'chat') { this.chatLoaded = true; window.webContents.send('quick-chat-state', this.state()); }
@@ -72,12 +74,16 @@ export class PetChatWindows {
     return window;
   }
   isPointerOver(cursor: { x: number; y: number }) {
-    const bounds = this.chat?.isVisible() ? this.chat.getBounds() : undefined;
-    return Boolean(bounds && cursor.x >= bounds.x && cursor.x <= bounds.x + bounds.width && cursor.y >= bounds.y && cursor.y <= bounds.y + bounds.height);
+    return [this.chat, this.bubble].some(window => {
+      const bounds = window?.isVisible() ? window.getBounds() : undefined;
+      return Boolean(bounds && cursor.x >= bounds.x && cursor.x <= bounds.x + bounds.width && cursor.y >= bounds.y && cursor.y <= bounds.y + bounds.height);
+    });
   }
   sample(cursor: { x: number; y: number }, overPet: boolean, blocked: boolean) {
     const overChat = this.isPointerOver(cursor);
-    const open = this.policy.update(Date.now(), overPet, overChat, this.held || this.current.busy || Boolean(this.chat?.isFocused()), blocked);
+    const bubbleBounds = this.bubble?.isVisible() ? this.bubble.getBounds() : undefined;
+    this.bubbleHovered = Boolean(bubbleBounds && cursor.x >= bubbleBounds.x && cursor.x <= bubbleBounds.x + bubbleBounds.width && cursor.y >= bubbleBounds.y && cursor.y <= bubbleBounds.y + bubbleBounds.height);
+    const open = this.policy.update(Date.now(), overPet, overChat, this.held || this.current.busy || Boolean(this.chat?.isFocused()) || Boolean(this.bubble?.isFocused()), blocked);
     if (open) { this.chat ??= this.create('chat'); this.align(); if (this.chatLoaded && !this.chat.isVisible()) this.chat.showInactive(); }
     else { this.chat?.hide(); if (blocked && !this.host.visible()) this.lifted = undefined; else this.restorePosition(); }
     this.setActivity(open); this.align();
@@ -89,11 +95,18 @@ export class PetChatWindows {
     if (!value) { this.speech = null; this.current.streaming = false; this.bubble?.hide(); this.chat?.webContents.send('quick-chat-state', this.current); return; }
     this.current.reply = value.text; this.current.streaming = value.phase === 'streaming';
     this.chat?.webContents.send('quick-chat-state', this.current);
+    if (value.id === this.dismissedSpeechId) return;
     if (!bubbles) { this.speech = null; this.bubble?.hide(); return; }
-    this.speech = { text: value.text, streaming: value.phase === 'streaming' };
+    this.speech = { id: value.id, text: value.text, streaming: value.phase === 'streaming' };
     this.bubble ??= this.create('bubble'); this.align(); this.bubble.webContents.send('speech-bubble', this.speech);
-    // 正在输出时不消失；完成后按阅读长度留足时间，长回复可在小屋查看。
-    if (value.phase !== 'streaming') this.bubbleTimer = setTimeout(() => { this.speech = null; this.bubble?.hide(); }, Math.min(60000, Math.max(12000, value.text.length * 160)));
+    // 阅读和选择文字期间不自动收起；离开后仍留出时间，长回复也能在气泡内读完。
+    if (value.phase !== 'streaming') this.scheduleHide(Math.min(60000, Math.max(12000, value.text.length * 160)));
+  }
+  private scheduleHide(delay: number) {
+    this.bubbleTimer = setTimeout(() => {
+      if (this.bubbleHovered || this.bubble?.isFocused()) this.scheduleHide(12000);
+      else this.hideSpeech();
+    }, delay);
   }
   resizeBubble(size: { width: number; height: number }) { this.bubbleSize = size; this.align(); }
   align() {
@@ -125,6 +138,7 @@ export class PetChatWindows {
     if (this.chat && this.policy.open) place(this.chat, inputBarLayout(anchor, area, this.current.tab).bounds);
   }
   topmost(value: boolean) { this.chat?.setAlwaysOnTop(value, 'pop-up-menu'); this.bubble?.setAlwaysOnTop(value, 'pop-up-menu'); }
-  hideSpeech() { this.speech = null; this.bubble?.hide(); }
+  hideSpeech() { if (this.bubbleTimer) clearTimeout(this.bubbleTimer); this.speech = null; this.bubbleHovered = false; this.bubble?.hide(); }
+  dismissSpeech() { this.dismissedSpeechId = this.speech?.id; this.hideSpeech(); }
   dispose() { if (this.bubbleTimer) clearTimeout(this.bubbleTimer); this.restorePosition(); this.chat?.destroy(); this.bubble?.destroy(); this.chat = undefined; this.bubble = undefined; }
 }

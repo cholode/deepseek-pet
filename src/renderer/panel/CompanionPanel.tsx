@@ -1,7 +1,9 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { companionDefaults, emotionLabels, emotionNames, type CompanionConfig, type CompanionRequest, type CompanionView, type CompanionPresentation } from '../../shared/companion';
 import { CompanionSettings } from './CompanionSettings';
 import { DiaryPanel } from './DiaryPanel';
+import { MarkdownContent } from '../chat/MarkdownContent';
+import { useMessageScroll } from '../chat/useMessageScroll';
 import './companion.css';
 
 // UI 仅发送受限请求；所有模型调用、记忆写入和渠道权限在主进程服务中执行。
@@ -13,7 +15,8 @@ export function CompanionPanel() {
   const [text, setText] = useState(''); const [note, setNote] = useState(''); const [pending, setPending] = useState(false);
   const [memory, setMemory] = useState(''); const [factKey, setFactKey] = useState(''); const [scope, setScope] = useState<'private' | 'public'>('private');
   const [kind, setKind] = useState<'episode' | 'fact' | 'preference'>('fact'); const [query, setQuery] = useState('');
-  const [goal, setGoal] = useState(''); const [due, setDue] = useState(''); const bottom = useRef<HTMLDivElement>(null);
+  const [goal, setGoal] = useState(''); const [due, setDue] = useState('');
+  const scroll = useMessageScroll(`${state?.data.events.at(-1)?.id}:${stream?.text ?? ''}`, `${tab}:${Boolean(state)}`);
   useEffect(() => {
     let live = true;
     void window.pet.companion({ type: 'state' }).then(r => { if (live) { setState(r.state); setDraft(r.state.data.config); } }).catch(e => { if (live) setNote(String(e)); });
@@ -23,7 +26,6 @@ export function CompanionPanel() {
     const timer = setInterval(() => { void window.pet.companion({ type: 'state' }).then(r => { if (live) setState(r.state); }).catch(() => {}); }, 30000);
     return () => { live = false; clearInterval(timer); off(); offStream(); };
   }, []);
-  useEffect(() => { bottom.current?.scrollIntoView({ block: 'nearest' }); }, [state?.data.events.length, stream?.text]);
   async function request(value: CompanionRequest) {
     setPending(true); setNote('');
     try { const response = await window.pet.companion(value); setState(response.state); if (!response.ok) setNote(response.message ?? '操作失败'); return response; }
@@ -48,7 +50,8 @@ export function CompanionPanel() {
     {tab === 'diary' && <DiaryPanel ready={state.ready} name={state.data.config.persona.name}/>}
     {tab === 'chat' && <section className="settings-card companion-chat">
       {!state.ready && <div className="companion-empty"><h3>让大肥鱼认识你</h3><p>在陪伴设置里连接本地或远程模型，就可以聊天、记住共同经历，并让表情跟着心情变化。</p><button className="primary" onClick={() => setTab('settings')}>配置智能陪伴</button></div>}
-      <div className="companion-messages" aria-live="polite">{state.data.events.map(e => <article className={`companion-message ${e.actor}`} key={e.id}><small>{e.actor === 'pet' ? state.data.config.persona.name : e.actor === 'system' ? '自主唤醒' : '你'} · {e.source === 'desktop' ? '桌面' : e.source} · {new Date(e.at).toLocaleTimeString()}</small><p>{e.text}</p></article>)}{stream && <article className="companion-message pet"><small>{state.data.config.persona.name} · 正在说…</small><p>{stream.text}</p></article>}<div ref={bottom}/></div>
+      <div className="companion-messages" ref={scroll.ref} onScroll={scroll.onScroll} tabIndex={0} role="region" aria-label="聊天记录">{state.data.events.map(e => <article className={`companion-message ${e.actor}`} key={e.id}><small>{e.actor === 'pet' ? state.data.config.persona.name : e.actor === 'system' ? '自主唤醒' : '你'} · {e.source === 'desktop' ? '桌面' : e.source} · {new Date(e.at).toLocaleTimeString()}</small><MarkdownContent text={e.text}/></article>)}{stream && <article className="companion-message pet"><small>{state.data.config.persona.name} · 正在说…</small><MarkdownContent text={stream.text}/></article>}</div>
+      {scroll.overflow && !scroll.atBottom && <div className="companion-scroll-actions"><button onClick={scroll.toLatest}>回到最新消息 ↓</button></div>}
       <textarea aria-label="对大肥鱼说" placeholder="和大肥鱼说点什么…（Ctrl + Enter 发送）" value={text} maxLength={4000} onChange={e => setText(e.target.value)} onKeyDown={e => { if (e.key === 'Enter' && e.ctrlKey && !disabled && state.ready) void send(); }}/>
       <div className="companion-inline"><button className="primary" disabled={disabled || !state.ready || !text.trim()} onClick={() => void send()}>发送</button><button onClick={() => void window.pet.companion({ type: 'cancel' }).then(r => setState(r.state))}>停止思考与朗读</button><button disabled={disabled} onClick={() => void request({ type: 'clear-history' })}>清空聊天</button></div>
       {!!state.recalls.length && <details><summary>这次想起了什么（{state.recalls.length}）</summary>{state.recalls.map(m => <p key={m.id}>{m.text}<small>{m.reason}</small></p>)}</details>}

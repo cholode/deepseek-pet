@@ -1,0 +1,16 @@
+.chat-markdown{min-width:0;line-height:1.7;overflow-wrap:anywhere;white-space:normal;user-select:text}
+.chat-markdown>:first-child{margin-top:0}.chat-markdown>:last-child{margin-bottom:0}
+.chat-markdown p{margin:8px 0;white-space:pre-wrap;line-height:inherit}
+.chat-markdown h1,.chat-markdown h2,.chat-markdown h3,.chat-markdown h4,.chat-markdown h5,.chat-markdown h6{font-weight:700;line-height:1.45;letter-spacing:0;margin:14px 0 7px;padding:0;border:0;color:inherit}
+.chat-markdown h1{font-size:1.35em}.chat-markdown h2{font-size:1.2em}.chat-markdown h3{font-size:1.08em}.chat-markdown h4,.chat-markdown h5,.chat-markdown h6{font-size:1em}
+.chat-markdown ul,.chat-markdown ol{margin:8px 0;padding-left:1.6em}.chat-markdown li{margin:4px 0}.chat-markdown li>p{margin:4px 0}
+.chat-markdown blockquote{margin:10px 0;padding:2px 0 2px 12px;border-left:3px solid currentColor;opacity:.9}
+.chat-markdown a{color:inherit;text-decoration:underline;text-underline-offset:3px;cursor:pointer}.chat-markdown a:hover{opacity:.8}
+.chat-markdown code{font: .9em/1.55 Consolas,"Microsoft YaHei",monospace;background:#718cad22;padding:2px 4px;border-radius:4px;white-space:pre-wrap}
+.chat-markdown pre{max-width:100%;overflow-x:auto;margin:10px 0;padding:10px;border-radius:7px;background:#182f4b12;overscroll-behavior:contain;white-space:pre;overflow-wrap:normal}
+.chat-markdown pre code{padding:0;background:none;white-space:pre;border-radius:0}
+.chat-markdown .markdown-table{max-width:100%;overflow-x:auto;overscroll-behavior:contain;margin:10px 0}
+.chat-markdown table{border-collapse:collapse;min-width:100%;font-size:.94em}.chat-markdown th,.chat-markdown td{border:1px solid #8da7c580;padding:6px 9px;min-width:65px;text-align:left}.chat-markdown th{background:#718cad22;font-weight:650}
+.chat-markdown hr{border:0;border-top:1px solid #8da7c580;margin:12px 0}.chat-markdown .task-list-item{list-style:none}.chat-markdown input[type=checkbox]{margin:0 6px 0 -1.3em;accent-color:#4b82c6}
+.chat-markdown .markdown-image{font-style:italic;opacity:.8}.chat-markdown :focus-visible{outline:2px solid currentColor;outline-offset:2px}
+.speech-bubble .chat-markdown code,.speech-bubble .chat-markdown th{background:#153c702d}.speech-bubble .chat-markdown pre{background:#153c703d}.speech-bubble .chat-markdown pre code{background:none}

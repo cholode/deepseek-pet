@@ -17,8 +17,10 @@ body.quick-chat-page #root,body.speech-bubble-page #root{min-height:0}
 .pet-status-mood progress{display:block;width:100%;height:5px;margin-top:5px;appearance:none;border:0;border-radius:3px;overflow:hidden;background:#dfe9f5}.pet-status-mood progress::-webkit-progress-bar{background:#dfe9f5}.pet-status-mood progress::-webkit-progress-value{background:linear-gradient(90deg,#93b8e8,#538cda);border-radius:3px}
 .pet-status dl{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:8px 16px;margin:0}.pet-status dl>div{min-width:0}.pet-status dt{font-size:10px;line-height:15px;color:#8193aa}.pet-status dd{margin:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:12px;line-height:18px;color:#345578}
 .speech-shell{position:relative;padding:16px;box-sizing:border-box;filter:drop-shadow(0 2px 3px #174c8728)}
-.speech-bubble{padding:10px 14px;min-height:44px;max-height:264px;box-sizing:border-box;background:#3979c9;color:#fff;border:1px solid #93bdf2;border-radius:10px;font:400 14px/1.65 "Microsoft YaHei",sans-serif}
-.speech-content{white-space:pre-wrap;overflow-wrap:anywhere;max-height:240px;overflow:hidden}
+.speech-bubble{padding:10px 14px;min-height:44px;max-height:288px;display:flex;flex-direction:column;box-sizing:border-box;background:#3979c9;color:#fff;border:1px solid #93bdf2;border-radius:10px;font:400 14px/1.65 "Microsoft YaHei",sans-serif}
+.speech-content{min-height:0;max-height:240px;overflow-y:auto;overflow-x:hidden;overscroll-behavior:contain;overflow-anchor:none;scrollbar-width:thin;scrollbar-color:#c3ddff #2563af;user-select:text}
+.speech-content:focus-visible{outline:1px solid #c3ddff;outline-offset:3px}
+.speech-controls{display:flex;align-items:center;gap:5px;min-height:24px;flex:none;margin-top:2px;font-size:10px;color:#dcecff}.speech-controls>span{margin-right:auto}.speech-controls button{border:0;background:#ffffff18;color:inherit;border-radius:4px;cursor:pointer;padding:2px 6px;font:inherit}.speech-controls button:disabled{opacity:.4;cursor:default}.speech-controls button:focus-visible{outline:1px solid #fff}
 .speech-tail{position:absolute;inset:0;width:100%;height:100%;pointer-events:none}.speech-tail path{fill:#3979c9;stroke:#93bdf2;stroke-width:1;stroke-linejoin:round}
 .speech-bubble.streaming .speech-content:after{content:'▍';font-size:12px;opacity:.85;animation:speech-caret 1s steps(2,end) infinite}
 @keyframes speech-caret{50%{opacity:0}}

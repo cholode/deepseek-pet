@@ -7,7 +7,7 @@ import './style.css';
 const element=document.getElementById('root')!;
 const page = new URLSearchParams(location.search).get('page');
 // 覆盖输入法、粘贴和 DOM 输入；不采集文本，只通知主进程互动发生了。
-if (page !== 'speech-bubble') {
+{
   let lastActivity = -Infinity;
   const activity = () => { const now = performance.now(); if (now - lastActivity >= 80) { lastActivity = now; window.pet.userActivity(); } };
   const events = ['pointerdown', 'keydown', 'input', 'compositionstart', 'compositionupdate', 'wheel'];
