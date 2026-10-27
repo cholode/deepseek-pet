@@ -29,26 +29,26 @@ async function service() {
 async function request(manager: SoftwareService, value: SoftwareRequest) { const result = await manager.request(value); if (!result.ok) throw new Error(result.message); return result; }
 async function httpPlugin() {
   const calls: { args: unknown; meta: unknown; token?: string }[] = [];
-  let description = '回显测试消息', failing = false;
+  let description = '回显测试消息', failing = false, response: unknown;
   const http = createServer((req, res) => { void (async () => {
     if (req.method !== 'POST') { res.writeHead(405).end(); return; }
     const chunks = []; for await (const chunk of req) chunks.push(Buffer.from(chunk));
     const body = JSON.parse(Buffer.concat(chunks).toString());
     const server = new McpServer({ name: 'protocol-fixture', version: '1.0.0' });
-    server.registerTool('echo', { description, inputSchema: { text: z.string() } }, async (args, extra) => {
+    server.registerTool('echo', { description, inputSchema: { text: z.string().optional(), settings: z.record(z.string(), z.unknown()).optional() } }, async (args, extra) => {
       calls.push({ args, meta: extra._meta, token: req.headers.authorization });
-      return { isError: failing, content: [{ type: 'text', text: JSON.stringify(args) }] };
+      return { isError: failing, content: [{ type: 'text', text: JSON.stringify(response ?? args) }] };
     });
     const transport = new StreamableHTTPServerTransport({ sessionIdGenerator: undefined, enableJsonResponse: true });
     await server.connect(transport); res.on('close', () => { void server.close(); }); await transport.handleRequest(req, res, body);
   })().catch(() => { if (!res.headersSent) res.writeHead(500); res.end(); }); });
   await new Promise<void>(r => http.listen(0, '127.0.0.1', r));
   cleanup.push(async () => { http.closeAllConnections(); await new Promise<void>(r => http.close(() => r())); });
-  return { url: `http://127.0.0.1:${(http.address() as { port: number }).port}/mcp`, calls, change: () => { description = '变更后的工具说明'; }, fail: () => { failing = true; } };
+  return { url: `http://127.0.0.1:${(http.address() as { port: number }).port}/mcp`, calls, respond: (value: unknown) => { response = value; }, change: () => { description = '变更后的工具说明'; }, fail: () => { failing = true; } };
 }
-async function configured() {
+async function configured(config = manifest) {
   const backend = await httpPlugin(), f = await service();
-  await f.manager.plugins.install(await plugin(path.join(f.root, 'download')));
+  await f.manager.plugins.install(await plugin(path.join(f.root, 'download'), config));
   await request(f.manager, { type: 'save', software: { name: '协议目标', directory: f.root, pluginId: manifest.id, url: backend.url, runtimePath: '' }, token: 'fixture-token' });
   const id = f.manager.view().entries[0].id;
   return { ...f, backend, id, name: softwareToolName(id, 'echo') };
@@ -56,6 +56,42 @@ async function configured() {
 async function authorize(f: Awaited<ReturnType<typeof configured>>) {
   await request(f.manager, { type: 'connect', id: f.id }); await request(f.manager, { type: 'grant', id: f.id, tools: ['echo'] });
 }
+
+describe('插件设置页和计划提醒', () => {
+  const planned: SoftwarePlugin = { ...manifest, configuration: { title: '计划', readTool: 'echo', writeTool: 'echo', fields: [] }, reminderTool: 'echo' };
+  it('设置页仍要求工具授权，不能传入任意工具名称；旧配置默认不启用提醒', async () => {
+    const f = await configured(planned);
+    expect(f.manager.view().entries[0].remindersEnabled).toBe(false);
+    expect((await f.manager.request({ type: 'configure-plugin', id: f.id, operation: 'read' })).ok).toBe(false);
+    await authorize(f); f.backend.respond({ settings: { level: 'N5' }, summary: '已连接' });
+    expect(await f.manager.request({ type: 'configure-plugin', id: f.id, operation: 'read' })).toMatchObject({ ok: true, result: { settings: { level: 'N5' } } });
+    await f.manager.request({ type: 'configure-plugin', id: f.id, operation: 'write', settings: { level: 'N4' } });
+    expect(f.backend.calls.at(-1)?.args).toEqual({ settings: { level: 'N4' } });
+    expect(softwareRequestSchema.safeParse({ type: 'configure-plugin', id: f.id, operation: 'read', tool: 'delete' }).success).toBe(false);
+    await request(f.manager, { type: 'grant', id: f.id, tools: [] });
+    expect((await f.manager.request({ type: 'reminders', id: f.id, enabled: true })).ok).toBe(false);
+  });
+  it('提醒须显式启用，暂停不轮询；同一提醒跨重启去重，停用后停止', async () => {
+    const f = await configured(planned); await authorize(f);
+    const remind = vi.fn(), canRemind = vi.fn(() => true); f.host.remind = remind; f.host.canRemind = canRemind;
+    f.backend.respond({ key: 'today-20:00', text: '练习日语吧' });
+    await f.manager.pollReminders(); expect(f.backend.calls).toHaveLength(0);
+    await request(f.manager, { type: 'reminders', id: f.id, enabled: true });
+    canRemind.mockReturnValue(false); await f.manager.pollReminders(); expect(f.backend.calls).toHaveLength(0);
+    canRemind.mockReturnValue(true); await f.manager.pollReminders(); await f.manager.pollReminders(); expect(remind).toHaveBeenCalledTimes(1);
+    await f.manager.close(); const next = new SoftwareService(path.join(f.root, 'user'), f.host); await next.start(); cleanup.push(() => next.close());
+    await next.pollReminders(); expect(remind).toHaveBeenCalledTimes(1);
+    f.backend.respond({ key: 'tomorrow-20:00', text: '新一天' }); await next.pollReminders(); expect(remind).toHaveBeenCalledTimes(2);
+    await request(next, { type: 'disable', id: f.id }); const count = f.backend.calls.length; await next.pollReminders(); expect(f.backend.calls).toHaveLength(count);
+  });
+  it('插件能力签名变化会撤销提醒授权；非法提醒不显示', async () => {
+    const f = await configured(planned); await authorize(f); const remind = vi.fn(); f.host.remind = remind; f.host.canRemind = () => true;
+    await request(f.manager, { type: 'reminders', id: f.id, enabled: true }); f.backend.respond({ key: 'x', text: 'a'.repeat(501) });
+    await f.manager.pollReminders(); expect(remind).not.toHaveBeenCalled();
+    await f.manager.close(); f.backend.change(); const next = new SoftwareService(path.join(f.root, 'user'), f.host); await next.start(); cleanup.push(() => next.close());
+    f.backend.respond({ key: 'valid', text: '学习吧' }); await next.pollReminders(); expect(remind).not.toHaveBeenCalled(); expect(next.view().entries[0].grants).toEqual([]);
+  });
+});
 
 describe('软件插件包与隔离存储', () => {
   it('清单严格校验，入口拒绝绝对路径、逃逸与未知字段', () => {

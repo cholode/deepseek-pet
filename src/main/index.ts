@@ -1,4 +1,4 @@
-import { app, BrowserWindow, dialog, globalShortcut, ipcMain, Menu, nativeImage, net, powerMonitor, protocol, safeStorage, screen, shell, Tray } from 'electron';
+import { app, BrowserWindow, dialog, globalShortcut, ipcMain, Menu, nativeImage, net, Notification, powerMonitor, protocol, safeStorage, screen, shell, Tray } from 'electron';
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { promises as fs } from 'node:fs';
@@ -124,6 +124,15 @@ async function boot() {
     activity: open => { desktop.chatting = open; if (open && movement) { movement = undefined; savePosition(); } broadcastDesktop(); }
   });
   software = new SoftwareService(app.getPath('userData'), {
+    canRemind: () => !desktop.suspended && !desktop.dragging && !desktop.chatting && !settings.value.paused && !companion?.coordinator.busy,
+    remind: text => {
+      const speech = companion?.store.data.config.speech;
+      if (speech && desktop.visible && settings.value.bubbles) {
+        const value = { id: randomUUID(), text, emotion: 'happy' as const, source: 'initiative' as const, speech: { ...speech, enabled: false }, phase: 'complete' as const };
+        pet.webContents.send('companion-presentation', value); chatWindows?.present(value, true);
+      }
+      if (Notification.isSupported()) { const notification = new Notification({ title: '大肥鱼 · 学习计划', body: text }); notification.on('click', openPanel); notification.show(); }
+    },
     changed: state => { if (panel && !panel.isDestroyed()) panel.webContents.send('software-state', state); },
     cancelChat: () => companion?.cancel(),
     choose: async (kind, current) => {

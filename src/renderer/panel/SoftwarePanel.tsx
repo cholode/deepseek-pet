@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import type { InstalledSoftwarePlugin, SoftwareDraft, SoftwareEntryView, SoftwareRequest, SoftwareView } from '../../shared/software';
 import './software.css';
+import { PluginConfiguration } from './PluginConfiguration';
 
 const labels = { disconnected: '未连接', connecting: '连接中', connected: '已连接', error: '需要处理' };
 const activityLabels = { running: '执行中', completed: '已完成', failed: '失败', cancelled: '已取消' };
@@ -9,6 +10,7 @@ function Permissions({ entry, disabled, save }: { entry: SoftwareEntryView; disa
   return <div className="software-permissions">
     <div className="software-section-title"><strong>插件提供的能力</strong><span>{selected.length} / {entry.tools.length} 项已选择</span></div>
     {!entry.tools.length ? <p className="software-help">{entry.status === 'connected' ? '插件连接成功，目前没有提供工具。请由插件作者实现相应能力。' : '连接插件后，这里会列出它实际提供的工具。'}</p> : <>
+      <div className="software-card-actions"><button disabled={disabled || entry.status !== 'connected'} onClick={() => setSelected(entry.tools.map(t => t.name))}>选择全部能力</button><button disabled={disabled || entry.status !== 'connected'} onClick={() => setSelected([])}>取消全部选择</button></div>
       {entry.tools.map(tool => <label className="software-tool" key={tool.name}>
         <input type="checkbox" disabled={disabled || entry.status !== 'connected'} checked={selected.includes(tool.name)} onChange={e => setSelected(e.target.checked ? [...selected, tool.name] : selected.filter(name => name !== tool.name))}/>
         <span><b>{tool.name}</b><small>{tool.description || '插件未提供说明'}</small></span>
@@ -66,7 +68,7 @@ export function SoftwarePanel({ configureModel }: { configureModel(): void }) {
         <label>软件所在目录<div className="software-path"><input aria-label="软件所在目录" value={draft.directory} placeholder="选择软件安装或所在文件夹" onChange={e => setDraft({ ...draft, directory: e.target.value })}/><button disabled={disabled} onClick={() => void choose('directory')}>定位目录</button></div></label>
         <label>关联插件<select aria-label="关联插件" value={draft.pluginId} onChange={e => { const plugin = state.plugins.find(p => p.manifest.id === e.target.value)!.manifest; setDraft({ ...draft, pluginId: plugin.id, runtimePath: '', url: plugin.transport.type === 'streamable-http' ? plugin.transport.defaultUrl : '' }); setToken(''); setClearToken(false); }}><option value="" disabled>选择已导入的插件</option>{state.plugins.map(p => <option key={p.manifest.id} value={p.manifest.id}>{p.manifest.name} · {p.manifest.version}</option>)}</select></label>
         {selectedPlugin && <p className="software-help">{selectedPlugin.description}</p>}
-        {selectedPlugin?.transport.type === 'stdio' && selectedPlugin.transport.runtime !== 'executable' && <label>运行时可执行文件（{selectedPlugin.transport.runtime === 'node' ? 'Node.js' : 'Python'}）<div className="software-path"><input aria-label="运行时可执行文件" placeholder="例如 node.exe 或 python.exe 的完整路径" value={draft.runtimePath} onChange={e => setDraft({ ...draft, runtimePath: e.target.value })}/><button disabled={disabled} onClick={() => void choose('runtime')}>选择运行时</button></div></label>}
+        {selectedPlugin?.transport.type === 'stdio' && selectedPlugin.transport.runtime !== 'executable' && <label>运行时可执行文件（{selectedPlugin.transport.runtime === 'node' ? 'Node.js，留空使用内置运行时' : 'Python'}）<div className="software-path"><input aria-label="运行时可执行文件" placeholder={selectedPlugin.transport.runtime === 'node' ? '默认使用大肥鱼内置 Node.js，无需另装' : 'python.exe 的完整路径'} value={draft.runtimePath} onChange={e => setDraft({ ...draft, runtimePath: e.target.value })}/><button disabled={disabled} onClick={() => void choose('runtime')}>选择运行时</button></div></label>}
         {selectedPlugin?.transport.type === 'streamable-http' && <><label>插件服务地址<input value={draft.url} placeholder="http://127.0.0.1:端口/mcp" onChange={e => setDraft({ ...draft, url: e.target.value })}/></label><label>插件访问令牌（可选）<input type="password" autoComplete="off" value={token} placeholder="留空保留已有令牌；变更地址后需重新填写" onChange={e => { setToken(e.target.value); setClearToken(false); }}/></label><label className="software-check"><input type="checkbox" checked={clearToken} onChange={e => { setClearToken(e.target.checked); setToken(''); }}/>清除已保存的访问令牌</label></>}
         <p className="software-help">连接本地插件会启动其程序，请使用信任的来源。软件目录会传给插件用于定位；具体可操作范围由插件实现。更换目录、插件或连接信息后需要重新授权。</p>
         <button className="primary" disabled={disabled || !draft.name.trim() || !draft.directory.trim() || !selectedPlugin} onClick={() => void request({ type: 'save', software: draft, ...(clearToken || token ? { token: clearToken ? '' : token } : {}) }).then(result => { if (result?.ok) { setDraft(undefined); setToken(''); } })}>保存软件</button>
@@ -77,6 +79,7 @@ export function SoftwarePanel({ configureModel }: { configureModel(): void }) {
         <p className="software-binding">{state.plugins.find(p => p.manifest.id === entry.pluginId)?.manifest.name ?? '关联插件未安装'}<span>{entry.grants.length} 项已授权</span></p>
         {entry.error && <p className="software-error" role="status">{entry.error}</p>}
         <div className="software-card-actions"><button className="primary" disabled={disabled || !state.plugins.some(p => p.manifest.id === entry.pluginId)} onClick={() => void request({ type: 'connect', id: entry.id })}>{entry.status === 'connected' ? '重新连接并刷新能力' : '连接并读取能力'}</button><button disabled={disabled || !entry.enabled} onClick={() => void request({ type: 'disable', id: entry.id })}>停用</button><button disabled={disabled} onClick={() => edit(entry)}>编辑</button><button disabled={disabled} onClick={() => void request({ type: 'remove', id: entry.id })}>移除关联</button></div>
+        {state.plugins.find(p => p.manifest.id === entry.pluginId)?.manifest.configuration && <PluginConfiguration key={`${entry.id}:${entry.fingerprint}`} entry={entry} plugin={state.plugins.find(p => p.manifest.id === entry.pluginId)!.manifest} disabled={disabled} request={request}/>}
         <Permissions key={`${entry.id}:${JSON.stringify(entry.grants)}:${entry.tools.map(t => t.signature).join(',')}`} entry={entry} disabled={disabled} save={tools => void request({ type: 'grant', id: entry.id, tools })}/>
       </article>)}</div>
     </>}

@@ -41,12 +41,13 @@ export class SoftwareConnection {
     let transport: Transport;
     if (config.type === 'stdio') {
       const entry = path.resolve(this.plugin.directory, config.entry);
-      const command = config.runtime === 'executable' ? entry : await runtimeExecutable(this.entry.runtimePath);
+      const useHostNode = config.runtime === 'node' && !this.entry.runtimePath;
+      const command = config.runtime === 'executable' ? entry : useHostNode ? process.execPath : await runtimeExecutable(this.entry.runtimePath);
       const variables: Record<string, string> = { '${softwareDirectory}': this.entry.directory, '${pluginDirectory}': this.plugin.directory };
       const args = config.args.map(arg => arg.replace(/\$\{[^}]+\}/g, key => { if (!(key in variables)) throw new Error(`插件包含未知参数占位符：${key}`); return variables[key]; }));
       const stdio = new StdioClientTransport({
         command, args: [...(config.runtime === 'executable' ? [] : [entry]), ...args], cwd: this.dataDirectory, stderr: 'pipe', maxBufferSize: 2 * 1024 * 1024,
-        env: { DAFEIYU_SOFTWARE_DIRECTORY: this.entry.directory, DAFEIYU_SOFTWARE_ID: this.entry.id, DAFEIYU_PLUGIN_DIRECTORY: this.plugin.directory, DAFEIYU_PLUGIN_DATA_DIRECTORY: this.dataDirectory, PYTHONDONTWRITEBYTECODE: '1' }
+        env: { DAFEIYU_SOFTWARE_DIRECTORY: this.entry.directory, DAFEIYU_SOFTWARE_ID: this.entry.id, DAFEIYU_PLUGIN_DIRECTORY: this.plugin.directory, DAFEIYU_PLUGIN_DATA_DIRECTORY: this.dataDirectory, PYTHONDONTWRITEBYTECODE: '1', ...(useHostNode ? { ELECTRON_RUN_AS_NODE: '1' } : {}) }
       });
       // 排空诊断流，避免子进程阻塞；不把可能含凭证的插件日志写入公共日志。
       stdio.stderr?.on('data', () => {}); transport = stdio;
@@ -78,7 +79,10 @@ export class SoftwareConnection {
     const signal = AbortSignal.any([parent, this.abort.signal]); signal.throwIfAborted();
     const result = await this.client.callTool({ name, arguments: args, _meta: { 'dafeiyu/target': { softwareId: this.entry.id, softwareDirectory: this.entry.directory, pluginId: this.entry.pluginId } } }, undefined, { signal, timeout: 30000 });
     signal.throwIfAborted();
-    if (result.isError) throw new Error('插件报告操作失败；请检查插件与目标软件状态');
+    if (result.isError) {
+      const detail = Array.isArray(result.content) ? result.content.filter(c => c.type === 'text').map(c => c.text).join('\n').slice(0, 600) : '';
+      throw new Error(`插件报告操作失败：${detail || '请检查插件与目标软件状态'}`);
+    }
     const text = JSON.stringify(result); return text.length > 12000 ? `${text.slice(0, 12000)}（插件结果已截断）` : text;
   }
   async close() { this.closing = true; this.abort.abort(); await this.client.close().catch(() => {}); }
