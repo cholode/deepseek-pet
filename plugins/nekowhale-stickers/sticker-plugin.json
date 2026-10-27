@@ -1,0 +1,14 @@
+{
+  "schemaVersion": 1,
+  "id": "dafeiyu.nekowhale-stickers",
+  "name": "大肥鱼表情包",
+  "version": "1.0.0",
+  "description": "从大肥鱼与 GPT 娘表情库按情绪、场景挑选 GIF。",
+  "source": "https://github.com/Loping151/dsh-nekowhale-stickers",
+  "upstreamVersion": "1.1.1",
+  "upstreamCommit": "b7b58c0ff347d639fabe87d90d6716c4b3cad185",
+  "origin": "https://kiriyuki.com",
+  "author": "可以叫我云大人 / 雾雪",
+  "authorUrl": "https://space.bilibili.com/103739",
+  "license": "知识库 CC BY-NC 4.0；表情素材署名、非商业使用。代码 Apache-2.0。"
+}

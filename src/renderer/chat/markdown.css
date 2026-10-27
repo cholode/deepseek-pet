@@ -14,3 +14,4 @@
 .chat-markdown hr{border:0;border-top:1px solid #8da7c580;margin:12px 0}.chat-markdown .task-list-item{list-style:none}.chat-markdown input[type=checkbox]{margin:0 6px 0 -1.3em;accent-color:#4b82c6}
 .chat-markdown .markdown-image{font-style:italic;opacity:.8}.chat-markdown :focus-visible{outline:2px solid currentColor;outline-offset:2px}
 .speech-bubble .chat-markdown code,.speech-bubble .chat-markdown th{background:#153c702d}.speech-bubble .chat-markdown pre{background:#153c703d}.speech-bubble .chat-markdown pre code{background:none}
+.chat-markdown .chat-sticker{display:block;width:180px;height:180px;max-width:100%;object-fit:contain;margin:6px 0;border-radius:10px}

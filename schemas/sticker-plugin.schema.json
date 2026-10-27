@@ -1,0 +1,74 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "properties": {
+    "schemaVersion": {
+      "type": "number",
+      "const": 1
+    },
+    "id": {
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9.-]{1,79}$"
+    },
+    "name": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 80
+    },
+    "version": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 40
+    },
+    "description": {
+      "type": "string",
+      "maxLength": 1000
+    },
+    "source": {
+      "type": "string",
+      "maxLength": 2000,
+      "format": "uri"
+    },
+    "upstreamVersion": {
+      "type": "string",
+      "maxLength": 40
+    },
+    "upstreamCommit": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{40}$"
+    },
+    "origin": {
+      "type": "string",
+      "maxLength": 2000,
+      "format": "uri"
+    },
+    "author": {
+      "type": "string",
+      "maxLength": 100
+    },
+    "authorUrl": {
+      "type": "string",
+      "maxLength": 2000,
+      "format": "uri"
+    },
+    "license": {
+      "type": "string",
+      "maxLength": 500
+    }
+  },
+  "required": [
+    "schemaVersion",
+    "id",
+    "name",
+    "version",
+    "description",
+    "source",
+    "upstreamVersion",
+    "upstreamCommit",
+    "origin",
+    "author",
+    "authorUrl",
+    "license"
+  ],
+  "additionalProperties": false
+}

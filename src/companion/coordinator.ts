@@ -81,7 +81,8 @@ export class CompanionCoordinator {
       }
       if (result.calls.length) throw new Error('工具步骤达到上限，已停止继续执行');
       if (!live()) return '';
-      const reply = result.text.trim().slice(0, 8000);
+      const body = result.text.trim().slice(0, 8000);
+      const reply = source === 'desktop' ? this.software?.decorateReply?.(body) ?? body : body;
       if (!reply) throw new Error('模型没有返回可显示的文字');
       if (source === 'initiative' && reply.includes('[安静]')) return '';
       this.add({ id: this.host.id(), at: this.host.now(), source, actor: 'pet', conversationId, text: reply, causeId: id });

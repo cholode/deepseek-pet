@@ -13,7 +13,9 @@ export function mountCompanionPresentation(runtime: PetRuntime) {
     const voice = voices.find(v => v.voiceURI === item.speech.voice) ?? voices.find(v => /^zh/.test(v.lang));
     // 未安装本地中文语音时保留文字，不悄悄使用远程语音服务。
     if (!voice) { speakNext(); return; }
-    const utterance = new SpeechSynthesisUtterance(item.text); utterance.voice = voice; utterance.lang = voice.lang;
+    const text = item.text.replace(/!\[[^\]]*\]\([^)]+\)/g, '').trim();
+    if (!text) { speakNext(); return; }
+    const utterance = new SpeechSynthesisUtterance(text); utterance.voice = voice; utterance.lang = voice.lang;
     utterance.rate = item.speech.rate; utterance.volume = item.speech.volume; speaking = true;
     const done = () => { if (epoch !== current) return; speaking = false; speakNext(); };
     utterance.onend = done; utterance.onerror = done; window.speechSynthesis.speak(utterance);

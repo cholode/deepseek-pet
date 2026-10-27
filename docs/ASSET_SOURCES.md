@@ -184,3 +184,7 @@ resources/icon.png 与 icon.ico 延续项目内原始鲸鱼图标。scripts/asse
 ## 插件学习计划页面
 
 学习计划表单继续使用项目已有 React/CSS，无新增外部图片、Anki 标志或角色素材。Anki 适配代码为本项目实现，不打包 Anki、AnkiConnect 源码或其二进制；用户现有 AnkiConnect 仅作为本地服务调用。
+
+## 表情包页面与聊天图像
+
+页面使用现有 React/CSS，侧栏图标为内联 SVG。具体表情数据、上游版本、作者及许可保留在独立插件目录的 README、NOTICE 与 LICENSE-ASSETS；GIF 按需从插件声明的素材站获取，验证后缓存，不作为桌宠动作素材，也不改变当前 Live2D 模型。

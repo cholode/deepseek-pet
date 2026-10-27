@@ -19,8 +19,10 @@ import { defaultDiaryDirectory } from './diary/files';
 import { CompatibleModel } from './companion/model';
 import { SoftwareService } from './software/service';
 import { softwareActionAllowed } from '../shared/action-context';
+import { StickerService } from './stickers/service';
+import { ToolRouter } from '../companion/tool-router';
 
-protocol.registerSchemesAsPrivileged([{ scheme: 'petasset', privileges: { standard: true, secure: true, supportFetchAPI: true, corsEnabled: true } }]);
+protocol.registerSchemesAsPrivileged(['petasset', 'petsticker'].map(scheme => ({ scheme, privileges: { standard: true, secure: true, supportFetchAPI: true, corsEnabled: true } })));
 if (process.env.PET_TEST_USER) app.setPath('userData', path.resolve(process.env.PET_TEST_USER));
 let pet: BrowserWindow; let panel: BrowserWindow | null = null; let tray: Tray; let settings: SettingsStore; let packs: PackStore; let debug: DebugState | null = null;
 let regions: HitRegion[] = []; let ignored: boolean | undefined; let sampling: ReturnType<typeof setInterval> | undefined; let quitReady = false; let importBusy = false; let dragTimeout: ReturnType<typeof setTimeout> | undefined;
@@ -33,6 +35,7 @@ let viewport = { ...baseViewport };
 let companion: CompanionService | undefined;
 let diary: DiaryService | undefined;
 let software: SoftwareService | undefined;
+let stickers: StickerService | undefined;
 let chatWindows: PetChatWindows | undefined;
 const resourceRoot = () => app.isPackaged ? path.join(process.resourcesPath, 'pet-resources') : path.join(app.getAppPath(), 'resources');
 const send = (m: RuntimeMessage) => { if (pet && !pet.isDestroyed()) pet.webContents.send('runtime', m); };
@@ -159,6 +162,18 @@ async function boot() {
   });
   await software.start();
   handle('software', 'panel', raw => software!.request(raw));
+  stickers = new StickerService(path.join(app.getPath('userData'), 'stickers'), path.join(app.isPackaged ? process.resourcesPath : app.getAppPath(), 'plugins', 'nekowhale-stickers'), {
+    choosePlugin: async () => { const choice = await dialog.showOpenDialog(panel ?? pet, { title: '选择解压后的表情插件目录（包含 sticker-plugin.json）', properties: ['openDirectory'] }); return choice.canceled ? undefined : choice.filePaths[0]; },
+    changed: state => { if (panel && !panel.isDestroyed()) panel.webContents.send('stickers-state', state); },
+    preview: text => { const speech = companion?.store.data.config.speech; if (speech) chatWindows?.present({ id: randomUUID(), phase: 'complete', text, emotion: 'calm', source: 'initiative', speech: { ...speech, enabled: false } }, true); }
+  });
+  await stickers.start();
+  handle('stickers', 'panel', raw => stickers!.request(raw));
+  protocol.handle('petsticker', async request => {
+    if (request.method !== 'GET') return new Response('Forbidden', { status: 403 });
+    const data = await stickers!.image(request.url);
+    return data ? new Response(new Uint8Array(data), { headers: { 'Content-Type': 'image/gif', 'Cache-Control': 'no-store', 'X-Content-Type-Options': 'nosniff' } }) : new Response('表情尚未缓存', { status: 404 });
+  });
   companion = new CompanionService(app.getPath('userData'), {
     now: Date.now, id: randomUUID,
     changed: state => { panel?.webContents.send('companion-state', state); chatWindows?.update(state); },
@@ -166,7 +181,7 @@ async function boot() {
     capabilities: () => (debug?.groups ?? []).map(g => ({ groupId: g.groupId, name: g.name, description: g.description, tags: g.tags, channels: g.channels, expectedDurationMs: g.expectedDurationMs, available: g.enabled && !g.interaction && !debug?.failedGroups.includes(g.groupId) && softwareActionAllowed(g, { ...desktop, interacting: desktop.interacting || desktop.dragging, paused: settings.value.paused, lastInteraction: desktop.lastInteractionAt ?? Date.now() }, Date.now()) })),
     available: () => desktop.visible && !desktop.suspended && !desktop.dragging && !desktop.chatting && !settings.value.paused,
     lastInteractionAt: () => Math.max(0, ...(debug?.events.filter(e => e.type === 'interaction').map(e => e.occurredAtUnixMs) ?? []), ...(companion?.store.data.events.filter(e => e.actor === 'user').map(e => e.at) ?? []))
-  }, enabled => send({ type: 'companion-mode', enabled }), software);
+  }, enabled => send({ type: 'companion-mode', enabled }), new ToolRouter([software, stickers]));
   await companion.start();
   const diaryDefault = await defaultDiaryDirectory(
     [app.getAppPath(), process.env.PORTABLE_EXECUTABLE_DIR ?? '', path.dirname(process.execPath), ...(!app.isPackaged ? [process.cwd()] : [])],

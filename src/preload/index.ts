@@ -4,7 +4,10 @@ import type { CompanionView, CompanionPresentation } from '../shared/companion';
 import type { QuickChatState, SpeechBubbleState } from '../shared/pet-chat';
 import type { DiaryView } from '../shared/diary';
 import type { SoftwareView } from '../shared/software';
+import type { StickerView } from '../shared/stickers';
 const bridge: PetBridge = {
+  stickers: request => ipcRenderer.invoke('stickers', request),
+  onStickers: fn => { const listener = (_e: Electron.IpcRendererEvent, state: StickerView) => fn(state); ipcRenderer.on('stickers-state', listener); return () => ipcRenderer.removeListener('stickers-state', listener); },
   openChatLink: url => ipcRenderer.invoke('chat-open-link', url),
   dismissSpeechBubble: () => ipcRenderer.invoke('speech-bubble-dismiss'),
   userActivity: () => ipcRenderer.send('user-activity'),
