@@ -12,6 +12,8 @@
 
 按用户后续要求实现独立版本的 Anki 日语插件 1.0.0，覆盖框架初期“暂不实现具体软件”的范围限制。通过本机 AnkiConnect 记录实际对话和生词，复习须由用户自评；不把对话日志伪造为正式复习。学习计划在小屋配置，提醒默认关闭。通用宿主支持声明式设置和单独授权的提醒工具，不硬编码具体软件业务。见 plugins/anki-japanese/README.md。
 
+2026-10-27 按用户要求将大肥鱼主程序版本恢复为 1.5.0。新增或更新软件插件不增加主程序版本，各插件以自己的 `software-plugin.json` 中的 `version` 独立维护版本、握手和发布包；`schemaVersion` 只表示清单协议格式。主程序版本由根 `package.json` 管理，不能用插件发布代替主程序发版。
+
 使用 Electron、TypeScript strict、React、PixiJS 8.x。普通随机、点击交互、手动预览和智能陪伴复用统一动作执行器；领域层不依赖 Electron、网络或 Pixi，关键边界附中文注释。
 
 动作组和 motion 必须数据驱动。新增 JSON / 图像及更新包清单、导入或重新加载即可生效，不允许为新动作组修改 TypeScript 枚举或 switch。

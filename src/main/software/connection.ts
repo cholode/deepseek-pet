@@ -9,6 +9,7 @@ import type { Transport } from '@modelcontextprotocol/sdk/shared/transport.js';
 import { softwareToolSchema, type SoftwareEntry, type SoftwareTool } from '../../shared/software';
 import type { PluginRecord } from './plugins';
 import { endpoint } from '../companion/http';
+import { version as appVersion } from '../../../package.json';
 
 function canonical(value: unknown): string {
   if (Array.isArray(value)) return `[${value.map(canonical).join(',')}]`;
@@ -27,7 +28,7 @@ export async function runtimeExecutable(raw: string) {
 }
 // 路径由主进程配置注入，模型不能选择命令、运行时或工作目录；插件通过标准 MCP 自述能力。
 export class SoftwareConnection {
-  private client = new Client({ name: 'dafeiyu-software-host', version: '1.5.0' });
+  private client = new Client({ name: 'dafeiyu-software-host', version: appVersion });
   private closing = false;
   readonly abort = new AbortController();
   constructor(private entry: SoftwareEntry, private plugin: PluginRecord, private dataDirectory: string, private invalidated: (message: string) => void) {
