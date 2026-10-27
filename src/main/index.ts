@@ -124,6 +124,7 @@ async function boot() {
     activity: open => { desktop.chatting = open; if (open && movement) { movement = undefined; savePosition(); } broadcastDesktop(); }
   });
   software = new SoftwareService(app.getPath('userData'), {
+    bundled: [{ id: 'dafeiyu.anki-japanese', name: 'Anki 日语学习', directory: path.join(app.isPackaged ? process.resourcesPath : app.getAppPath(), 'plugins', 'anki-japanese') }],
     canRemind: () => !desktop.suspended && !desktop.dragging && !desktop.chatting && !settings.value.paused && !companion?.coordinator.busy,
     remind: text => {
       const speech = companion?.store.data.config.speech;

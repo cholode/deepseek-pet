@@ -1,5 +1,18 @@
 # 实际测试报告
 
+## Anki 插件 1.0.0 初次验证（2026-10-26，历史构建曾标记为主程序1.6.0）
+
+2026-10-27 已更正版本策略：主程序恢复为1.5.0，插件独立维护1.0.0。以下保留初次测试时的构建编号、大小和结果。
+
+- 已实现随附/独立导入的 Anki 日语 MCP 插件、小屋声明式计划设置、内置 Node 运行时、对话日志/生词、分阶段复习评分和显式开启的计划提醒。用户选择稍后在小屋设置，默认没有启用任何固定提醒。
+- `npm run typecheck`、`npm run lint`、`npm test`（227/227，17个测试文件）、`npm run build`、`npm run schemas`、`git diff --check` 通过。9项 Anki 逻辑测试和3项宿主设置/提醒测试覆盖去重、部分失败恢复、用户隔离、重复评分、卡片变化、过期、撤权、提醒窗口、暂停、重启去重和损坏状态保留。
+- 最终 `release/win-unpacked/DeepBlue Desktop Pet.exe` 的 `test:anki-gui` 10项检查全部通过：随附插件安装、内置 Node 真实子进程、计划保存、真实工具路由下的多轮记录/复习、重启、Anki 离线、真实一分钟定时器气泡、停止和800×620最小窗口，无渲染异常。Anki/模型为隔离HTTP夹具，未声称真实账号写入验证。Windows 系统通知在脚本中禁用，仅验证真实气泡窗口。
+- 开发构建的 Anki GUI 验证了前9项；最后缩窗测试缺少等待 Windows 取消最大化事件，修正后在最终打包版完整复验10项。最初还修正了表单 select 的可访问名称和测试的气泡URL定位。未放宽布局断言。
+- `test:software-gui` 原通用框架12项、`test:companion-gui` 原智能陪伴8项回归通过。
+- `test:anki-smoke` 对本机真实 AnkiConnect v6 的只读连通检查通过，发现5个牌组，无写入。后续用户要求的20词真实Anki隔离体验另行记录，不计入这里的模拟GUI成果。
+- `npm run dist:win` 生成1.6.0安装版274,593,477字节、便携版225,417,010字节及SHA256清单；`npm run pack:anki` 生成独立插件ZIP 13,009字节。EXE未签名，未运行安装/卸载向导。未新增长时性能和多屏混合DPI测试。
+- `test-results/anki/packaged-gui-report.json`、`learning-plan.png`、`study-reminder.png`、`small-window.png` 保存验证记录。ESLint 排除 gitignored 的 `test-results/` 生成副本，插件源代码继续参与检查。
+
 ## 1.5.0 可操作软件与通用插件框架（2026-10-26）
 
 - 按用户最新范围只实现通用框架，没有内置任何具体软件操作。新增小屋“可操作软件”、插件库、原生目录与运行时选择、软件绑定、独立授权、加密令牌、动态能力目录、活动状态和全部停止。新增可直接导入并连接的零能力插件模板、清单 JSON Schema 与 `docs/SOFTWARE_PLUGINS.md`。

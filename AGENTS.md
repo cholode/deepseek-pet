@@ -10,6 +10,8 @@
 
 1.5.0 按用户要求搭建“可操作软件”通用插件框架：支持用户导入的独立软件插件（MCP stdio / Streamable HTTP），选择软件目录后绑定、连接并逐项授权。不实现或预装具体软件操作。软件插件与动作包隔离，导入不执行，连接本地插件时才运行其程序；软件目录是目标定位信息，不是系统沙箱。规范见 docs/SOFTWARE_PLUGINS.md。
 
+按用户后续要求实现独立版本的 Anki 日语插件 1.0.0，覆盖框架初期“暂不实现具体软件”的范围限制。通过本机 AnkiConnect 记录实际对话和生词，复习须由用户自评；不把对话日志伪造为正式复习。学习计划在小屋配置，提醒默认关闭。通用宿主支持声明式设置和单独授权的提醒工具，不硬编码具体软件业务。见 plugins/anki-japanese/README.md。
+
 使用 Electron、TypeScript strict、React、PixiJS 8.x。普通随机、点击交互、手动预览和智能陪伴复用统一动作执行器；领域层不依赖 Electron、网络或 Pixi，关键边界附中文注释。
 
 动作组和 motion 必须数据驱动。新增 JSON / 图像及更新包清单、导入或重新加载即可生效，不允许为新动作组修改 TypeScript 枚举或 switch。
@@ -27,6 +29,8 @@
 最终运行并记录 `npm run typecheck`、`npm run lint`、`npm run test`、`npm run build`；当前环境允许时运行 `npm run dist:win` 并验证 GUI。未执行的项目写明原因。
 
 维护 README、动作包教程、AI 接口说明、素材来源和测试报告。区分编译通过、构建产物生成与真实 Windows GUI 验证。
+
+具体软件插件的使用说明写在 `plugins/<插件目录>/README.md`，该插件的设计和评估文档放在同目录的 `docs/`。对外展示的根 README 只介绍桌宠与通用插件框架，不写具体插件；新增或更新插件时不改动根 README。
 
 ## 实现文档
 模块说明见 docs/ARCHITECTURE.md，中文细纲见 docs/实现细纲.md，验收状态见 docs/TEST_REPORT.md。长任务书仍是需求依据。

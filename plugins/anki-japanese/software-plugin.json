@@ -1,0 +1,27 @@
+{
+  "schemaVersion": 1,
+  "id": "dafeiyu.anki-japanese",
+  "name": "Anki 日语学习",
+  "version": "1.0.0",
+  "author": "大肥鱼",
+  "description": "通过本机 AnkiConnect 陪你练习日语、保存生词和练习总结、复习卡片，并按学习计划提醒。请先打开 Anki 并安装 AnkiConnect。",
+  "transport": { "type": "stdio", "runtime": "node", "entry": "server.mjs", "args": [] },
+  "configuration": {
+    "title": "日语学习计划",
+    "readTool": "anki_status",
+    "writeTool": "anki_settings_save",
+    "fields": [
+      { "key": "profile", "label": "Anki 用户（须与当前打开的用户一致）", "type": "text" },
+      { "key": "level", "label": "日语程度", "type": "select", "options": ["入门", "N5", "N4", "N3", "N2", "N1"] },
+      { "key": "dailyMinutes", "label": "每天练习分钟", "type": "number", "min": 1, "max": 120 },
+      { "key": "newCards", "label": "每天最多开始的新卡片", "type": "number", "min": 0, "max": 50 },
+      { "key": "time", "label": "提醒时间（电脑本地时间）", "type": "time" },
+      { "key": "days", "label": "学习日", "type": "weekdays" },
+      { "key": "deck", "label": "新生词牌组", "type": "text" },
+      { "key": "reviewDeck", "label": "复习牌组（可填写已有牌组）", "type": "text" },
+      { "key": "logDeck", "label": "练习记录牌组", "type": "text" },
+      { "key": "port", "label": "AnkiConnect 端口", "type": "number", "min": 1, "max": 65535 }
+    ]
+  },
+  "reminderTool": "anki_reminder"
+}

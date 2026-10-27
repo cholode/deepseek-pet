@@ -21,7 +21,10 @@
     "test:hover-chat-gui": "node scripts/hover-chat-gui-test.cjs",
     "test:diary-gui": "node scripts/diary-gui-test.cjs",
     "test:diary-auto-gui": "node scripts/diary-auto-gui-test.cjs",
-    "test:software-gui": "node scripts/software-gui-test.cjs"
+    "test:software-gui": "node scripts/software-gui-test.cjs",
+    "test:anki-gui": "node scripts/anki-gui-test.cjs",
+    "test:anki-smoke": "node scripts/anki-smoke.cjs",
+    "pack:anki": "node scripts/pack-anki.cjs"
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "1.32.2",
@@ -72,6 +75,10 @@
       {
         "from": "examples/custom-action-pack",
         "to": "examples/custom-action-pack"
+      },
+      {
+        "from": "plugins/anki-japanese",
+        "to": "plugins/anki-japanese"
       }
     ],
     "win": {

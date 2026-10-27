@@ -121,6 +121,6 @@ HTTP 服务只需将 `transport` 换成：
 
 清单可声明 `configuration: { title, readTool, writeTool, fields }`。字段支持 text、number（min/max）、time、weekdays（0=周日）、select（options）。读工具参数 `{}`，写工具参数 `{settings: {...}}`，两者返回 MCP text 内的 JSON `{settings, summary?, decks?}`。宿主仅解析数据，不执行插件 HTML 或前端脚本；设置调用同样要求当前工具签名的授权。
 
-清单还可声明 `reminderTool`。用户需授权该工具并额外开启实例的计划提醒。每分钟在可提醒时调用 `{}`，返回 MCP text 内 JSON `null` 或 `{key: string, text: string}`，key 最多200字符，text 最多500字符。宿主按实例持久化最后一个 key 防止重启重复，每个计划应返回稳定且有时间窗口的 key；多提醒并行或轮换旧 key 不在本协议保障范围。
+清单还可声明 `reminderTool`。用户需授权该工具并额外开启实例的计划提醒。每分钟在可提醒时调用 `{}`，返回 MCP text 内 JSON `null` 或 `{key: string, text: string}`，key 最多200字符，text 最多500字符。宿主按实例持久化最后一个 key 防止重启重复，每个计划应返回稳定且有时间窗口的 key；多提醒并行或轮换旧 key 不在本协议保障范围。Anki 插件使用本地日期加计划时间。
 
 设置和提醒调用复用包指纹、目标、实例身份与工具签名检查。停用、停止、撤权、清单/能力变化后不再调用。未开启提醒时不会后台运行插件；提醒不调用模型，也不会扩大 QQ、主动对话或日记的操作权限。允许调用的读工具是否真的只读仍是插件作者的职责。

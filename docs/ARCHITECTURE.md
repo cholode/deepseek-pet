@@ -138,3 +138,7 @@ Windows 本机测试采用 `pop-up-menu` 置顶级别。普通 `floating` 在本
 ## 1.5.0 软件插件宿主
 
 新增独立 `SoftwareService` 实现领域层 `ToolPort`，注入 `CompanionCoordinator`，只在桌面聊天中提供已授权的软件能力。`SoftwarePlugins` 管理独立可执行插件仓库与内容指纹，`SoftwareConnection` 封装 MCP stdio/HTTP、可信目标注入及取消。小屋通过专属 IPC 管理软件目录、插件关联和授权，宠物/悬停窗口不能管理软件。没有具体软件适配器，也不改变动作执行器。完整契约、生命周期与限制见 [SOFTWARE_PLUGINS.md](SOFTWARE_PLUGINS.md)。
+
+## 独立插件与声明式设置
+
+`plugins/anki-japanese` 是独立、零依赖 MCP Node 插件，宿主只通过 manifest 的 configuration/reminderTool 渲染设置和检查提醒。读写设置走限定工具名和逐项授权；提醒额外开启，持久化 key，暂停、撤权、停止时不投递。Node 插件可使用 Electron 内置 Node 子进程，Python 仍需显式选择可执行文件。业务协议、笔记去重、两阶段复习和用户绑定在插件内实现，见 [插件架构说明](../plugins/anki-japanese/docs/ARCHITECTURE.md)。
