@@ -15,7 +15,7 @@
 
 ## 模型与工具
 
-模型适配器支持兼容 Chat Completions 的服务及 function calling。MCP 使用官方 SDK 的 Streamable HTTP；先发现，再由用户逐项授权。每轮最多四次工具操作、两轮工具交互，真实结果送回同一决策模型。QQ 和主动搭话不暴露电脑工具。
+模型适配器支持兼容 Chat Completions 的服务及 function calling。DeepSeek 官方接口显式发送 `thinking: { type: 'disabled' }`，其他兼容服务不附加此专用参数。MCP 使用官方 SDK 的 Streamable HTTP；先发现，再由用户逐项授权。每轮最多四次工具操作、两轮工具交互，真实结果送回同一决策模型。QQ 和主动搭话不暴露电脑工具。
 
 取消会阻止迟到结果写入记忆或播放动作，并中断后续请求；已经在外部软件执行的操作不具备通用撤销能力。
 

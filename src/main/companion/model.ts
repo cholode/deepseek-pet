@@ -10,10 +10,13 @@ export class CompatibleModel implements ModelPort {
   constructor(private key: () => string, private request: typeof fetch = fetch) {}
   async complete(messages: ChatMessage[], config: CompanionConfig['model'], signal: AbortSignal, tools: ToolDefinition[] = [], onText?: (delta: string) => void) {
     const root = endpoint(config.baseUrl).toString().replace(/\/$/, '');
+    // DeepSeek 官方接口默认开启思考，必须显式关闭；不向其他兼容服务强塞专用参数。
+    const thinking = new URL(root).hostname === 'api.deepseek.com' ? { thinking: { type: 'disabled' } } : {};
     const response = await this.request(`${root}/chat/completions`, {
       method: 'POST', redirect: 'error', signal: AbortSignal.any([signal, AbortSignal.timeout(config.timeoutMs)]),
       headers: { 'Content-Type': 'application/json', ...(this.key() ? { Authorization: `Bearer ${this.key()}` } : {}) },
       body: JSON.stringify({ model: config.model, messages, stream: Boolean(onText), temperature: config.temperature, max_tokens: 1500,
+        ...thinking,
         ...(tools.length ? { tools: tools.map(t => ({ type: 'function', function: { name: t.name, description: t.description, parameters: t.inputSchema } })), tool_choice: 'auto' } : {}) })
     });
     if (onText && response.headers.get('content-type')?.includes('text/event-stream')) return readCompletionStream(response, signal, onText);

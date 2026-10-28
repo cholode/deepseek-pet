@@ -59,6 +59,14 @@ describe('持久化与 HTTP 边界', () => {
   });
 });
 describe('真实本机 HTTP 模型与 QQ 协议', () => {
+  it.each(['https://api.deepseek.com', 'https://api.deepseek.com/v1'])('DeepSeek %s 显式关闭思考，兼容普通与流式请求', async baseUrl => {
+    const payloads: Record<string, unknown>[] = [];
+    const request: typeof fetch = vi.fn(async (_url, options) => { payloads.push(JSON.parse(String(options?.body))); return Response.json({ choices: [{ message: { content: '收到' } }] }); });
+    const model = new CompatibleModel(() => '', request);
+    for (const stream of [false, true]) await model.complete([], { ...companionDefaults.model, baseUrl, model: 'deepseek-flash' }, new AbortController().signal, [], stream ? () => {} : undefined);
+    expect(payloads.map(p => p.thinking)).toEqual([{ type: 'disabled' }, { type: 'disabled' }]);
+    expect(payloads.map(p => p.stream)).toEqual([false, true]);
+  });
   it('模型正确发送身份头、上下文及工具参数并解析 function calling', async () => {
     const seen: unknown[] = [];
     const url = await server(async (req, res) => { seen.push({ path: req.url, token: req.headers.authorization, body: await body(req) }); json(res, { choices: [{ message: { content: null, tool_calls: [{ id: 'call', type: 'function', function: { name: 'read_game', arguments: '{}' } }] } }] }); });
