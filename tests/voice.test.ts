@@ -107,7 +107,8 @@ describe('voice service lifecycle and secrets', () => {
     expect(service.permitsCapture(2)).toBe(false); expect((await service.request(request, 2, 'chat')).ok).toBe(false); expect(fetcher).toHaveBeenCalledTimes(1);
   });
   it('expires microphone permission and cancels it on save', async () => {
-    const { service } = await fixture(); const config = structuredClone(voiceDefaults); config.asr.enabled = true; await configure(service, config);
+    const { service } = await fixture(); const config = structuredClone(voiceDefaults); config.asr.enabled = true; config.asr.local.model = 'fixture'; await configure(service, config);
+    expect((await service.request({ type: 'capture-begin' }, 1, 'panel')).ok).toBe(true); service.cancel(1);
     await service.request({ type: 'capture-begin' }, 1, 'panel'); vi.useFakeTimers(); vi.setSystemTime(Date.now() + 91000); expect(service.permitsCapture(1)).toBe(false); vi.useRealTimers();
     service.cancel(1); await service.request({ type: 'capture-begin' }, 1, 'panel'); await configure(service, config); expect(service.permitsCapture(1)).toBe(false);
   });

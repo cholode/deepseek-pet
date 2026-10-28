@@ -3,12 +3,12 @@ import { maxRecordingSeconds, type VoiceState } from '../../shared/voice';
 import { encodeVoiceWav } from '../../shared/voice-wav';
 import './voice.css';
 
-interface Props { onText(text: string): boolean | void; onBusy?(busy: boolean): void; compact?: boolean; disabled?: boolean }
-export function VoiceInput({ onText, onBusy, compact = false, disabled = false }: Props) {
+interface Props { onText(text: string): boolean | void; onBusy?(busy: boolean): void; onStatus?(message: string): void; compact?: boolean; disabled?: boolean }
+export function VoiceInput({ onText, onBusy, onStatus, compact = false, disabled = false }: Props) {
   const [state, setState] = useState<VoiceState>(); const [phase, setPhase] = useState<'idle' | 'starting' | 'recording' | 'transcribing'>('idle');
   const [seconds, setSeconds] = useState(0); const [message, setMessage] = useState('');
   const generation = useRef(0); const cleanup = useRef<() => void>(() => {}); const finish = useRef<() => void>(() => {});
-  const callbacks = useRef({ onText, onBusy }); callbacks.current = { onText, onBusy };
+  const callbacks = useRef({ onText, onBusy, onStatus }); callbacks.current = { onText, onBusy, onStatus };
   const phaseRef = useRef(phase); phaseRef.current = phase;
   const cancelRef = useRef<() => void>(() => {});
   function cancel() { generation.current++; cleanup.current(); cleanup.current = () => {}; setPhase('idle'); callbacks.current.onBusy?.(false); void window.pet.voice({ type: 'cancel' }).catch(() => {}); }
@@ -60,7 +60,8 @@ export function VoiceInput({ onText, onBusy, compact = false, disabled = false }
   }
   const active = phase !== 'idle';
   const label = phase === 'recording' ? `结束录音 ${seconds}s` : phase === 'transcribing' ? '取消识别' : phase === 'starting' ? '取消录音' : '语音输入';
-  const hint = phase === 'recording' ? `正在录音 ${seconds} 秒，点击结束并识别（最长 60 秒）` : phase === 'transcribing' ? '正在识别，点击可取消' : state?.config.asr.enabled ? `点击录音 · ${state.config.asr.source === 'local' ? '本地' : '云端'}识别` : '请在智能陪伴 → 对话设置中启用语音输入';
+  const hint = phase === 'starting' ? '正在准备麦克风和识别引擎，首次需加载模型，点击可取消' : phase === 'recording' ? `正在录音 ${seconds} 秒，点击结束并识别（最长 60 秒）` : phase === 'transcribing' ? '正在识别，点击可取消' : state?.config.asr.enabled ? `点击录音 · ${state.config.asr.source === 'local' ? '本地' : '云端'}识别` : '请在智能陪伴 → 对话设置中启用语音输入';
+  useEffect(() => { callbacks.current.onStatus?.(active ? hint : message); }, [active, hint, message]);
   return <div className={`voice-input ${compact ? 'compact' : ''}`}>
     <button type="button" className={active ? 'voice-active' : ''} aria-label={label} title={message || hint} disabled={!active && (disabled || !state?.config.asr.enabled)} onClick={() => phase === 'recording' ? finish.current() : active ? cancel() : void start()}>{compact ? phase === 'recording' ? `${seconds}s ■` : phase === 'transcribing' || phase === 'starting' ? '×' : <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" aria-hidden="true"><rect x="9" y="3" width="6" height="12" rx="3"/><path d="M5 11v1a7 7 0 0 0 14 0v-1M12 19v3M8 22h8"/></svg> : label}</button>
     {!compact && phase === 'recording' && <button type="button" onClick={cancel}>取消录音</button>}

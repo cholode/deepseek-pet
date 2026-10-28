@@ -200,6 +200,8 @@ async function boot() {
   }, enabled => send({ type: 'companion-mode', enabled }), new ToolRouter([software, stickers]), () => voice?.conversationPolicy ?? conversationPolicyDefaults);
   await companion.start();
   voice = new VoiceService(path.join(app.getPath('userData'), 'conversation-settings.json'), {
+    chooseWhisperDirectory: async () => { const result = await dialog.showOpenDialog(panel ?? pet, { title: '选择 whisper.cpp 引擎目录', properties: ['openDirectory'] }); return result.canceled ? undefined : result.filePaths[0]; },
+    chooseWhisperModel: async () => { const result = await dialog.showOpenDialog(panel ?? pet, { title: '选择 Whisper GGML 模型', filters: [{ name: 'Whisper 模型', extensions: ['bin'] }], properties: ['openFile'] }); return result.canceled ? undefined : result.filePaths[0]; },
     chooseVoicevoxDirectory: async () => {
       const result = await dialog.showOpenDialog(panel ?? pet, { title: '选择 VOICEVOX 解压目录或软件目录', properties: ['openDirectory'] });
       return result.canceled ? undefined : result.filePaths[0];

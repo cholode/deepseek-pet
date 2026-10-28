@@ -30,6 +30,12 @@ export function validateRecording(audio: ArrayBuffer) {
 }
 export class VoiceAudio {
   constructor(private fetcher: typeof fetch = fetch) {}
+  async checkAsr(config: VoiceConfig['asr'], key: string, signal: AbortSignal) {
+    const service = config[config.source]; const url = voiceEndpoint(service.url, config.source);
+    const response = await this.fetcher(url, { method: 'OPTIONS', redirect: 'error', signal: AbortSignal.any([signal, AbortSignal.timeout(6000)]), headers: key ? { Authorization: `Bearer ${key}` } : {} });
+    await response.body?.cancel();
+    if (!response.ok && response.status !== 405) throw new Error(`识别接口返回 HTTP ${response.status}，请检查地址、模型与密钥`);
+  }
   async voicevoxSpeaker(url: string, signal: AbortSignal): Promise<number> {
     const root = voiceEndpoint(url, 'local');
     const response = await this.fetcher(new URL('speakers', root), { redirect: 'error', signal });

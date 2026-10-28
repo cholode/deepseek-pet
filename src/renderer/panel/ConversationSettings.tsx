@@ -42,6 +42,15 @@ export function ConversationSettings() {
     try { const result = await window.pet.voice({ type: 'voicevox-check' }); if (mounted.current) setNote(result.message ?? (result.ok ? '已连接' : '连接失败')); }
     catch { if (mounted.current) setNote('无法连接 VOICEVOX'); } finally { if (mounted.current) setChecking(false); }
   }
+  async function chooseWhisper(type: 'whisper-directory' | 'whisper-model') {
+    try { const result = await window.pet.voice({ type }); if (!result.ok) throw new Error(result.message); const patch = result.directory ? { directory: result.directory } : result.modelPath ? { modelPath: result.modelPath } : undefined; if (patch) changeAsr({ whisper: { ...config.asr.whisper, ...patch } }); }
+    catch (error) { setNote(error instanceof Error ? error.message : '选择失败'); }
+  }
+  async function checkAsr() {
+    setChecking(true); setNote('正在连接识别服务，首次启动需加载模型…');
+    try { const result = await window.pet.voice({ type: 'asr-check' }); if (mounted.current) setNote(result.message ?? (result.ok ? '识别服务已连接' : '连接失败')); }
+    catch { if (mounted.current) setNote('无法连接识别服务'); } finally { if (mounted.current) setChecking(false); }
+  }
   function systemVoiceFields() {
     const candidates = config.tts.mode === 'language' ? voices.filter(v => /^zh(?:-|_)/i.test(v.lang) && /Microsoft/i.test(v.name)) : voices;
     return <><label>{config.tts.mode === 'language' ? '中文 · 微软本地声音' : '系统声音'}<select aria-label="系统声音" value={config.tts.systemVoice} onChange={e => changeTts({ systemVoice: e.target.value })}><option value="">自动选择{config.tts.mode === 'language' ? '微软中文' : '本地'}声音</option>{candidates.map(voice => <option key={voice.voiceURI} value={voice.voiceURI}>{voice.name} · {voice.lang}</option>)}</select></label><small>无需 API Key，使用 Windows 已安装的本地声音。</small></>;
@@ -100,6 +109,16 @@ export function ConversationSettings() {
         <label>识别来源<select aria-label="识别来源" value={config.asr.source} onChange={e => changeAsr({ source: e.target.value as 'local' | 'cloud' })}><option value="local">本地</option><option value="cloud">云端</option></select></label>
         {config.asr.source === 'local' && <label>本地识别协议<select aria-label="本地识别协议" value={config.asr.localProtocol} onChange={e => { const localProtocol = e.target.value as 'compatible' | 'whisper-cpp'; const url = config.asr.local.url.replace(/\/(?:v1\/audio\/transcriptions|inference)$/, localProtocol === 'whisper-cpp' ? '/inference' : '/v1/audio/transcriptions'); changeAsr({ localProtocol, local: { ...config.asr.local, url } }); }}><option value="compatible">兼容 /audio/transcriptions</option><option value="whisper-cpp">whisper.cpp /inference</option></select></label>}
         {serviceFields('asr')}
+        {config.asr.source === 'local' && config.asr.localProtocol === 'whisper-cpp' && <>
+          <label>Whisper 引擎目录<input aria-label="Whisper 引擎目录" readOnly value={config.asr.whisper.directory}/></label>
+          <button onClick={() => void chooseWhisper('whisper-directory')}>选择识别引擎目录</button>
+          <label>Whisper 模型文件<input aria-label="Whisper 模型文件" readOnly value={config.asr.whisper.modelPath}/></label>
+          <button onClick={() => void chooseWhisper('whisper-model')}>选择识别模型</button>
+          <label className="companion-check"><input aria-label="按需启动 Whisper" type="checkbox" checked={config.asr.whisper.autoStart} onChange={e => changeAsr({ whisper: { ...config.asr.whisper, autoStart: e.target.checked } })}/>录音前自动启动本机 Whisper 识别服务</label>
+          <label>识别 CPU 线程数<input aria-label="识别 CPU 线程数" type="number" min="1" max="64" value={config.asr.whisper.cpuThreads} onChange={e => changeAsr({ whisper: { ...config.asr.whisper, cpuThreads: Number(e.target.value) } })}/></label>
+          <small>选择含 whisper-server.exe 的目录和 GGML .bin 模型。首次录音先加载模型；退出时只关闭大肥鱼启动的引擎。当前按需启动使用 CPU。</small>
+        </>}
+        <button disabled={dirty} onClick={() => void checkAsr()}>检查识别服务</button>
         <label>识别语言<select aria-label="识别语言" value={config.asr.language} onChange={e => changeAsr({ language: e.target.value })}><option value="">自动判断</option><option value="zh">中文</option><option value="ja">日语</option><option value="en">英语</option><option value="ko">韩语</option></select></label>
         <p className="companion-help">{config.asr.source === 'local' ? '本地识别需要你安装并运行识别引擎；程序不附带大型语音模型。音频只发到配置的本机地址。' : '结束录音后，音频将上传到你配置的云端服务，可能产生用量费用。'} 每次最长 60 秒，不持续监听，不保存录音文件。</p>
       </section>
