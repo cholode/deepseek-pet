@@ -17,6 +17,9 @@ export class ToolRouter implements ToolPort {
     const port = this.routes.get(name); if (!port) throw new Error('工具未启用或未授权');
     return port.call(name, args, signal);
   }
-  decorateReply(text: string) { return this.ports.reduce((value, port) => port.decorateReply?.(value) ?? value, text); }
+  async decorateReply(text: string, signal: AbortSignal) {
+    for (const port of this.ports) { signal.throwIfAborted(); text = await port.decorateReply?.(text, signal) ?? text; }
+    return text;
+  }
   async close() { await Promise.all(this.ports.map(port => port.close())); this.routes.clear(); }
 }

@@ -16,7 +16,7 @@ export const stickerSchema = z.object({
 export type Sticker = z.infer<typeof stickerSchema>;
 export const stickerCatalogSchema = z.object({ updated: z.string().max(80), items: z.array(stickerSchema).min(1).max(2000) }).strict();
 export const stickerSettingsSchema = z.object({
-  enabled: z.boolean().default(false), offline: z.boolean().default(false), frequency: z.enum(['rare', 'normal', 'often']).default('normal'),
+  enabled: z.boolean().default(false), offline: z.boolean().default(false), frequency: z.enum(['rare', 'normal', 'often', 'always']).default('normal'),
   packs: z.array(z.string().max(80)).max(30).default([]), blocked: z.array(z.string().max(200)).max(2000).default([])
 }).strict();
 export type StickerSettings = z.infer<typeof stickerSettingsSchema>;

@@ -49,9 +49,9 @@ describe('表情插件与缓存', () => {
     expect(fetcher).toHaveBeenCalledWith(item.url, expect.objectContaining({ redirect: 'error', credentials: 'omit' }));
     expect(await service.image(imageUrl(item))).toEqual(data);
     await service.call('dafeiyu_sticker_send', { id: other.id }, signal()); expect(fetcher).toHaveBeenCalledTimes(1);
-    expect(service.decorateReply('做得好！')).toContain(imageUrl(item));
-    expect(service.decorateReply('做得好！').match(/!\[/g)).toHaveLength(1);
-    await service.list(signal()); expect(service.decorateReply('下一轮')).toBe('下一轮');
+    expect(await service.decorateReply('做得好！')).toContain(imageUrl(item));
+    expect((await service.decorateReply('做得好！')).match(/!\[/g)).toHaveLength(1);
+    await service.list(signal()); expect(await service.decorateReply('下一轮')).toBe('下一轮');
   });
   it('离线复用缓存，未知地址和路径不能触发读取或网络', async () => {
     const { service, fetcher, configure, item, other } = await setup();
@@ -79,7 +79,7 @@ describe('表情插件与缓存', () => {
     const { service, configure, item } = await setup(vi.fn(async () => new Response(bad)));
     await configure({ enabled: true }); await service.list(signal());
     await expect(service.call('dafeiyu_sticker_send', { id: item.id }, signal())).rejects.toThrow();
-    expect(service.view().cached).toBe(0); expect(service.decorateReply('文字')).toBe('文字');
+    expect(service.view().cached).toBe(0); expect(await service.decorateReply('文字')).toBe('文字');
   });
   it('撤回使用权限时中止下载，迟到返回不展示', async () => {
     let release!: () => void; const pending = new Promise<void>(resolve => { release = resolve; });
@@ -88,13 +88,13 @@ describe('表情插件与缓存', () => {
     await configure({ enabled: true }); await service.list(signal());
     const result = service.call('dafeiyu_sticker_send', { id: item.id }, signal()).catch(e => e);
     await vi.waitFor(() => expect(fetcher).toHaveBeenCalled()); await configure({ enabled: false }); release();
-    expect(await result).toBeInstanceOf(Error); expect(service.decorateReply('文字')).toBe('文字'); expect(service.view().cached).toBe(0);
+    expect(await result).toBeInstanceOf(Error); expect(await service.decorateReply('文字')).toBe('文字'); expect(service.view().cached).toBe(0);
   });
   it('用户取消工具后不附图，下一轮可重试', async () => {
     const { service, configure, item } = await setup(); await configure({ enabled: true });
     const controller = new AbortController(); controller.abort();
     await expect(service.call('dafeiyu_sticker_send', { id: item.id }, controller.signal)).rejects.toThrow();
-    expect(service.decorateReply('文字')).toBe('文字');
+    expect(await service.decorateReply('文字')).toBe('文字');
     await service.call('dafeiyu_sticker_send', { id: item.id }, signal()); expect(service.view().cached).toBe(1);
   });
   it('独立导入仅复制目录与许可，重启保留设置/缓存且不执行脚本', async () => {
@@ -141,5 +141,34 @@ describe('表情插件与缓存', () => {
     const { service } = await setup(); const router = new ToolRouter([service]); await router.list(signal());
     await expect(router.call('dafeiyu_sticker_send', {}, signal())).rejects.toThrow('未启用');
     await router.close();
+  });
+  it('每次回复模式为漏选的模型补一张，跨轮不复用选择且禁用时停止', async () => {
+    const { service, configure } = await setup(); await configure({ enabled: true, frequency: 'always' });
+    const f = fixture(); f.data.config.mood.enabled = false; f.data.config.memory.automatic = false;
+    const coordinator = new CompanionCoordinator(f.repository, f.model, f.tools, f.host, new ToolRouter([service]));
+    for (let i = 0; i < 2; i++) { f.model.complete.mockResolvedValueOnce({ text: '今天也陪你聊天。', calls: [] }); const reply = await coordinator.chat(`聊天${i}`); expect(reply.match(/!\[/g)).toHaveLength(1); }
+    expect(f.model.complete).toHaveBeenCalledTimes(2);
+    await configure({ enabled: false }); f.model.complete.mockResolvedValueOnce({ text: '关闭后继续。', calls: [] }); expect(await coordinator.chat('继续')).toBe('关闭后继续。');
+  });
+  it('每次回复遵守离线与单张禁用，无可用图时保留正文并提示', async () => {
+    const { service, configure, item, fetcher } = await setup(); await configure({ enabled: true, frequency: 'always', offline: true });
+    await service.list(signal()); expect(await service.decorateReply('你好')).toBe('你好'); expect(fetcher).not.toHaveBeenCalled(); expect(service.view().notice).toContain('没有可用表情');
+    await configure({ offline: false }); await service.request({ type: 'preview', id: item.id });
+    await configure({ offline: true, blocked: [item.id] }); await service.list(signal()); expect(await service.decorateReply('开心')).toBe('开心');
+  });
+  it('长中日回复附图后保留完整图片与语言元数据，不朗读被裁掉的正文', async () => {
+    const { service, configure, item } = await setup(); await configure({ enabled: true, frequency: 'always' });
+    const f = fixture(); f.host.speechLanguages = () => true; f.data.config.mood.enabled = false; f.data.config.memory.automatic = false;
+    const coordinator = new CompanionCoordinator(f.repository, f.model, f.tools, f.host, new ToolRouter([service]));
+    f.model.complete.mockResolvedValueOnce({ text: `<voice lang="ja">${'先生'.repeat(3995)}</voice>`, calls: [] });
+    const reply = await coordinator.chat('练习'); expect(reply.length).toBeLessThanOrEqual(8000); expect(reply).toContain(imageUrl(item));
+    const event = f.data.events.at(-1)!; expect(event.speechSegments?.map(s => s.text).join('')).toBe(reply); expect(event.speechSegments?.[0].language).toBe('ja');
+  });
+  it('自动补表情等待时取消，迟到结果不会保存为完成回复', async () => {
+    const fetcher = vi.fn<typeof fetch>().mockImplementation((_url, init) => new Promise((_resolve, reject) => init?.signal?.addEventListener('abort', () => reject(new Error('cancelled')))));
+    const { service, configure } = await setup(fetcher); await configure({ enabled: true, frequency: 'always' });
+    const f = fixture(); f.data.config.mood.enabled = false; f.data.config.memory.automatic = false; f.model.complete.mockResolvedValueOnce({ text: '你好', calls: [] });
+    const coordinator = new CompanionCoordinator(f.repository, f.model, f.tools, f.host, new ToolRouter([service]));
+    const pending = coordinator.chat('你好'); await vi.waitFor(() => expect(fetcher).toHaveBeenCalled()); coordinator.cancel(); expect(await pending).toBe(''); expect(f.data.events.some(e => e.actor === 'pet')).toBe(false);
   });
 });

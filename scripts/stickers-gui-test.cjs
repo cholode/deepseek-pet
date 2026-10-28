@@ -103,10 +103,24 @@ const { createHash } = require('node:crypto');
     assert.equal((await state()).settings.offline, true); assert.equal((await state()).cached, 1);
     await app.evaluate(() => { const original = globalThis.fetch; globalThis.stickerNetworkCalls = 0; globalThis.fetch = (input, init) => { if (String(input).startsWith('https://kiriyuki.com')) { globalThis.stickerNetworkCalls++; throw new Error('测试断网'); } return original(input, init); }; });
     await preview(); assert.equal(await app.evaluate(() => globalThis.stickerNetworkCalls), 0);
+    await panel.getByRole('switch', { name: /允许大肥鱼使用表情包/ }).check();
+    await panel.getByLabel('表情发送频率').selectOption('always'); await wait(async () => (await state()).settings.frequency === 'always' && (await state()).settings.enabled);
+    await panel.getByRole('button', { name: '智能陪伴', exact: true }).click();
+    const beforeAlways = calls.length;
+    for (const text of ['今天聊点别的', '再陪我说一句']) {
+      await panel.getByLabel('对大肥鱼说').fill(text); await panel.getByRole('button', { name: '发送', exact: true }).click();
+      await wait(async () => !(await panel.evaluate(async () => (await window.pet.companion({ type: 'state' })).state)).busy);
+      const event = await panel.evaluate(async () => (await window.pet.companion({ type: 'state' })).state.data.events.filter(e => e.actor === 'pet').at(-1));
+      assert.equal(event.text.match(/!\[/g)?.length, 1); assert.ok(event.text.includes('petsticker://local/'));
+      await wait(() => panel.locator('.companion-message.pet img.chat-sticker').last().evaluate(img => img.complete && img.naturalWidth === 300));
+    }
+    assert.equal(calls.length - beforeAlways, 2); assert.equal(await app.evaluate(() => globalThis.stickerNetworkCalls), 0);
+    await panel.screenshot({ path: path.join(folder, 'always-replies.png') }); check('每次回复模式连续两轮自动补图，模型无工具调用，离线复用真实 GIF');
+    await openStickers(); await preview();
     await panel.getByLabel('不让大肥鱼自动选用这张', { exact: true }).click(); await wait(async () => (await state()).settings.blocked.includes(sticker.id));
     check('重启保留缓存与离线设置，断网仍能播放，单张禁用可保存');
     await panel.getByRole('button', { name: '智能陪伴', exact: true }).click();
-    await panel.locator('.companion-message.pet img.chat-sticker').waitFor(); await wait(() => panel.locator('.companion-message.pet img.chat-sticker').evaluate(img => img.complete && img.naturalWidth === 300));
+    await panel.locator('.companion-message.pet img.chat-sticker').last().waitFor(); await wait(() => panel.locator('.companion-message.pet img.chat-sticker').last().evaluate(img => img.complete && img.naturalWidth === 300));
     check('重启后历史消息的 GIF 仍可显示');
     await openStickers(); await preview();
     await app.evaluate(({ BrowserWindow }) => { const w = BrowserWindow.getAllWindows().find(w => w.webContents.getURL().includes('page=panel')); w.setSize(800, 620); });

@@ -96,7 +96,7 @@ export class StickerService implements ToolPort {
   async list(signal: AbortSignal) {
     signal.throwIfAborted(); this.selected = undefined;
     if (!this.plugin || !this.settings.enabled || !this.allowed().length) return [];
-    const frequency = { rare: '只在用户索要表情或情绪特别合适时使用', normal: '聊天中偶尔使用，不要每句话都发', often: '轻松聊天时可适当多用，认真解答时克制' }[this.settings.frequency];
+    const frequency = { rare: '只在用户索要表情或情绪特别合适时使用', normal: '聊天中偶尔使用，不要每句话都发', often: '轻松聊天时可适当多用，认真解答时克制', always: '用户要求每次聊天回复都附一张表情，请根据语境挑选合适的一张，避免连续重复；严肃话题选择温和陪伴的表情' }[this.settings.frequency];
     return [
       { name: 'dafeiyu_sticker_search', description: `从你的表情包按情绪、场景查找 GIF。${frequency}。每轮最多选一张；双人表情注意互动方向。找到合适的 ID 后调用 dafeiyu_sticker_send，搜索本身不会显示图片。`, inputSchema: { type: 'object', properties: { query: { type: 'string', description: '中文情绪或场景，如 开心、鼓励学习、摸鱼、被夸' }, limit: { type: 'integer', minimum: 1, maximum: 8 } }, required: ['query'], additionalProperties: false } },
       { name: 'dafeiyu_sticker_send', description: '选择并展示一张已搜索到的表情。只接受真实目录 ID，成功后系统自动把 GIF 附在本轮回复末尾，无需复述地址。失败时不能说已发送；文字继续正常回答。', inputSchema: { type: 'object', properties: { id: { type: 'string', description: '搜索结果中的完整 ID' } }, required: ['id'], additionalProperties: false } }
@@ -118,10 +118,27 @@ export class StickerService implements ToolPort {
     const epoch = this.epoch;
     await this.cache.ensure(item, this.settings.offline, signal); signal.throwIfAborted();
     if (epoch !== this.epoch || !this.settings.enabled || !this.allowed().some(s => s.id === id)) throw new Error('表情授权或设置已变化，已取消发送');
-    this.selected = item; this.recent = [...this.recent, item.id].slice(-5); this.publish();
+    this.selected = item; this.notice = undefined; this.recent = [...this.recent, item.id].slice(-5); this.publish();
     return JSON.stringify({ selected: item.id, name: item.name, message: '表情已准备好，系统将自动附在你的最终回复后。请继续自然地回复用户。' });
   }
-  decorateReply(text: string) {
+  async decorateReply(text: string, signal: AbortSignal = AbortSignal.timeout(5000)) {
+    // “每次回复”由宿主兜底，不依赖模型一定记得调用工具；禁用、离线与单张限制仍生效。
+    if (!this.selected && this.settings.enabled && this.settings.frequency === 'always' && !this.changing && this.plugin) {
+      const epoch = this.epoch;
+      const allowed = this.allowed(); const ranked = searchStickers(allowed, text.slice(0, 500));
+      const candidates = ranked.length ? ranked : searchStickers(allowed, '陪伴 点头');
+      const pool = candidates.length ? candidates : allowed;
+      const fresh = pool.filter(item => !this.recent.includes(item.id));
+      const choices = fresh.length ? fresh : pool;
+      const cached = choices.filter(item => this.cache.has(item));
+      const attempt = AbortSignal.any([signal, AbortSignal.timeout(5000)]);
+      for (const item of [...cached, ...choices.filter(item => !this.cache.has(item))].slice(0, 2)) {
+        try { await this.call('dafeiyu_sticker_send', { id: item.id }, attempt); break; }
+        catch { signal.throwIfAborted(); if (attempt.aborted || epoch !== this.epoch || !this.settings.enabled || this.changing) break; }
+      }
+      if (!this.selected && this.settings.enabled) { this.notice = '本轮没有可用表情，请检查下载连接、可选套组或离线缓存；文字回复已保留'; this.publish(); }
+    }
+    signal.throwIfAborted();
     if (!this.selected || !this.settings.enabled) return text;
     const markdown = stickerMarkdown({ name: this.selected.name, image: imageUrl(this.selected) });
     // 只附实际成功选择的一张；取消的轮次不会进入保存和最终展示。

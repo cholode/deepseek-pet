@@ -5,7 +5,7 @@ export interface ChatMessage { role: 'system' | 'user' | 'assistant' | 'tool'; c
 export interface ToolCall { id: string; type: 'function'; function: { name: string; arguments: string } }
 export interface ToolDefinition { name: string; description: string; inputSchema: Record<string, unknown> }
 export interface ModelPort { complete(messages: ChatMessage[], config: CompanionConfig['model'], signal: AbortSignal, tools?: ToolDefinition[], onText?: (delta: string) => void): Promise<{ text: string; calls: ToolCall[] }> }
-export interface ToolPort { list(signal: AbortSignal): Promise<ToolDefinition[]>; call(name: string, args: Record<string, unknown>, signal: AbortSignal): Promise<string>; decorateReply?(text: string): string; close(): Promise<void> }
+export interface ToolPort { list(signal: AbortSignal): Promise<ToolDefinition[]>; call(name: string, args: Record<string, unknown>, signal: AbortSignal): Promise<string>; decorateReply?(text: string, signal: AbortSignal): string | Promise<string>; close(): Promise<void> }
 export interface RepositoryPort { data: CompanionData; save(): Promise<void> }
 export interface CompanionHost {
   speechLanguages?(): boolean;

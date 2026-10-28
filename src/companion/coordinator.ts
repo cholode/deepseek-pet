@@ -112,10 +112,10 @@ export class CompanionCoordinator {
         } catch { if (!live()) return ''; }
         if (!annotated) this.notice = '本轮回复缺少有效的语言标注，已保留文字并跳过朗读，避免使用错误语言。';
       }
-      const body = result.text.trim().slice(0, languageSpeech ? 24000 : 8000);
+      const body = result.text.trim().slice(0, languageSpeech ? 24000 : 8000).replace(/!\[[^\]]*\]\(petsticker:\/\/[^)]+\)/g, '');
       const parsed = languageSpeech ? parseSpeechLanguages(body) : undefined;
       const plain = (parsed?.text ?? body).slice(0, 8000);
-      const reply = (source === 'desktop' ? this.software?.decorateReply?.(plain) ?? plain : plain).slice(0, 8000);
+      const reply = (source === 'desktop' ? await this.software?.decorateReply?.(plain, controller.signal) ?? plain : plain).slice(0, 8000);
       if (!live()) return '';
       // 限制正文时同步裁剪语音元数据，避免读出界面未展示的内容。
       // 附表情可能为图片留空间而缩短正文；只朗读仍显示的前缀，图片元数据用于历史还原但不会被朗读。
