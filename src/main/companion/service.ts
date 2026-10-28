@@ -12,18 +12,19 @@ import { CompatibleModel } from './model';
 import { McpTools } from './mcp';
 import { OneBotChannel } from './qq';
 import { endpoint } from './http';
+import type { ConversationPolicy } from '../../shared/conversation-session';
 
 export class CompanionService {
   readonly store: CompanionStore; readonly secrets: SecretStore; readonly coordinator: CompanionCoordinator;
   private mcp: McpTools; private qq: OneBotChannel; private timer?: ReturnType<typeof setInterval>;
   private polling = false; private closed = false; private external = new AbortController(); private toolList: CompanionView['tools'] = [];
   private handling = false; private lastQqErrorAt = 0;
-  constructor(directory: string, private host: CompanionHost, private mode: (enabled: boolean) => void, private software?: ToolPort) {
+  constructor(directory: string, private host: CompanionHost, private mode: (enabled: boolean) => void, private software?: ToolPort, sessionPolicy?: () => ConversationPolicy) {
     this.store = new CompanionStore(path.join(directory, 'companion.json'));
     this.secrets = new SecretStore(path.join(directory, 'companion-secrets.json'));
     this.mcp = new McpTools(() => this.store.data.config.mcp, () => this.secrets.get('mcp'));
     this.qq = new OneBotChannel(() => this.store.data.config.qq, () => this.secrets.get('qq'));
-    this.coordinator = new CompanionCoordinator(this.store, new CompatibleModel(() => this.secrets.get('model')), this.mcp, { ...host, changed: () => this.publish() }, software);
+    this.coordinator = new CompanionCoordinator(this.store, new CompatibleModel(() => this.secrets.get('model')), this.mcp, { ...host, changed: () => this.publish() }, software, sessionPolicy);
   }
   async start() {
     await this.store.load();
@@ -100,6 +101,7 @@ export class CompanionService {
     if (changed) void this.store.save().then(() => this.publish()).catch(() => { this.coordinator.error = '互动状态未能保存'; this.publish(); });
   }
   private async tick() {
+    if (!this.closed) this.coordinator.expireConversations();
     if (this.closed || this.polling || this.handling || this.coordinator.busy || !this.coordinator.ready || !this.host.available()) return;
     this.polling = true; const signal = this.external.signal;
     try {

@@ -38,7 +38,7 @@ export const goalSchema = z.object({ id: z.string(), text: shortText, dueAt: z.n
 export type Goal = z.infer<typeof goalSchema>;
 export const moodSchema = z.object({ value: z.number(), updatedAt: z.number(), emotions: z.record(z.enum(emotionNames), z.number()), timeline: z.array(z.object({ eventId: z.string(), at: z.number(), reason: z.string(), delta: z.number(), emotion: z.enum(emotionNames) })).max(100) });
 export type Mood = z.infer<typeof moodSchema>;
-export const eventSchema = z.object({ id: z.string(), at: z.number(), source: z.enum(['desktop', 'qq-private', 'qq-group', 'initiative', 'interaction']), actor: z.enum(['user', 'pet', 'system']), conversationId: z.string(), text: z.string().max(8000), causeId: z.string().optional() }).strict();
+export const eventSchema = z.object({ id: z.string(), at: z.number(), source: z.enum(['desktop', 'qq-private', 'qq-group', 'initiative', 'interaction']), actor: z.enum(['user', 'pet', 'system']), conversationId: z.string(), sessionId: z.string().optional(), sessionEndedAt: z.number().finite().optional(), text: z.string().max(8000), causeId: z.string().optional() }).strict();
 export type CompanionEvent = z.infer<typeof eventSchema>;
 export const companionDataSchema = z.object({
   version: z.literal(1), config: companionConfigSchema, memories: z.array(memorySchema).max(10000), goals: z.array(goalSchema).max(200), mood: moodSchema,

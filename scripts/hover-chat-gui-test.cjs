@@ -72,7 +72,7 @@ const sharp = require('sharp');
     await hover(); await wait(async () => (await info('quick-chat'))?.visible, '悬停打开');
     const chat = page('quick-chat'); await chat.getByLabel('和大肥鱼聊天').waitFor();
     assert.equal((await info('quick-chat')).focus, false); check('悬停显示输入框且不抢焦点');
-    assert.equal(await chat.getByRole('button').count(), 1); assert.equal(await chat.locator('.quick-chat header,.quick-reply,.quick-footer').count(), 0);
+    assert.equal(await chat.getByRole('button').count(), 2); assert.equal(await chat.getByRole('button', { name: '语音输入', exact: true }).isDisabled(), true); assert.equal(await chat.locator('.quick-chat header,.quick-reply,.quick-footer').count(), 0);
     assert.equal(await chat.getByRole('tab').count(), 2);
     const inputBounds = (await info('quick-chat')).bounds;
     const localFeet = await app.evaluate(() => Math.max(...globalThis.testRegions.map(r => r.y + r.height)));

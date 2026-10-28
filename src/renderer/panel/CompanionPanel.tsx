@@ -1,6 +1,8 @@
 import { useEffect, useState } from 'react';
 import { companionDefaults, emotionLabels, emotionNames, type CompanionConfig, type CompanionRequest, type CompanionView, type CompanionPresentation } from '../../shared/companion';
 import { CompanionSettings } from './CompanionSettings';
+import { ConversationSettings } from './ConversationSettings';
+import { VoiceInput } from '../voice/VoiceInput';
 import { DiaryPanel } from './DiaryPanel';
 import { MarkdownContent } from '../chat/MarkdownContent';
 import { useMessageScroll } from '../chat/useMessageScroll';
@@ -12,6 +14,7 @@ export function CompanionPanel() {
   const [stream, setStream] = useState<CompanionPresentation | null>(null);
   const [draft, setDraft] = useState<CompanionConfig>(structuredClone(companionDefaults));
   const [secrets, setSecrets] = useState<Partial<Record<'model' | 'qq' | 'mcp', string>>>({});
+  const [recording, setRecording] = useState(false);
   const [text, setText] = useState(''); const [note, setNote] = useState(''); const [pending, setPending] = useState(false);
   const [memory, setMemory] = useState(''); const [factKey, setFactKey] = useState(''); const [scope, setScope] = useState<'private' | 'public'>('private');
   const [kind, setKind] = useState<'episode' | 'fact' | 'preference'>('fact'); const [query, setQuery] = useState('');
@@ -36,7 +39,7 @@ export function CompanionPanel() {
     const result = await request({ type: 'configure', config: draft, secrets });
     if (result?.ok) { setSecrets({}); setDraft(result.state.data.config); setNote('陪伴设置已保存'); if (discover) await request({ type: 'discover-tools' }); }
   }
-  async function send() { if (!text.trim()) return; const value = text; setText(''); await request({ type: 'chat', text: value }); }
+  async function send() { if (!text.trim() || recording) return; const value = text; setText(''); await request({ type: 'chat', text: value }); }
   function exportData() {
     if (!state) return; const blob = new Blob([JSON.stringify(state.data, null, 2)], { type: 'application/json' });
     const url = URL.createObjectURL(blob); const a = document.createElement('a'); a.href = url; a.download = '大肥鱼陪伴数据.json'; a.click(); setTimeout(() => URL.revokeObjectURL(url), 1000);
@@ -44,16 +47,18 @@ export function CompanionPanel() {
   if (!state) return <div className="loading">正在读取陪伴状态…{note}</div>;
   const disabled = pending || state.busy;
   return <div className="companion-panel">
-    <div className="companion-tabs">{[['chat', '和她聊天'], ['memory', '共同记忆'], ['mood', '心情与约定'], ['diary', '日记'], ['settings', '陪伴设置']].map(([id, label]) => <button key={id} className={tab === id ? 'active' : ''} onClick={() => setTab(id)}>{label}</button>)}<span>{state.busy ? '正在想…' : state.ready ? '智能陪伴已启用' : '等待配置模型'}</span></div>
+    <div className="companion-tabs">{[['chat', '和她聊天'], ['memory', '共同记忆'], ['mood', '心情与约定'], ['diary', '日记'], ['conversation', '对话设置'], ['settings', '陪伴设置']].map(([id, label]) => <button key={id} className={tab === id ? 'active' : ''} onClick={() => setTab(id)}>{label}</button>)}<span>{state.busy ? '正在想…' : state.ready ? '智能陪伴已启用' : '等待配置模型'}</span></div>
     {(note || state.error) && <div className="notice" role="status">{note || state.error}</div>}
     {state.notice && <p className="companion-help">{state.notice}</p>}
+    {tab === 'conversation' && <ConversationSettings/>}
     {tab === 'diary' && <DiaryPanel ready={state.ready} name={state.data.config.persona.name}/>}
     {tab === 'chat' && <section className="settings-card companion-chat">
       {!state.ready && <div className="companion-empty"><h3>让大肥鱼认识你</h3><p>在陪伴设置里连接本地或远程模型，就可以聊天、记住共同经历，并让表情跟着心情变化。</p><button className="primary" onClick={() => setTab('settings')}>配置智能陪伴</button></div>}
       <div className="companion-messages" ref={scroll.ref} onScroll={scroll.onScroll} tabIndex={0} role="region" aria-label="聊天记录">{state.data.events.map(e => <article className={`companion-message ${e.actor}`} key={e.id}><small>{e.actor === 'pet' ? state.data.config.persona.name : e.actor === 'system' ? '自主唤醒' : '你'} · {e.source === 'desktop' ? '桌面' : e.source} · {new Date(e.at).toLocaleTimeString()}</small><MarkdownContent text={e.text}/></article>)}{stream && <article className="companion-message pet"><small>{state.data.config.persona.name} · 正在说…</small><MarkdownContent text={stream.text}/></article>}</div>
       {scroll.overflow && !scroll.atBottom && <div className="companion-scroll-actions"><button onClick={scroll.toLatest}>回到最新消息 ↓</button></div>}
       <textarea aria-label="对大肥鱼说" placeholder="和大肥鱼说点什么…（Ctrl + Enter 发送）" value={text} maxLength={4000} onChange={e => setText(e.target.value)} onKeyDown={e => { if (e.key === 'Enter' && e.ctrlKey && !disabled && state.ready) void send(); }}/>
-      <div className="companion-inline"><button className="primary" disabled={disabled || !state.ready || !text.trim()} onClick={() => void send()}>发送</button><button onClick={() => void window.pet.companion({ type: 'cancel' }).then(r => setState(r.state))}>停止思考与朗读</button><button disabled={disabled} onClick={() => void request({ type: 'clear-history' })}>清空聊天</button></div>
+      <VoiceInput onBusy={setRecording} onText={value => { const next = text ? `${text}\n${value}` : value; if (next.length > 4000) return false; setText(next); }}/>
+      <div className="companion-inline"><button className="primary" disabled={disabled || recording || !state.ready || !text.trim()} onClick={() => void send()}>发送</button><button onClick={() => void window.pet.companion({ type: 'cancel' }).then(r => setState(r.state))}>停止思考与朗读</button><button disabled={disabled} onClick={() => void request({ type: 'clear-history' })}>清空聊天</button></div>
       {!!state.recalls.length && <details><summary>这次想起了什么（{state.recalls.length}）</summary>{state.recalls.map(m => <p key={m.id}>{m.text}<small>{m.reason}</small></p>)}</details>}
     </section>}
     {tab === 'memory' && <div className="settings-stack"><section className="settings-card"><h3>记住一件事</h3><textarea aria-label="记忆内容" value={memory} maxLength={600} placeholder="例如：我喜欢安静，工作时不要频繁搭话。" onChange={e => setMemory(e.target.value)}/><div className="companion-columns"><label>类型<select value={kind} onChange={e => setKind(e.target.value as typeof kind)}><option value="fact">长期事实</option><option value="preference">用户偏好</option><option value="episode">共同经历</option></select></label><label>事实键<input value={factKey} placeholder="例如 用户.称呼；经历可留空" onChange={e => setFactKey(e.target.value)}/></label><label>可见范围<select value={scope} onChange={e => setScope(e.target.value as typeof scope)}><option value="private">私人：桌面与绑定私聊</option><option value="public">允许在群聊中使用</option></select></label></div><button disabled={disabled || !memory.trim()} onClick={() => void request({ type: 'remember', text: memory, factKey, kind, scope, pinned: kind !== 'episode' }).then(r => { if (r?.ok) setMemory(''); })}>保存记忆</button></section>

@@ -21,6 +21,8 @@ import { SoftwareService } from './software/service';
 import { softwareActionAllowed } from '../shared/action-context';
 import { StickerService } from './stickers/service';
 import { ToolRouter } from '../companion/tool-router';
+import { VoiceService } from './voice/service';
+import { conversationPolicyDefaults } from '../shared/conversation-session';
 
 protocol.registerSchemesAsPrivileged(['petasset', 'petsticker'].map(scheme => ({ scheme, privileges: { standard: true, secure: true, supportFetchAPI: true, corsEnabled: true } })));
 if (process.env.PET_TEST_USER) app.setPath('userData', path.resolve(process.env.PET_TEST_USER));
@@ -33,6 +35,7 @@ let movement: { id: string; from: { x: number; y: number }; to: { x: number; y: 
 const pending = new Map<string, { resolve: (r: CommandReceipt) => void; timer: ReturnType<typeof setTimeout> }>();
 let viewport = { ...baseViewport };
 let companion: CompanionService | undefined;
+let voice: VoiceService | undefined;
 let diary: DiaryService | undefined;
 let software: SoftwareService | undefined;
 let stickers: StickerService | undefined;
@@ -50,7 +53,14 @@ function secureWindow(win: BrowserWindow) {
   // 只记录与桌宠窗口的真实输入；模型忙碌或聊天窗保持打开不算互动。
   win.webContents.on('before-input-event', () => recordInteraction());
   win.webContents.on('before-mouse-event', (_event, input) => { if (input.type === 'mouseDown' || input.type === 'mouseUp' || input.type === 'mouseWheel' || input.type === 'contextMenu') recordInteraction(); });
-  win.webContents.setWindowOpenHandler(() => ({ action: 'deny' })); win.webContents.on('will-navigate', e => e.preventDefault()); win.webContents.on('will-attach-webview', e => e.preventDefault()); win.webContents.session.setPermissionRequestHandler((_wc, _perm, callback) => callback(false)); win.webContents.on('render-process-gone', (_e, info) => { movement = undefined; endDrag(); dialog.showErrorBox('桌宠渲染进程异常', `请从托盘退出并重新启动。${info.reason}`); }); }
+  win.webContents.setWindowOpenHandler(() => ({ action: 'deny' })); win.webContents.on('will-navigate', e => e.preventDefault()); win.webContents.on('will-attach-webview', e => e.preventDefault());
+  // 只有已启用语音输入且经受信任 IPC 发起录音的主框架可临时访问麦克风；摄像头始终拒绝。
+  win.webContents.session.setPermissionCheckHandler((wc, permission, _origin, details) => Boolean(wc && permission === 'media' && details.isMainFrame && details.mediaType === 'audio' && voice?.permitsCapture(wc.id)));
+  win.webContents.session.setPermissionRequestHandler((wc, permission, callback, details) => callback(Boolean(wc && permission === 'media' && details.isMainFrame && 'mediaTypes' in details && details.mediaTypes?.length === 1 && details.mediaTypes[0] === 'audio' && voice?.permitsCapture(wc.id))));
+  const owner = win.webContents.id;
+  win.on('hide', () => { voice?.cancel(owner); if (!win.webContents.isDestroyed()) win.webContents.send('voice-event', { type: 'stop-all' }); });
+  win.webContents.on('destroyed', () => voice?.cancel(owner));
+  win.webContents.on('render-process-gone', (_e, info) => { voice?.cancel(owner); movement = undefined; endDrag(); dialog.showErrorBox('桌宠渲染进程异常', `请从托盘退出并重新启动。${info.reason}`); }); }
 function load(win: BrowserWindow, page: string) { if (process.env.ELECTRON_RENDERER_URL && !app.isPackaged) void win.loadURL(`${process.env.ELECTRON_RENDERER_URL}/?page=${page}`); else void win.loadFile(path.join(__dirname, '../renderer/index.html'), { query: { page } }); }
 function openPanel() { if (panel && !panel.isDestroyed()) { panel.show(); panel.focus(); return; } panel = new BrowserWindow({ width: 1040, height: 760, minWidth: 800, minHeight: 620, title: '大肥鱼 · 桌宠小屋', backgroundColor: '#f5f7fc', autoHideMenuBar: true, icon: path.join(resourceRoot(), 'icon.png'), webPreferences: { preload: path.join(__dirname, '../preload/index.js'), contextIsolation: true, nodeIntegration: false, sandbox: true } }); secureWindow(panel); panel.on('closed', () => { panel = null; }); load(panel, 'panel'); }
 function setIgnore(value: boolean) { if (ignored === value || pet.isDestroyed()) return; ignored = value; pet.setIgnoreMouseEvents(value, { forward: true }); }
@@ -133,7 +143,7 @@ async function boot() {
   // 陪伴服务只通过受限宿主端口感知桌宠，不直接修改窗口或人物图层。
   chatWindows = new PetChatWindows({ pet: () => pet, preload: path.join(__dirname, '../preload/index.js'), secure: secureWindow, load,
     regions: () => regions, movePet: (x, y) => { positionPet(x, y); broadcastDesktop(); },
-    status: () => quickPetStatus(companion?.store.data, debug, desktop, settings.value),
+    status: () => ({ ...quickPetStatus(companion?.store.data, debug, desktop, settings.value), speechEnabled: Boolean(companion?.coordinator.ready && voice?.ttsEnabled) }),
     visible: () => desktop.visible && !desktop.suspended && !desktop.dragging,
     alwaysOnTop: () => settings.value.alwaysOnTop,
     activity: open => { desktop.chatting = open; if (open && movement) { movement = undefined; savePosition(); } broadcastDesktop(); }
@@ -175,14 +185,31 @@ async function boot() {
     return data ? new Response(new Uint8Array(data), { headers: { 'Content-Type': 'image/gif', 'Cache-Control': 'no-store', 'X-Content-Type-Options': 'nosniff' } }) : new Response('表情尚未缓存', { status: 404 });
   });
   companion = new CompanionService(app.getPath('userData'), {
-    now: Date.now, id: randomUUID,
+    now: () => Date.now(), id: randomUUID,
     changed: state => { panel?.webContents.send('companion-state', state); chatWindows?.update(state); },
-    present: value => { if (!pet.isDestroyed()) pet.webContents.send('companion-presentation', value); panel?.webContents.send('companion-presentation', value); chatWindows?.present(value, settings.value.bubbles); },
+    present: value => {
+      if (!value) voice?.stopAll();
+      // 聊天采用新语音配置；其他入口仍可明确发送 enabled:false 的静默提醒。
+      const presentation = value ? { ...value, speech: { ...value.speech, enabled: voice?.ttsEnabled ?? value.speech.enabled } } : null;
+      if (!pet.isDestroyed()) pet.webContents.send('companion-presentation', presentation); panel?.webContents.send('companion-presentation', presentation); chatWindows?.present(presentation, settings.value.bubbles);
+    },
     capabilities: () => (debug?.groups ?? []).map(g => ({ groupId: g.groupId, name: g.name, description: g.description, tags: g.tags, channels: g.channels, expectedDurationMs: g.expectedDurationMs, available: g.enabled && !g.interaction && !debug?.failedGroups.includes(g.groupId) && softwareActionAllowed(g, { ...desktop, interacting: desktop.interacting || desktop.dragging, paused: settings.value.paused, lastInteraction: desktop.lastInteractionAt ?? Date.now() }, Date.now()) })),
     available: () => desktop.visible && !desktop.suspended && !desktop.dragging && !desktop.chatting && !settings.value.paused,
     lastInteractionAt: () => Math.max(0, ...(debug?.events.filter(e => e.type === 'interaction').map(e => e.occurredAtUnixMs) ?? []), ...(companion?.store.data.events.filter(e => e.actor === 'user').map(e => e.at) ?? []))
-  }, enabled => send({ type: 'companion-mode', enabled }), new ToolRouter([software, stickers]));
+  }, enabled => send({ type: 'companion-mode', enabled }), new ToolRouter([software, stickers]), () => voice?.conversationPolicy ?? conversationPolicyDefaults);
   await companion.start();
+  voice = new VoiceService(path.join(app.getPath('userData'), 'conversation-settings.json'), {
+    emit: event => { for (const window of BrowserWindow.getAllWindows()) if (!window.webContents.isDestroyed()) window.webContents.send('voice-event', event); if (event.type === 'state') chatWindows?.refreshStatus(); },
+    seal: async value => { if (!(await safeStorage.isAsyncEncryptionAvailable())) throw new Error('系统密钥加密不可用，未保存明文凭证'); return (await safeStorage.encryptStringAsync(value)).toString('base64'); },
+    unseal: async value => (await safeStorage.decryptStringAsync(Buffer.from(value, 'base64'))).result
+  });
+  await voice.start(companion.store.data.config.speech);
+  ipcMain.handle('voice', (event, raw) => {
+    const isChat = chatWindows?.isSender(event, 'chat'); if (!isChat) trusted(event);
+    const owner = BrowserWindow.fromWebContents(event.sender); const role = isChat ? 'chat' : owner === panel ? 'panel' : 'pet';
+    if (raw?.type === 'capture-begin' && !owner?.isVisible()) return { ok: false, message: '请在可见聊天窗口中开始录音' };
+    return voice!.request(raw, event.sender.id, role);
+  });
   const diaryDefault = await defaultDiaryDirectory(
     [app.getAppPath(), process.env.PORTABLE_EXECUTABLE_DIR ?? '', path.dirname(process.execPath), ...(!app.isPackaged ? [process.cwd()] : [])],
     process.env.PORTABLE_EXECUTABLE_DIR || path.join(app.getPath('documents'), '大肥鱼日记')
@@ -257,11 +284,13 @@ app.on('before-quit', e => {
   if (dragTimeout) clearTimeout(dragTimeout);
   movement = undefined; globalShortcut.unregisterAll();
   chatWindows?.dispose();
+  voice?.stopAll();
   for (const p of pending.values()) clearTimeout(p.timer);
   pending.clear();
   // 等待持久化队列落盘，防止退出时丢失最后一句对话或新记忆。
   void Promise.allSettled([
     companion?.close(),
+    voice?.close(),
     diary?.close(),
     settings?.save({ ...settings.value, position: pet && !pet.isDestroyed() ? standingPosition() : desktop.position })
   ]).finally(() => app.quit());

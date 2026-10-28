@@ -5,6 +5,7 @@ import { recallMemories, remember } from './memory';
 import { chooseInitiative, localDay } from './initiative';
 import { buildContext } from './context';
 import type { CompanionHost, ModelPort, RepositoryPort, ToolPort } from './ports';
+import { conversationBreak, conversationSession, conversationPolicyDefaults, isConversationEvent, type ConversationPolicy } from '../shared/conversation-session';
 
 const appraisalSchema = z.object({
   emotion: z.enum(emotionNames), delta: z.number().min(-8).max(8), confidence: z.number().min(0).max(1), reason: z.string().max(160),
@@ -13,7 +14,8 @@ const appraisalSchema = z.object({
 export class CompanionCoordinator {
   busy = false; error?: string; notice?: string; recalls: RecallHit[] = [];
   private active?: AbortController; private epoch = 0;
-  constructor(readonly repository: RepositoryPort, private model: ModelPort, readonly tools: ToolPort, private host: CompanionHost, private software?: ToolPort) {}
+  private activeEvent?: CompanionEvent;
+  constructor(readonly repository: RepositoryPort, private model: ModelPort, readonly tools: ToolPort, private host: CompanionHost, private software?: ToolPort, private sessionPolicy: () => ConversationPolicy = () => conversationPolicyDefaults) {}
   get ready() { return this.repository.data.config.enabled && Boolean(this.repository.data.config.model.model.trim()); }
   view(): CompanionView {
     const data = structuredClone(this.repository.data);
@@ -22,17 +24,31 @@ export class CompanionCoordinator {
   }
   changed() { this.host.changed(this.view()); }
   cancel() {
-    this.epoch++; this.active?.abort(); this.active = undefined; this.busy = false;
+    this.epoch++; this.active?.abort(); this.active = undefined; this.activeEvent = undefined; this.busy = false;
     this.host.present(null); this.changed();
   }
   private add(event: CompanionEvent) { this.repository.data.events = [...this.repository.data.events, event].slice(-400); }
   private mark(id: string) { this.repository.data.processedIds = [...this.repository.data.processedIds, id].slice(-1000); }
+  expireConversations() {
+    const latest = new Map<string, CompanionEvent>(); const now = this.host.now();
+    for (const event of this.repository.data.events) if (event.actor === 'user' && isConversationEvent(event)) latest.set(event.conversationId, event);
+    let changed = false;
+    for (const event of latest.values()) if (event.sessionEndedAt === undefined && conversationBreak(event.at, now, this.sessionPolicy())) {
+      event.sessionEndedAt = now; changed = true;
+      if (this.activeEvent?.id === event.id) { this.notice = '上一段对话已因跨天或长时间没有新消息而结束。'; this.cancel(); }
+    }
+    if (changed) {
+      // 保存关闭标记，重启或后来调长间隔都不能让已结束的对话重新变成当前任务。
+      void Promise.resolve().then(() => this.repository.save()).catch(() => { this.error = '对话结束状态未能保存'; this.changed(); }); this.changed();
+    }
+  }
   async chat(text: string, source: CompanionEvent['source'] = 'desktop', id = this.host.id(), conversationId = 'desktop'): Promise<string> {
+    this.expireConversations();
     if (!this.ready) throw new Error('请先配置模型名称并启用智能陪伴');
     if (this.busy) throw new Error('大肥鱼正在处理上一句话，可以先点停止');
     if (this.repository.data.processedIds.includes(id)) return '';
     const turn = ++this.epoch; const controller = new AbortController(); this.active = controller; this.busy = true; this.error = undefined; this.notice = undefined;
-    const live = () => !controller.signal.aborted && this.epoch === turn;
+    const live = () => { this.expireConversations(); return !controller.signal.aborted && this.epoch === turn; };
     const data = this.repository.data; const now = this.host.now();
     const presentationId = this.host.id(); let streamed = ''; let lastStreamAt = 0;
     const onText = source === 'initiative' ? undefined : (delta: string) => {
@@ -44,6 +60,8 @@ export class CompanionCoordinator {
       }
     };
     const event: CompanionEvent = { id, text, source, actor: source === 'initiative' ? 'system' : 'user', at: now, conversationId };
+    const session = conversationSession(data.events, event, this.sessionPolicy()); event.sessionId = session.id; this.activeEvent = event;
+    if (session.reason && session.hadPrevious && event.actor === 'user') this.notice = '已开始新一段对话，上一段话题已结束；共同记忆和学习计划仍保留。';
     this.add(event); this.mark(id);
     data.mood = decayMood(data.mood, data.config.mood, now);
     this.recalls = recallMemories(data.memories, text, source === 'qq-group' ? 'public' : 'private', data.config.memory, now);
@@ -51,7 +69,7 @@ export class CompanionCoordinator {
     this.changed();
     try {
       await this.repository.save();
-      const messages = buildContext(data, event, this.recalls);
+      const messages = buildContext(data, event, this.recalls, this.sessionPolicy());
       // 外部聊天和自动唤醒只能聊天；桌面用户明确启用且逐项选择的 MCP 工具才会暴露给模型。
       const legacy = source === 'desktop' && data.config.mcp.enabled ? (await this.tools.list(controller.signal)).filter(t => data.config.mcp.allowedTools.includes(t.name)) : [];
       const software = source === 'desktop' && this.software ? await this.software.list(controller.signal) : [];
@@ -84,7 +102,7 @@ export class CompanionCoordinator {
       const reply = source === 'desktop' ? this.software?.decorateReply?.(body) ?? body : body;
       if (!reply) throw new Error('模型没有返回可显示的文字');
       if (source === 'initiative' && reply.includes('[安静]')) return '';
-      this.add({ id: this.host.id(), at: this.host.now(), source, actor: 'pet', conversationId, text: reply, causeId: id });
+      this.add({ id: this.host.id(), at: this.host.now(), source, actor: 'pet', conversationId, sessionId: event.sessionId, text: reply, causeId: id });
       await this.repository.save(); this.changed();
       if (!live()) return '';
       // 正文完成后立即展示/朗读，记忆评价在后面进行，不阻塞用户看到回复。
@@ -125,7 +143,7 @@ export class CompanionCoordinator {
     } catch (e) {
       if (live()) { this.host.present(null); this.error = e instanceof Error ? e.message : '智能陪伴发生错误'; throw new Error(this.error); }
       return '';
-    } finally { if (this.epoch === turn) { this.busy = false; this.active = undefined; this.changed(); } }
+    } finally { if (this.epoch === turn) { this.busy = false; this.active = undefined; this.activeEvent = undefined; this.changed(); } }
   }
   async tick() {
     if (!this.ready || !this.host.available()) return;

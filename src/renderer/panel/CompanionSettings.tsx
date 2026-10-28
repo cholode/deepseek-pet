@@ -1,16 +1,7 @@
-import { useEffect, useState } from 'react';
 import type { CompanionConfig, CompanionView } from '../../shared/companion';
 type Secrets = Partial<Record<'model' | 'qq' | 'mcp', string>>;
 interface Props { config: CompanionConfig; onChange: (config: CompanionConfig) => void; secrets: Secrets; onSecrets: (value: Secrets) => void; state: CompanionView; onSave: () => void; onDiscover: () => void; disabled: boolean }
 export function CompanionSettings({ config: c, onChange, secrets, onSecrets, state, onSave, onDiscover, disabled }: Props) {
-  const [voices, setVoices] = useState<SpeechSynthesisVoice[]>([]);
-  useEffect(() => {
-    const synthesis = window.speechSynthesis;
-    if (!synthesis) return;
-    const refresh = () => setVoices(synthesis.getVoices().filter(v => v.localService));
-    refresh(); synthesis.addEventListener('voiceschanged', refresh);
-    return () => synthesis.removeEventListener('voiceschanged', refresh);
-  }, []);
   const section = <K extends keyof CompanionConfig>(key: K, value: Partial<CompanionConfig[K]>) => onChange({ ...c, [key]: { ...(c[key] as object), ...value } });
   const secret = (name: 'model' | 'qq' | 'mcp', title: string) => <label>{title}<div className="companion-inline"><input aria-label={title} type="password" autoComplete="off" value={secrets[name] ?? ''} placeholder={state.hasSecrets[name] ? '已加密保存，留空不修改' : '本地无鉴权服务可留空'} onChange={e => onSecrets({ ...secrets, [name]: e.target.value })}/><button type="button" onClick={() => onSecrets({ ...secrets, [name]: '' })}>清除密钥</button></div>{secrets[name] === '' && <small>保存后清除已存密钥</small>}</label>;
   return <div className="companion-settings">
@@ -32,13 +23,6 @@ export function CompanionSettings({ config: c, onChange, secrets, onSecrets, sta
       <div className="companion-columns"><label>安静时段开始（小时）<input type="number" min={0} max={23} value={c.initiative.quietStart} onChange={e => section('initiative', { quietStart: Number(e.target.value) })}/></label><label>安静时段结束（小时）<input type="number" min={0} max={23} value={c.initiative.quietEnd} onChange={e => section('initiative', { quietEnd: Number(e.target.value) })}/></label><label>每天最多主动搭话<input type="number" min={1} max={20} value={c.initiative.dailyLimit} onChange={e => section('initiative', { dailyLimit: Number(e.target.value) })}/></label></div>
       <small>开始与结束相同表示不设安静时段。应用退出、休眠或暂停自动行为时不会后台唤醒。</small>
     </section>
-    <section className="settings-card"><h3>声音</h3>
-      <label className="companion-check"><input type="checkbox" checked={c.speech.enabled} onChange={e => section('speech', { enabled: e.target.checked })}/>使用系统本地语音朗读回复</label>
-      <label>本地声音<select value={c.speech.voice} onChange={e => section('speech', { voice: e.target.value })}><option value="">自动选择中文语音</option>{voices.map(v => <option key={v.voiceURI} value={v.voiceURI}>{v.name} · {v.lang}</option>)}</select></label>
-      {!voices.some(v => /^zh/.test(v.lang)) && <p className="companion-help">尚未检测到本地中文语音。可在 Windows“设置 → 时间和语言 → 语音”中安装；当前仍可显示文字。</p>}
-      <label>语速<input type="range" min={0.5} max={2} step={0.1} value={c.speech.rate} onChange={e => section('speech', { rate: Number(e.target.value) })}/></label>
-      <small>使用 Windows 已安装的中文语音。没有本地语音时仍显示文字；停止按钮会同时停止朗读与清空队列。</small>
-    </section>
     <section className="settings-card"><h3>QQ 通道</h3>
       <label className="companion-check"><input type="checkbox" checked={c.qq.enabled} onChange={e => section('qq', { enabled: e.target.checked })}/>启用绑定用户的 QQ 文字收发</label>
       <label>本机 OneBot 11 HTTP 地址<input value={c.qq.baseUrl} onChange={e => section('qq', { baseUrl: e.target.value })}/></label>
@@ -51,7 +35,7 @@ export function CompanionSettings({ config: c, onChange, secrets, onSecrets, sta
       <label>MCP 地址<input value={c.mcp.url} placeholder="http://127.0.0.1:端口/mcp" onChange={e => section('mcp', { url: e.target.value, allowedTools: [] })}/></label>
       {secret('mcp', 'MCP Bearer Token')}
       <button disabled={disabled} onClick={onDiscover}>保存并发现工具</button>
-      <p className="companion-help">勾选后，大肥鱼可在桌面聊天中调用这些工具。每轮最多 4 次；主动搭话和 QQ 均不可调用。仅启用你愿意交给她操作的能力。</p>
+      <p className="companion-help">勾选后，大肥鱼可在桌面聊天中调用这些工具。可随时停止；主动搭话和 QQ 均不可调用。仅启用你愿意交给她操作的能力。</p>
       {state.tools.map(t => <label className="companion-tool" key={t.name}><input type="checkbox" checked={c.mcp.allowedTools.includes(t.name)} onChange={e => section('mcp', { allowedTools: e.target.checked ? [...c.mcp.allowedTools, t.name] : c.mcp.allowedTools.filter(n => n !== t.name) })}/><span><b>{t.name}</b><small>{t.description}</small></span></label>)}
     </section>
     <button className="primary companion-save" disabled={disabled} onClick={onSave}>保存陪伴设置</button>
