@@ -17,14 +17,20 @@ export function QuickChat() {
     return () => { live = false; off(); };
   }, []);
   useEffect(() => { void window.pet.quickChat({ type: 'hold', value: Boolean(text.trim()) || pending || recording }).catch(() => {}); }, [text, pending, recording]);
-  async function send() {
-    const value = text.trim(); if (!value || recording || !state.ready || state.busy || sending.current) return;
-    sending.current = true; setPending(true); setError(''); setText('');
-    try {
-      const response = await window.pet.quickChat({ type: 'send', text: value }); setState(response.state);
-      if (!response.ok) { setError(response.message ?? '发送失败'); setText(current => current || value); }
-    } catch (e) { setError(String(e)); setText(current => current || value); }
-    finally { sending.current = false; setPending(false); }
+  function send(voiceText?: string): boolean {
+    const value = (voiceText ?? text).trim(); const fromVoice = voiceText !== undefined;
+    if (!value || value.length > 4000 || (!fromVoice && recording) || !state.ready || state.busy || sending.current) return false;
+    sending.current = true; setPending(true); setError(''); if (!fromVoice) setText('');
+    // 语音单独提交；未发送的键盘草稿不能随语音一起交给模型。
+    const failed = (message: string) => { setError(fromVoice ? `${message}。识别结果：${value}` : message); if (!fromVoice) setText(current => current || value); };
+    void (async () => {
+      try {
+        const response = await window.pet.quickChat({ type: 'send', text: value }); setState(response.state);
+        if (!response.ok) failed(response.message ?? '发送失败');
+      } catch (e) { failed(String(e)); }
+      finally { sending.current = false; setPending(false); }
+    })();
+    return true;
   }
   const dismiss = () => void window.pet.quickChat({ type: 'dismiss' }).catch(e => setError(String(e)));
   const selectTab = (tab: QuickChatTab) => void window.pet.quickChat({ type: 'tab', tab }).then(r => setState(r.state)).catch(e => setError(String(e)));
@@ -35,7 +41,7 @@ export function QuickChat() {
     <textarea aria-label="和大肥鱼聊天" rows={1} value={text} maxLength={4000} disabled={!state.ready} placeholder={state.ready ? busy ? '正在回复…可以先写下一句' : '和大肥鱼说点什么…' : '双击大肥鱼，在小屋配置模型'}
       onChange={e => setText(e.target.value)} onCompositionStart={() => { composing.current = true; }} onCompositionEnd={() => { composing.current = false; }}
       onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey && !e.nativeEvent.isComposing && !composing.current && e.keyCode !== 229) { e.preventDefault(); void send(); } }}/>
-    {state.tab === 'chat' && <VoiceInput compact onBusy={setRecording} onStatus={setVoiceStatus} onText={value => { const next = text ? `${text}\n${value}` : value; if (next.length > 4000) return false; setText(next); }}/>}
+    {state.tab === 'chat' && <VoiceInput compact purpose="chat" disabled={!state.ready || busy} onBusy={setRecording} onStatus={setVoiceStatus} onText={send}/>}
     <button className="quick-send" aria-label={busy ? '停止' : '发送'} title={busy ? '停止生成' : '发送'} disabled={!busy && (recording || !state.ready || !text.trim())}
       onClick={() => busy ? void window.pet.quickChat({ type: 'cancel' }).then(r => setState(r.state)).catch(e => setError(String(e))) : void send()}>
       <svg viewBox="0 0 24 24" width="19" height="19" aria-hidden="true">{busy ? <rect x="6" y="6" width="12" height="12" rx="2" fill="currentColor"/> : <path d="m5 12 7-7 7 7M12 5v15" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>}</svg>

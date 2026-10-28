@@ -67,7 +67,7 @@ export function ConversationSettings() {
     </>;
   }
   return <div className="companion-settings conversation-settings">
-    <p className="companion-help">设置对话间隔、大肥鱼的声音与语音输入。录音只在你点击后开始，识别结果先填入草稿，确认后再发送。语音由 AI 合成。</p>
+    <p className="companion-help">设置对话间隔、大肥鱼的声音与语音输入。录音只在你点击后开始，聊天中的语音识别成功后自动发送；这里的识别测试只显示文字。语音由 AI 合成。</p>
     {(note || state?.error) && <div className="notice" role="status">{note || state?.error}</div>}
     <section className="settings-card" aria-label="TTS 试听"><h3>TTS 试听</h3>
       <label>试听句子<textarea className="voice-test-text" aria-label="试听文字" value={testText} maxLength={1000} placeholder="输入想试听的句子" onChange={e => setTestText(e.target.value)}/></label>

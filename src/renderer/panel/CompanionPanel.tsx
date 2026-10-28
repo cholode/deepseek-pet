@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { companionDefaults, emotionLabels, emotionNames, type CompanionConfig, type CompanionRequest, type CompanionView, type CompanionPresentation } from '../../shared/companion';
 import { CompanionSettings } from './CompanionSettings';
 import { ConversationSettings } from './ConversationSettings';
@@ -15,6 +15,7 @@ export function CompanionPanel() {
   const [draft, setDraft] = useState<CompanionConfig>(structuredClone(companionDefaults));
   const [secrets, setSecrets] = useState<Partial<Record<'model' | 'qq' | 'mcp', string>>>({});
   const [recording, setRecording] = useState(false);
+  const sending = useRef(false);
   const [text, setText] = useState(''); const [note, setNote] = useState(''); const [pending, setPending] = useState(false);
   const [memory, setMemory] = useState(''); const [factKey, setFactKey] = useState(''); const [scope, setScope] = useState<'private' | 'public'>('private');
   const [kind, setKind] = useState<'episode' | 'fact' | 'preference'>('fact'); const [query, setQuery] = useState('');
@@ -39,7 +40,19 @@ export function CompanionPanel() {
     const result = await request({ type: 'configure', config: draft, secrets });
     if (result?.ok) { setSecrets({}); setDraft(result.state.data.config); setNote('陪伴设置已保存'); if (discover) await request({ type: 'discover-tools' }); }
   }
-  async function send() { if (!text.trim() || recording) return; const value = text; setText(''); await request({ type: 'chat', text: value }); }
+  function send(voiceText?: string): boolean {
+    const value = (voiceText ?? text).trim(); const fromVoice = voiceText !== undefined;
+    if (!value || value.length > 4000 || (!fromVoice && recording) || !state?.ready || state.busy || pending || sending.current) return false;
+    sending.current = true; if (!fromVoice) setText('');
+    // 直接复用正常聊天通道，语音不清空或附带已有草稿。
+    void request({ type: 'chat', text: value }).then(result => {
+      if (!result?.ok) {
+        if (fromVoice) setNote(`${result?.message ?? '发送失败'}。识别结果：${value}`);
+        else setText(current => current || value);
+      }
+    }).finally(() => { sending.current = false; });
+    return true;
+  }
   function exportData() {
     if (!state) return; const blob = new Blob([JSON.stringify(state.data, null, 2)], { type: 'application/json' });
     const url = URL.createObjectURL(blob); const a = document.createElement('a'); a.href = url; a.download = '大肥鱼陪伴数据.json'; a.click(); setTimeout(() => URL.revokeObjectURL(url), 1000);
@@ -57,7 +70,7 @@ export function CompanionPanel() {
       <div className="companion-messages" ref={scroll.ref} onScroll={scroll.onScroll} tabIndex={0} role="region" aria-label="聊天记录">{state.data.events.map(e => <article className={`companion-message ${e.actor}`} key={e.id}><small>{e.actor === 'pet' ? state.data.config.persona.name : e.actor === 'system' ? '自主唤醒' : '你'} · {e.source === 'desktop' ? '桌面' : e.source} · {new Date(e.at).toLocaleTimeString()}</small><MarkdownContent text={e.text}/></article>)}{stream && <article className="companion-message pet"><small>{state.data.config.persona.name} · 正在说…</small><MarkdownContent text={stream.text}/></article>}</div>
       {scroll.overflow && !scroll.atBottom && <div className="companion-scroll-actions"><button onClick={scroll.toLatest}>回到最新消息 ↓</button></div>}
       <textarea aria-label="对大肥鱼说" placeholder="和大肥鱼说点什么…（Ctrl + Enter 发送）" value={text} maxLength={4000} onChange={e => setText(e.target.value)} onKeyDown={e => { if (e.key === 'Enter' && e.ctrlKey && !disabled && state.ready) void send(); }}/>
-      <VoiceInput onBusy={setRecording} onText={value => { const next = text ? `${text}\n${value}` : value; if (next.length > 4000) return false; setText(next); }}/>
+      <VoiceInput purpose="chat" disabled={disabled || !state.ready} onBusy={setRecording} onText={send}/>
       <div className="companion-inline"><button className="primary" disabled={disabled || recording || !state.ready || !text.trim()} onClick={() => void send()}>发送</button><button onClick={() => void window.pet.companion({ type: 'cancel' }).then(r => setState(r.state))}>停止思考与朗读</button><button disabled={disabled} onClick={() => void request({ type: 'clear-history' })}>清空聊天</button></div>
       {!!state.recalls.length && <details><summary>这次想起了什么（{state.recalls.length}）</summary>{state.recalls.map(m => <p key={m.id}>{m.text}<small>{m.reason}</small></p>)}</details>}
     </section>}
