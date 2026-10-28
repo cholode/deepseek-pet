@@ -1,4 +1,5 @@
 import type { VoiceConfig } from '../../shared/voice';
+import { z } from 'zod';
 
 export function voiceEndpoint(raw: string, source: 'local' | 'cloud'): URL {
   let url: URL; try { url = new URL(raw); } catch { throw new Error('请填写完整的语音接口地址'); }
@@ -9,6 +10,10 @@ export function voiceEndpoint(raw: string, source: 'local' | 'cloud'): URL {
 }
 export function validateVoiceConfig(config: VoiceConfig) {
   for (const kind of ['tts', 'asr'] as const) for (const source of ['local', 'cloud'] as const) if (config[kind][source].url) voiceEndpoint(config[kind][source].url, source);
+  const vox = voiceEndpoint(config.tts.voicevox.url, 'local');
+  if (vox.pathname !== '/') throw new Error('VOICEVOX 地址只填写本机地址和端口');
+  if (config.tts.mode === 'language' && config.tts.voicevox.autoStart && !config.tts.voicevox.directory) throw new Error('请先选择 VOICEVOX 目录，或关闭按需启动');
+  if (config.tts.voicevox.autoStart && vox.protocol !== 'http:') throw new Error('按需启动 VOICEVOX 请使用本机 HTTP 地址');
 }
 async function bounded(response: Response, maximum: number): Promise<Uint8Array<ArrayBuffer>> {
   if (!response.ok) { await response.body?.cancel(); throw new Error(`语音服务返回 HTTP ${response.status}；请检查服务、模型与密钥`); }
@@ -25,13 +30,40 @@ export function validateRecording(audio: ArrayBuffer) {
 }
 export class VoiceAudio {
   constructor(private fetcher: typeof fetch = fetch) {}
+  async voicevoxSpeaker(url: string, signal: AbortSignal): Promise<number> {
+    const root = voiceEndpoint(url, 'local');
+    const response = await this.fetcher(new URL('speakers', root), { redirect: 'error', signal });
+    const bytes = await bounded(response, 2 * 1024 * 1024);
+    const schema = z.array(z.object({ name: z.string(), styles: z.array(z.object({ name: z.string(), id: z.number().int().nonnegative(), type: z.string().optional() })) }));
+    let speakers: z.infer<typeof schema>;
+    try { speakers = schema.parse(JSON.parse(new TextDecoder().decode(bytes))); } catch { throw new Error('VOICEVOX 没有返回有效的角色列表'); }
+    // 0.26 的说话模型标为 streaming_talk；排除同名的歌唱 / frame_decode 风格。
+    const style = speakers.find(speaker => speaker.name === '雨晴はう')?.styles.find(style => style.name === 'ノーマル' && (!style.type || ['talk', 'streaming_talk'].includes(style.type)));
+    if (!style) throw new Error('此 VOICEVOX 中没有雨晴はう的普通说话音色，请检查安装版本');
+    return style.id;
+  }
+  async speakJapanese(config: VoiceConfig['tts'], text: string, signal: AbortSignal): Promise<ArrayBuffer> {
+    const root = voiceEndpoint(config.voicevox.url, 'local'); const speaker = await this.voicevoxSpeaker(config.voicevox.url, signal);
+    const queryUrl = new URL('audio_query', root); queryUrl.searchParams.set('speaker', String(speaker)); queryUrl.searchParams.set('text', text);
+    const queryResponse = await this.fetcher(queryUrl, { method: 'POST', redirect: 'error', signal });
+    const bytes = await bounded(queryResponse, 2 * 1024 * 1024);
+    let query: Record<string, unknown>;
+    try { query = z.object({ accent_phrases: z.array(z.unknown()), speedScale: z.number() }).passthrough().parse(JSON.parse(new TextDecoder().decode(bytes))); }
+    catch { throw new Error('VOICEVOX 未返回有效的语音参数'); }
+    const url = new URL('synthesis', root); url.searchParams.set('speaker', String(speaker));
+    const response = await this.fetcher(url, { method: 'POST', redirect: 'error', signal, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ...query, speedScale: config.rate, volumeScale: 1, outputStereo: false }) });
+    return this.wav(await bounded(response, 20 * 1024 * 1024));
+  }
+  private wav(bytes: Uint8Array<ArrayBuffer>): ArrayBuffer {
+    if (bytes.length < 12 || new TextDecoder().decode(bytes.slice(0, 4)) !== 'RIFF' || new TextDecoder().decode(bytes.slice(8, 12)) !== 'WAVE') throw new Error('TTS 服务未返回 WAV 音频，请检查接口兼容性');
+    return bytes.buffer;
+  }
   async speak(config: VoiceConfig['tts'], text: string, key: string, signal: AbortSignal): Promise<ArrayBuffer> {
     const service = config[config.source]; const url = voiceEndpoint(service.url, config.source);
     if (!service.model || !service.voice) throw new Error('请填写 TTS 模型和声音 ID');
     const response = await this.fetcher(url, { method: 'POST', redirect: 'error', signal, headers: { 'Content-Type': 'application/json', ...(key ? { Authorization: `Bearer ${key}` } : {}) }, body: JSON.stringify({ model: service.model, input: text, voice: service.voice, speed: config.rate, response_format: 'wav' }) });
     const bytes = await bounded(response, 20 * 1024 * 1024);
-    if (bytes.length < 12 || new TextDecoder().decode(bytes.slice(0, 4)) !== 'RIFF' || new TextDecoder().decode(bytes.slice(8, 12)) !== 'WAVE') throw new Error('TTS 服务未返回 WAV 音频，请检查接口兼容性');
-    return bytes.buffer;
+    return this.wav(bytes);
   }
   async transcribe(config: VoiceConfig['asr'], audio: ArrayBuffer, key: string, signal: AbortSignal): Promise<string> {
     validateRecording(audio); const service = config[config.source]; const url = voiceEndpoint(service.url, config.source);

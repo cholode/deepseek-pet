@@ -19,6 +19,7 @@
     "test:gui": "node scripts/gui-test.cjs",
     "test:companion-gui": "node scripts/companion-gui-test.cjs",
     "test:voice-gui": "node scripts/voice-gui-test.cjs",
+    "test:voice-language-gui": "node scripts/voice-language-gui-test.cjs",
     "test:conversation-session-gui": "node scripts/conversation-session-gui-test.cjs",
     "test:hover-chat-gui": "node scripts/hover-chat-gui-test.cjs",
     "test:diary-gui": "node scripts/diary-gui-test.cjs",

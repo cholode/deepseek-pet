@@ -185,6 +185,7 @@ async function boot() {
     return data ? new Response(new Uint8Array(data), { headers: { 'Content-Type': 'image/gif', 'Cache-Control': 'no-store', 'X-Content-Type-Options': 'nosniff' } }) : new Response('表情尚未缓存', { status: 404 });
   });
   companion = new CompanionService(app.getPath('userData'), {
+    speechLanguages: () => voice?.speechLanguages ?? false,
     now: () => Date.now(), id: randomUUID,
     changed: state => { panel?.webContents.send('companion-state', state); chatWindows?.update(state); },
     present: value => {
@@ -199,6 +200,10 @@ async function boot() {
   }, enabled => send({ type: 'companion-mode', enabled }), new ToolRouter([software, stickers]), () => voice?.conversationPolicy ?? conversationPolicyDefaults);
   await companion.start();
   voice = new VoiceService(path.join(app.getPath('userData'), 'conversation-settings.json'), {
+    chooseVoicevoxDirectory: async () => {
+      const result = await dialog.showOpenDialog(panel ?? pet, { title: '选择 VOICEVOX 解压目录或软件目录', properties: ['openDirectory'] });
+      return result.canceled ? undefined : result.filePaths[0];
+    },
     emit: event => { for (const window of BrowserWindow.getAllWindows()) if (!window.webContents.isDestroyed()) window.webContents.send('voice-event', event); if (event.type === 'state') chatWindows?.refreshStatus(); },
     seal: async value => { if (!(await safeStorage.isAsyncEncryptionAvailable())) throw new Error('系统密钥加密不可用，未保存明文凭证'); return (await safeStorage.encryptStringAsync(value)).toString('base64'); },
     unseal: async value => (await safeStorage.decryptStringAsync(Buffer.from(value, 'base64'))).result

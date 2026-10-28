@@ -4,6 +4,7 @@ import { applyEmotion, decayMood } from './mood';
 import { recallMemories, remember } from './memory';
 import { chooseInitiative, localDay } from './initiative';
 import { buildContext } from './context';
+import { hasSpeechLanguages, parseSpeechLanguages, speechLanguagePrompt } from '../shared/speech-language';
 import type { CompanionHost, ModelPort, RepositoryPort, ToolPort } from './ports';
 import { conversationBreak, conversationSession, conversationPolicyDefaults, isConversationEvent, type ConversationPolicy } from '../shared/conversation-session';
 
@@ -50,13 +51,14 @@ export class CompanionCoordinator {
     const turn = ++this.epoch; const controller = new AbortController(); this.active = controller; this.busy = true; this.error = undefined; this.notice = undefined;
     const live = () => { this.expireConversations(); return !controller.signal.aborted && this.epoch === turn; };
     const data = this.repository.data; const now = this.host.now();
+    const languageSpeech = Boolean(this.host.speechLanguages?.()) && (source === 'desktop' || source === 'initiative');
     const presentationId = this.host.id(); let streamed = ''; let lastStreamAt = 0;
     const onText = source === 'initiative' ? undefined : (delta: string) => {
       if (!live()) return;
-      streamed = (streamed + delta).slice(0, 8000);
+      streamed = (streamed + delta).slice(0, 24000);
       if (streamed.trim() && (!lastStreamAt || Date.now() - lastStreamAt >= 30)) {
         lastStreamAt = Date.now();
-        this.host.present({ id: presentationId, phase: 'streaming', text: streamed, emotion: 'calm', source, speech: { ...data.config.speech } });
+        this.host.present({ id: presentationId, phase: 'streaming', text: (languageSpeech ? parseSpeechLanguages(streamed, true).text : streamed).slice(0, 8000), emotion: 'calm', source, speech: { ...data.config.speech } });
       }
     };
     const event: CompanionEvent = { id, text, source, actor: source === 'initiative' ? 'system' : 'user', at: now, conversationId };
@@ -69,7 +71,8 @@ export class CompanionCoordinator {
     this.changed();
     try {
       await this.repository.save();
-      const messages = buildContext(data, event, this.recalls, this.sessionPolicy());
+      const messages = buildContext(data, event, this.recalls, this.sessionPolicy(), languageSpeech);
+      if (languageSpeech) messages[0].content += `\n${speechLanguagePrompt}`;
       // 外部聊天和自动唤醒只能聊天；桌面用户明确启用且逐项选择的 MCP 工具才会暴露给模型。
       const legacy = source === 'desktop' && data.config.mcp.enabled ? (await this.tools.list(controller.signal)).filter(t => data.config.mcp.allowedTools.includes(t.name)) : [];
       const software = source === 'desktop' && this.software ? await this.software.list(controller.signal) : [];
@@ -98,15 +101,35 @@ export class CompanionCoordinator {
         result = await this.model.complete(messages, data.config.model, controller.signal, definitions, onText);
       }
       if (!live()) return '';
-      const body = result.text.trim().slice(0, 8000);
-      const reply = source === 'desktop' ? this.software?.decorateReply?.(body) ?? body : body;
-      if (!reply) throw new Error('模型没有返回可显示的文字');
+      let annotated = languageSpeech && hasSpeechLanguages(result.text);
+      if (languageSpeech && !annotated && result.text.trim()) {
+        // 只在协议缺失时补标注，不执行工具；正文必须保持一致，不能伪装成新的回复。
+        try {
+          const repair = await this.model.complete([...messages, { role: 'assistant', content: result.text }, { role: 'user', content: '上一条回复缺少或不符合语音语言标注。请保留上一条正文的每一个字，只补齐 <voice lang="zh">...</voice> 和 <voice lang="ja">...</voice> 标签。日语单词即使只有汉字也标 ja；中文解释标 zh。所有正文必须在标签内。不要解释，不要调用工具。' }], { ...data.config.model, temperature: 0, timeoutMs: Math.min(20000, data.config.model.timeoutMs) }, controller.signal);
+          if (!live()) return '';
+          const content = (value: string) => parseSpeechLanguages(value).text.replace(/\s/g, '');
+          if (!repair.calls.length && hasSpeechLanguages(repair.text) && content(repair.text) === content(result.text)) { result = repair; annotated = true; }
+        } catch { if (!live()) return ''; }
+        if (!annotated) this.notice = '本轮回复缺少有效的语言标注，已保留文字并跳过朗读，避免使用错误语言。';
+      }
+      const body = result.text.trim().slice(0, languageSpeech ? 24000 : 8000);
+      const parsed = languageSpeech ? parseSpeechLanguages(body) : undefined;
+      const plain = (parsed?.text ?? body).slice(0, 8000);
+      const reply = (source === 'desktop' ? this.software?.decorateReply?.(plain) ?? plain : plain).slice(0, 8000);
+      if (!live()) return '';
+      // 限制正文时同步裁剪语音元数据，避免读出界面未展示的内容。
+      // 附表情可能为图片留空间而缩短正文；只朗读仍显示的前缀，图片元数据用于历史还原但不会被朗读。
+      let prefix = 0; while (prefix < plain.length && plain[prefix] === reply[prefix]) prefix++;
+      let remaining = prefix;
+      const speechSegments = parsed ? (annotated ? parsed.segments.flatMap(segment => { const text = segment.text.slice(0, remaining); remaining -= text.length; return text ? [{ ...segment, text }] : []; }) : []) : undefined;
+      if (annotated && speechSegments && reply.length > prefix) speechSegments.push({ language: 'zh', text: reply.slice(prefix) });
+      if (!reply.trim()) throw new Error('模型没有返回可显示的文字');
       if (source === 'initiative' && reply.includes('[安静]')) return '';
-      this.add({ id: this.host.id(), at: this.host.now(), source, actor: 'pet', conversationId, sessionId: event.sessionId, text: reply, causeId: id });
+      this.add({ id: this.host.id(), at: this.host.now(), source, actor: 'pet', conversationId, sessionId: event.sessionId, text: reply, ...(speechSegments ? { speechSegments } : {}), causeId: id });
       await this.repository.save(); this.changed();
       if (!live()) return '';
       // 正文完成后立即展示/朗读，记忆评价在后面进行，不阻塞用户看到回复。
-      this.host.present({ id: presentationId, phase: 'complete', text: reply, emotion: 'calm', source, speech: { ...data.config.speech } });
+      this.host.present({ id: presentationId, phase: 'complete', text: reply, speechSegments, emotion: 'calm', source, speech: { ...data.config.speech } });
       let emotion: Emotion = 'calm';
       // 评价只看真实外部事件和工具结果，避免对自己的伤心措辞反复加分形成反馈循环。
       if (source !== 'initiative' && (data.config.mood.enabled || data.config.memory.automatic)) {

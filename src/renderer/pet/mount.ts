@@ -9,9 +9,10 @@ export async function mountPet(element: HTMLElement) {
   const queued: RuntimeMessage[]=[]; let receive=(message: RuntimeMessage)=>{queued.push(message);};
   const off=window.pet.onMessage(message=>receive(message));
   const avatar=new Avatar(()=>settings,(e,id)=>{if(!id)runtime.log(e);if(runtime.current&&(!id||runtime.current.instanceId===id))runtime.current.fail(e);}); const runtime=new PetRuntime(initial.registry,settings,initial.desktop,avatar); initial.errors.forEach(e=>runtime.log(e));
-  try { await avatar.init(element,runtime.catalog); avatar.setDragState(initial.desktop); await runtime.start(); } catch(e) { off(); throw e; }
+  // 角色素材加载可能晚于第一条聊天回复，语音先订阅；动作仍等待统一执行器就绪。
+  let ready = false; const offCompanion = mountCompanionPresentation(runtime, () => ready);
+  try { await avatar.init(element,runtime.catalog); avatar.setDragState(initial.desktop); await runtime.start(); ready = true; } catch(e) { off(); offCompanion(); throw e; }
   runtime.setCompanionEnabled(initial.companionEnabled ?? false);
-  const offCompanion = mountCompanionPresentation(runtime);
   const canvas=avatar.app.canvas; let down:{x:number;y:number;target:'head'|'body';id:number;dragging:boolean;starting:boolean}|undefined;let clickTimer:ReturnType<typeof setTimeout>|undefined;let lastClick=0; let lastTarget='';let disposed=false;let renderFailed=false;
   const clearClick=()=>{if(clickTimer)clearTimeout(clickTimer);clickTimer=undefined;};
   const finish=async(cancel=false)=>{const gesture=down;down=undefined;avatar.pressed=false;if(!gesture)return;try{if(canvas.hasPointerCapture(gesture.id))canvas.releasePointerCapture(gesture.id);}catch{/* Capture may already be released by Windows. */}await window.pet.dragEnd();if(cancel||gesture.dragging||gesture.starting)return;const now=Date.now();if(now-lastClick<260&&lastTarget===gesture.target){clearClick();lastClick=0;await window.pet.openPanel();return;}lastClick=now;lastTarget=gesture.target;clearClick();clickTimer=setTimeout(()=>{runtime.interact(gesture.target);const id=gesture.target==='head'?settings.headAction:settings.bodyAction;const result=runtime.play(id,'interaction');if(result.status==='rejected')runtime.log(result.message??result.errorCode??'点击失败');clickTimer=undefined;},260);};

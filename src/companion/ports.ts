@@ -8,6 +8,7 @@ export interface ModelPort { complete(messages: ChatMessage[], config: Companion
 export interface ToolPort { list(signal: AbortSignal): Promise<ToolDefinition[]>; call(name: string, args: Record<string, unknown>, signal: AbortSignal): Promise<string>; decorateReply?(text: string): string; close(): Promise<void> }
 export interface RepositoryPort { data: CompanionData; save(): Promise<void> }
 export interface CompanionHost {
+  speechLanguages?(): boolean;
   now(): number; id(): string; changed(view: CompanionView): void; present(presentation: CompanionPresentation | null): void;
   capabilities(): GroupCapability[]; available(): boolean; lastInteractionAt(): number;
 }

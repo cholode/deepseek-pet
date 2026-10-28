@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { speechSegmentSchema, type SpeechSegment } from './speech-language';
 
 // 跨进程契约只包含数据；人格、记忆、模型和渠道均不依赖 Electron 或人物渲染器。
 export const emotionNames = ['happy', 'calm', 'curious', 'confused', 'shy', 'frustrated', 'sleepy'] as const;
@@ -38,7 +39,7 @@ export const goalSchema = z.object({ id: z.string(), text: shortText, dueAt: z.n
 export type Goal = z.infer<typeof goalSchema>;
 export const moodSchema = z.object({ value: z.number(), updatedAt: z.number(), emotions: z.record(z.enum(emotionNames), z.number()), timeline: z.array(z.object({ eventId: z.string(), at: z.number(), reason: z.string(), delta: z.number(), emotion: z.enum(emotionNames) })).max(100) });
 export type Mood = z.infer<typeof moodSchema>;
-export const eventSchema = z.object({ id: z.string(), at: z.number(), source: z.enum(['desktop', 'qq-private', 'qq-group', 'initiative', 'interaction']), actor: z.enum(['user', 'pet', 'system']), conversationId: z.string(), sessionId: z.string().optional(), sessionEndedAt: z.number().finite().optional(), text: z.string().max(8000), causeId: z.string().optional() }).strict();
+export const eventSchema = z.object({ id: z.string(), at: z.number(), source: z.enum(['desktop', 'qq-private', 'qq-group', 'initiative', 'interaction']), actor: z.enum(['user', 'pet', 'system']), conversationId: z.string(), sessionId: z.string().optional(), sessionEndedAt: z.number().finite().optional(), text: z.string().max(8000), speechSegments: z.array(speechSegmentSchema).max(2000).optional(), causeId: z.string().optional() }).strict();
 export type CompanionEvent = z.infer<typeof eventSchema>;
 export const companionDataSchema = z.object({
   version: z.literal(1), config: companionConfigSchema, memories: z.array(memorySchema).max(10000), goals: z.array(goalSchema).max(200), mood: moodSchema,
@@ -51,7 +52,7 @@ export interface CompanionView {
   data: CompanionData; busy: boolean; ready: boolean; error?: string; notice?: string; recalls: RecallHit[];
   hasSecrets: Record<'model' | 'qq' | 'mcp', boolean>; tools: { name: string; description: string }[];
 }
-export interface CompanionPresentation { id: string; text: string; emotion: Emotion; groupId?: string; speech: CompanionConfig['speech']; source: CompanionEvent['source']; phase?: 'streaming' | 'complete' | 'action' }
+export interface CompanionPresentation { id: string; text: string; speechSegments?: SpeechSegment[]; emotion: Emotion; groupId?: string; speech: CompanionConfig['speech']; source: CompanionEvent['source']; phase?: 'streaming' | 'complete' | 'action' }
 export const companionRequestSchema = z.discriminatedUnion('type', [
   z.object({ type: z.literal('state') }).strict(),
   z.object({ type: z.literal('configure'), config: companionConfigSchema, secrets: z.object({ model: z.string().max(4000).optional(), qq: z.string().max(4000).optional(), mcp: z.string().max(4000).optional() }).strict().optional() }).strict(),
