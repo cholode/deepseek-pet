@@ -4,7 +4,7 @@ import type { CompanionConfig } from '../../shared/companion';
 import { endpoint, readJson } from './http';
 import { readCompletionStream } from './stream';
 
-const responseSchema = z.object({ choices: z.array(z.object({ message: z.object({ content: z.string().nullable().optional(), tool_calls: z.array(z.object({ id: z.string(), type: z.literal('function'), function: z.object({ name: z.string(), arguments: z.string().max(20000) }) })).max(4).optional() }) })).min(1) });
+const responseSchema = z.object({ choices: z.array(z.object({ message: z.object({ content: z.string().nullable().optional(), tool_calls: z.array(z.object({ id: z.string(), type: z.literal('function'), function: z.object({ name: z.string(), arguments: z.string().max(20000) }) })).optional() }) })).min(1) });
 // 通用 Chat Completions 适配器：DeepSeek、本地 Ollama 等服务都通过同一个端口接入。
 export class CompatibleModel implements ModelPort {
   constructor(private key: () => string, private request: typeof fetch = fetch) {}

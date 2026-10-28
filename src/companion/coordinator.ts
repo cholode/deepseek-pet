@@ -59,27 +59,26 @@ export class CompanionCoordinator {
       if (new Set(definitions.map(t => t.name)).size !== definitions.length) throw new Error('工具名称冲突，请调整 MCP 授权');
       if (definitions.length > 100) throw new Error('已授权工具超过 100 项，请减少启用的能力');
       let result = await this.model.complete(messages, data.config.model, controller.signal, definitions, onText);
-      let calls = 0; const outcomes: string[] = [];
-      for (let round = 0; result.calls.length && round < 2; round++) {
+      const outcomes: string[] = [];
+      // 工具可持续执行到模型完成；用户停止或撤权仍通过同一取消信号立即生效。
+      while (result.calls.length) {
         if (!live()) return '';
-        if (calls + result.calls.length > 4) throw new Error('本轮工具调用已达到上限，请拆成更小的任务');
         messages.push({ role: 'assistant', content: result.text || null, tool_calls: result.calls });
         for (const call of result.calls) {
           if (!definitions.some(t => t.name === call.function.name)) throw new Error('模型请求了未授权的工具');
           if (!live()) return '';
           const args = z.record(z.string(), z.unknown()).parse(JSON.parse(call.function.arguments));
           if (JSON.stringify(args).length > 20000) throw new Error('工具参数过大');
-          calls++;
           let output: string;
           try { output = await (software.some(t => t.name === call.function.name) ? this.software! : this.tools).call(call.function.name, args, controller.signal); }
           catch (e) { if (!live()) return ''; output = `工具失败：${e instanceof Error ? e.message : '连接异常'}`; }
+          if (!live()) return '';
           outcomes.push(`${call.function.name}: ${output.slice(0, 1000)}`);
           messages.push({ role: 'tool', tool_call_id: call.id, content: output.slice(0, 12000) });
         }
         streamed = ''; lastStreamAt = 0;
         result = await this.model.complete(messages, data.config.model, controller.signal, definitions, onText);
       }
-      if (result.calls.length) throw new Error('工具步骤达到上限，已停止继续执行');
       if (!live()) return '';
       const body = result.text.trim().slice(0, 8000);
       const reply = source === 'desktop' ? this.software?.decorateReply?.(body) ?? body : body;

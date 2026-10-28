@@ -3,7 +3,7 @@ import type { ToolCall } from '../../companion/ports';
 
 const chunkSchema = z.object({ choices: z.array(z.object({ index: z.number().optional(), finish_reason: z.string().nullable().optional(), delta: z.object({
   content: z.string().nullable().optional(),
-  tool_calls: z.array(z.object({ index: z.number().int().min(0).max(3), id: z.string().optional(), type: z.literal('function').optional(), function: z.object({ name: z.string().optional(), arguments: z.string().optional() }).optional() })).optional()
+  tool_calls: z.array(z.object({ index: z.number().int().min(0), id: z.string().optional(), type: z.literal('function').optional(), function: z.object({ name: z.string().optional(), arguments: z.string().optional() }).optional() })).optional()
 }).optional() })).optional() });
 
 // SSE 按事件而不是网络包解析；UTF-8 解码器保留跨包的中文半字符。

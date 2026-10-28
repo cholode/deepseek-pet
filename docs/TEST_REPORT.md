@@ -1,10 +1,13 @@
 # 实际测试报告
 
-## 关闭深度思考（2026-10-27，主程序 1.5.0）
+## 关闭深度思考与连续工具执行（2026-10-27，主程序 1.5.0）
 
-- DeepSeek 官方 Chat Completions 请求显式发送 `thinking: { type: 'disabled' }`；其他兼容服务不附加专用参数。
-- 适配器测试捕获实际请求体，覆盖官方根地址及 `/v1`、普通与流式请求，确认明确关闭思考。相关类型检查、lint 和测试已通过。
-- 使用请求夹具验证参数，不宣称真实模型账户验收。主程序及各插件版本不变，根 README 未修改。
+- DeepSeek 官方 Chat Completions 请求显式发送 `thinking: { type: 'disabled' }`。移除两轮交互、四次调用和单响应四个工具限制；保留授权、停止、撤权取消、单请求超时及响应大小校验。
+- `npm run typecheck`、`npm run lint`、`npm test -- --reporter=dot`（288/288，20 个文件）、`npm run build`、`npm run dist:win`、`git diff --check` 通过。新增覆盖官方地址及 `/v1` 的非思考参数、普通/流式返回七个工具、六轮十次调用完整回传、取消后迟到工具不触发下轮、停止后继续聊天。
+- `npm run test:tool-continuation-gui` 源码与最终打包版均通过 4 项真实窗口检查，零页面/协议错误。以生产表情搜索工具执行六轮十次调用（首轮五个），超过旧上限后仍可停止并继续聊天；已查看完成后的聊天截图。记录位于 `test-results/tool-continuation/` 与 `test-results/tool-continuation-packaged/`。
+- GUI 使用独立配置和本机 SSE 模型夹具，未使用用户模型密钥或操作 Anki。首次脚本在适配器创建后替换 `fetch`，重定向未生效而超时；改为直接配置本机 HTTP 服务后通过。DeepSeek 参数由捕获实际适配器请求体的单元测试验证，不宣称真实模型账户验收。
+- 打包 ASAR 主进程与最新构建逐字节一致；旧上限错误已从产物移除。旧桌宠正常退出后更新，已使用原用户配置重新启动。主程序及各插件版本不变，根 README 未修改。未执行安装/卸载向导。
+- 安装包 SHA-256 `a6dad92bcafadc7d1a470e2d35778e4236df0c788e13de856752063f3426a536`；便携包 `5592955646690be0d024b65fb6294c5edfacec3988f9825a29c1387a47a1492a`。
 
 ## 表情包功能（2026-10-27，主程序 1.5.0）
 

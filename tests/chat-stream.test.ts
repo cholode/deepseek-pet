@@ -21,6 +21,12 @@ describe('真实流式回复', () => {
     const result = await readCompletionStream(response(event({ tool_calls: [{ index: 0, id: 'call1', type: 'function', function: { name: 'read', arguments: '{"x":' } }] }) + event({ tool_calls: [{ index: 0, function: { arguments: '2}' } }] }, 'tool_calls')), new AbortController().signal, onText);
     expect(result.calls).toEqual([{ id: 'call1', type: 'function', function: { name: 'read', arguments: '{"x":2}' } }]); expect(onText).not.toHaveBeenCalled();
   });
+  it('一条响应超过四个工具仍完整解析，包括后续参数分片', async () => {
+    const tools = Array.from({ length: 7 }, (_, index) => ({ index, id: `call-${index}`, type: 'function', function: { name: 'read', arguments: '{"x":' } }));
+    const tails = tools.map(({ index }) => ({ index, function: { arguments: `${index}}` } }));
+    const result = await readCompletionStream(response(event({ tool_calls: tools }) + event({ tool_calls: tails }, 'tool_calls')), new AbortController().signal, () => {});
+    expect(result.calls.map(c => JSON.parse(c.function.arguments).x)).toEqual([0, 1, 2, 3, 4, 5, 6]);
+  });
   it('意外断流、错误、缺失工具名称不被当作完成', async () => {
     for (const [body, message] of [[event({ content: '未完成' }), '意外中断'], ['data: {"error":"bad"}\n\n', '流式错误'], [event({ tool_calls: [{ index: 0, id: 'call1' }] }, 'tool_calls'), '不完整']]) {
       await expect(readCompletionStream(response(body), new AbortController().signal, () => {})).rejects.toThrow(message);

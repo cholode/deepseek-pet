@@ -70,19 +70,44 @@ describe('决策编排与可替换端口', () => {
     expect(f.model.complete.mock.calls[0][3]?.map(t => t.name)).toEqual(['read_game']);
     expect(f.model.complete.mock.calls[1][0]).toContainEqual({ role: 'tool', tool_call_id: 'call-1', content: '游戏窗口未打开' });
   });
-  it('未授权工具和无限工具循环都被中止', async () => {
+  it('未授权工具仍被拒绝', async () => {
     const f = fixture(); f.model.complete.mockResolvedValue({ text: '', calls: [call] });
     await expect(f.coordinator.chat('工具')).rejects.toThrow('未授权'); expect(f.tools.call).not.toHaveBeenCalled();
-    f.data.config.mcp.enabled = true; f.data.config.mcp.allowedTools = ['read_game'];
-    f.tools.list.mockResolvedValue([{ name: 'read_game', description: '', inputSchema: {} }]);
-    await expect(f.coordinator.chat('循环')).rejects.toThrow('工具步骤达到上限');
-    expect(f.tools.call).toHaveBeenCalledTimes(2);
   });
-  it('一次最多四个工具操作', async () => {
+  it('跨越旧轮数与次数上限，完整回传每个结果直到模型完成', async () => {
     const f = fixture(); f.data.config.mcp.enabled = true; f.data.config.mcp.allowedTools = ['read_game'];
+    f.data.config.mood.enabled = false; f.data.config.memory.automatic = false;
     f.tools.list.mockResolvedValue([{ name: 'read_game', description: '', inputSchema: {} }]);
-    f.model.complete.mockResolvedValue({ text: '', calls: [call, { ...call, id: '2' }, { ...call, id: '3' }] });
-    await expect(f.coordinator.chat('循环')).rejects.toThrow('本轮工具调用已达到上限'); expect(f.tools.call).toHaveBeenCalledTimes(3);
+    const ids: string[] = [];
+    for (let round = 0; round < 6; round++) {
+      const calls = Array.from({ length: round === 0 ? 5 : 1 }, (_, i) => ({ ...call, id: `round-${round}-${i}` }));
+      ids.push(...calls.map(c => c.id)); f.model.complete.mockResolvedValueOnce({ text: '', calls });
+    }
+    f.model.complete.mockImplementationOnce(async messages => {
+      expect(messages.filter(m => m.role === 'tool').map(m => m.tool_call_id)).toEqual(ids);
+      return { text: '十个步骤全部完成', calls: [] };
+    });
+    expect(await f.coordinator.chat('完成连续任务')).toBe('十个步骤全部完成');
+    expect(f.tools.call).toHaveBeenCalledTimes(10); expect(f.model.complete).toHaveBeenCalledTimes(7);
+    expect(f.coordinator.busy).toBe(false); expect(f.coordinator.error).toBeUndefined();
+  });
+  it('连续工具执行仍可停止，迟到工具结果不启动下一轮，随后可重新聊天', async () => {
+    const f = fixture(); f.data.config.mcp.enabled = true; f.data.config.mcp.allowedTools = ['read_game'];
+    f.data.config.mood.enabled = false; f.data.config.memory.automatic = false;
+    f.tools.list.mockResolvedValue([{ name: 'read_game', description: '', inputSchema: {} }]);
+    f.model.complete.mockResolvedValue({ text: '', calls: [call] });
+    let finish!: (text: string) => void; let toolSignal!: AbortSignal; let count = 0;
+    f.tools.call.mockImplementation(async (_name, _args, signal) => {
+      if (++count < 6) return '继续';
+      toolSignal = signal; return new Promise<string>(resolve => { finish = resolve; });
+    });
+    const pending = f.coordinator.chat('连续工具任务');
+    await vi.waitFor(() => expect(f.tools.call).toHaveBeenCalledTimes(6));
+    f.coordinator.cancel(); expect(toolSignal.aborted).toBe(true); finish('迟到结果');
+    expect(await pending).toBe(''); expect(f.model.complete).toHaveBeenCalledTimes(6);
+    expect(f.data.events.filter(e => e.actor === 'pet')).toHaveLength(0); expect(f.coordinator.busy).toBe(false);
+    f.model.complete.mockResolvedValueOnce({ text: '可以重新聊天', calls: [] });
+    expect(await f.coordinator.chat('你好')).toBe('可以重新聊天');
   });
   it('主动搭话先落盘记账，重启相同时间不会重提；不评价自己的话', async () => {
     const f = fixture(); f.data.config.initiative.enabled = true;

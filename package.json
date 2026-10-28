@@ -26,7 +26,8 @@
     "test:anki-smoke": "node scripts/anki-smoke.cjs",
     "pack:anki": "node scripts/pack-anki.cjs",
     "pack:stickers": "node scripts/pack-stickers.cjs",
-    "test:stickers-gui": "node scripts/stickers-gui-test.cjs"
+    "test:stickers-gui": "node scripts/stickers-gui-test.cjs",
+    "test:tool-continuation-gui": "node scripts/tool-continuation-gui-test.cjs"
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "1.32.2",

@@ -67,6 +67,12 @@ describe('真实本机 HTTP 模型与 QQ 协议', () => {
     expect(payloads.map(p => p.thinking)).toEqual([{ type: 'disabled' }, { type: 'disabled' }]);
     expect(payloads.map(p => p.stream)).toEqual([false, true]);
   });
+  it('其他兼容服务不加入 DeepSeek 专有参数；普通 JSON 可返回超过四个工具', async () => {
+    const calls = Array.from({ length: 7 }, (_, i) => ({ id: `call-${i}`, type: 'function', function: { name: 'read', arguments: '{}' } }));
+    const request: typeof fetch = vi.fn(async (_url, options) => { expect(JSON.parse(String(options?.body))).not.toHaveProperty('thinking'); return Response.json({ choices: [{ message: { content: null, tool_calls: calls } }] }); });
+    const result = await new CompatibleModel(() => '', request).complete([], companionDefaults.model, new AbortController().signal);
+    expect(result.calls).toEqual(calls);
+  });
   it('模型正确发送身份头、上下文及工具参数并解析 function calling', async () => {
     const seen: unknown[] = [];
     const url = await server(async (req, res) => { seen.push({ path: req.url, token: req.headers.authorization, body: await body(req) }); json(res, { choices: [{ message: { content: null, tool_calls: [{ id: 'call', type: 'function', function: { name: 'read_game', arguments: '{}' } }] } }] }); });
