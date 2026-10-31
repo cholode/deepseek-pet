@@ -27,13 +27,20 @@
     "test:software-gui": "node scripts/software-gui-test.cjs",
     "test:anki-gui": "node scripts/anki-gui-test.cjs",
     "test:anki-smoke": "node scripts/anki-smoke.cjs",
+    "test:studio-gui": "node scripts/studio-gui-test.cjs",
+    "test:studio-model": "node scripts/studio-model-smoke.cjs",
+    "test:anki-native": "node scripts/anki-native-test.cjs",
     "pack:anki": "node scripts/pack-anki.cjs",
     "pack:stickers": "node scripts/pack-stickers.cjs",
     "test:stickers-gui": "node scripts/stickers-gui-test.cjs",
-    "test:tool-continuation-gui": "node scripts/tool-continuation-gui-test.cjs"
+    "test:tool-continuation-gui": "node scripts/tool-continuation-gui-test.cjs",
+    "test:teaching-benchmark": "node scripts/teaching-benchmark.cjs"
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "1.32.2",
+    "fflate": "0.8.3",
+    "linkedom": "0.18.14",
+    "pdfjs-dist": "6.4.299",
     "pixi.js": "8.20.1",
     "react": "19.2.8",
     "react-dom": "19.2.8",
