@@ -1,8 +1,8 @@
 # Anki 日语陪练与学习计划
 
-Anki 日语插件以 1.1.0 独立发布，适配当前大肥鱼 1.5.0。完整安装、对话、记录、复习和提醒说明在 [插件说明](../README.md)，也随独立 ZIP 分发。插件版本、MCP 握手和 ZIP 名称统一读取插件自身清单，不驱动主程序版本更新。
+Anki 日语插件以 1.2.0 独立发布，适配当前大肥鱼 1.5.0。完整安装、对话、记录、复习和提醒说明在 [插件说明](../README.md)，也随独立 ZIP 分发。插件版本、MCP 握手和 ZIP 名称统一读取插件自身清单，不驱动主程序版本更新。
 
-源码：`plugins/anki-japanese/`。应用携带插件目录，小屋可选择安装，不自动执行或授权。`npm run pack:anki` 生成 `release/DaFeiYu-Anki-Japanese-1.1.0.zip`。无额外 npm 包依赖，使用 Electron 自带 Node 子进程。
+源码：`plugins/anki-japanese/`。应用携带插件目录，小屋可选择安装，不自动执行或授权。`npm run pack:anki` 生成 `release/DaFeiYu-Anki-Japanese-1.2.0.zip`。无额外 npm 包依赖，使用 Electron 自带 Node 子进程。
 
 ## 设计
 
@@ -26,7 +26,7 @@ flowchart LR
 
 写入前核对绑定 profile。笔记通过 key 字段和标签去重；失败轮次固定原内容后恢复。复习先保存 token，揭示答案后才允许评分，提交前消耗 token，未知结果不重试。插件不直接打开数据库、不修改现有牌组配置或主动同步。
 
-使用 API v6 的 `version/getActiveProfile/deckNames/findCards/cardsInfo/modelNames/modelFieldNames/createModel/createDeck/findNotes/addNote/suspend/answerCards`。依据：[AnkiConnect 官方仓库](https://git.sr.ht/~foosoft/anki-connect) 和本机已安装插件的 v6 源码。旧 [GitHub 官方入口](https://github.com/FooSoft/anki-connect) 已注明迁移。
+使用 API v6 的 `version/getActiveProfile/deckNames/findCards/cardsInfo/modelNames/modelFieldNames/createModel/createDeck/findNotes/addNote/suspend/getReviewsOfCards`，以及 `guiDeckReview/guiReviewActive/guiCurrentCard/guiShowQuestion/guiStartCardTimer/guiShowAnswer/guiAnswerCard`。复习不再使用 `answerCards`。依据：[AnkiConnect 官方仓库](https://git.sr.ht/~foosoft/anki-connect) 和本机已安装插件的 v6 源码。旧 [GitHub 官方入口](https://github.com/FooSoft/anki-connect) 已注明迁移。
 
 ## 验收边界
 
@@ -34,4 +34,4 @@ flowchart LR
 
 基础 GUI 验证使用真实 Windows 窗口和 MCP 子进程，Anki/模型后端为隔离夹具。后续按用户要求，在独立真实 Anki 集合中完成20词、43次评分的流程评估；未向用户原有学习集合写入测试卡片或评分。真实模型因 HTTP 401 未完成验证，后续流程使用脚本驱动。
 
-评估已确认取卡绕过原生队列、复习耗时为0、计划统计不包含正式背词进度等问题，当前不能将基础测试通过视为日常复习验收通过。详见 [20词评估与修复顺序](USER_AUDIT.md)。仓库整体测试记录位于项目根目录的 `docs/TEST_REPORT.md`。
+原评估确认的队列、零计时和进度统计问题已在 1.2.0 修复，并在独立真实 Anki 用户中重新验证原生取卡、评分间隔、非零 revlog 计时、不同卡片数及课程记录去重。旧证据保留在 [20词评估](USER_AUDIT.md)，新协议与边界见 [课程记录与原生复习](LEARNING_STUDIO.md)。这不等于真实模型教学质量验证；当前模型接口仍返回 HTTP 401。仓库整体测试记录位于项目根目录的 `docs/TEST_REPORT.md`。

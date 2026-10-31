@@ -16,7 +16,7 @@ const controllers = new Map(); let queue = Promise.resolve();
 function reply(id, result) { process.stdout.write(JSON.stringify({ jsonrpc: '2.0', id, result }) + '\n'); }
 const input = readline.createInterface({ input: process.stdin });
 input.on('line', line => {
-  if (line.length > 64000) return;
+  if (line.length > 160000) return;
   let req; try { req = JSON.parse(line); } catch { return; }
   if (req.method === 'notifications/cancelled') { controllers.get(req.params?.requestId)?.abort(); return; }
   if (req.id === undefined) return;

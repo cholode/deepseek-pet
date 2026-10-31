@@ -27,6 +27,9 @@ const assert = require('node:assert/strict');
       if (action === 'deckNames') result = ['大肥鱼::日语', '日本語::N5'];
       if (action === 'findCards') result = p.query.startsWith('nid:') ? [101] : [7];
       if (action === 'cardsInfo') result = [card];
+      if (['guiDeckReview', 'guiReviewActive', 'guiShowQuestion', 'guiShowAnswer', 'guiStartCardTimer'].includes(action)) result = true;
+      if (action === 'guiCurrentCard') result = { ...card, buttons: [1, 2, 3, 4], nextReviews: ['1 分钟', '5 分钟', '1 天', '4 天'] };
+      if (action === 'getReviewsOfCards') result = {};
       if (action === 'modelNames') result = [...models.keys()];
       if (action === 'createModel') models.set(p.modelName, p.inOrderFields);
       if (action === 'modelFieldNames') result = models.get(p.modelName);
@@ -34,7 +37,7 @@ const assert = require('node:assert/strict');
       if (action === 'findNotes') result = notes.filter(n => n.tags.includes(p.query.slice(4))).map(n => n.id);
       if (action === 'addNote') { result = 100 + notes.length; notes.push({ ...p.note, id: result }); }
       if (action === 'suspend') result = true;
-      if (action === 'answerCards') { card.reps++; result = [true]; }
+      if (action === 'guiAnswerCard') { card.reps++; result = true; }
       res.writeHead(200, { 'Content-Type': 'application/json' }).end(JSON.stringify({ result, error: null })); return;
     }
     modelCalls.push(body);
@@ -74,9 +77,9 @@ const assert = require('node:assert/strict');
     const settings = { profile: 'GUI 学习用户', level: 'N5', dailyMinutes: 20, newCards: 5, time: '20:00', days: [0, 1, 2, 3, 4, 5, 6], deck: '大肥鱼::日语', reviewDeck: '大肥鱼::日语', logDeck: '大肥鱼::学习记录', port };
     await fs.writeFile(path.join(dataFolder, 'study.json'), JSON.stringify({ version: 1, settings, sessions: [], reviews: [] }));
     await panel.getByRole('button', { name: '连接并读取能力', exact: true }).click(); await wait(async () => (await state()).entries[0].status === 'connected');
-    assert.equal((await state()).entries[0].tools.length, 9); assert.equal(actions.length, 0);
-    await panel.getByRole('button', { name: '选择全部能力', exact: true }).click(); await panel.getByRole('button', { name: '保存工具授权', exact: true }).click(); await wait(async () => (await state()).entries[0].grants.length === 9 && !(await state()).busy);
-    check('内置 Node 运行时启动真实 MCP 子进程，9 项能力可授权；未配置时提醒默认关闭');
+    assert.equal((await state()).entries[0].tools.length, 10); assert.equal(actions.length, 0);
+    await panel.getByRole('button', { name: '选择全部能力', exact: true }).click(); await panel.getByRole('button', { name: '保存工具授权', exact: true }).click(); await wait(async () => (await state()).entries[0].grants.length === 10 && !(await state()).busy);
+    check('内置 Node 运行时启动真实 MCP 子进程，10 项能力可授权；未配置时提醒默认关闭');
     await panel.getByRole('button', { name: '读取计划与学习状态', exact: true }).click(); await panel.getByLabel('日语程度', { exact: true }).waitFor(); await panel.getByLabel('日语程度', { exact: true }).selectOption('N4'); await panel.getByLabel('每天练习分钟', { exact: true }).fill('15'); await panel.getByRole('checkbox', { name: '周日', exact: true }).uncheck();
     await panel.getByRole('button', { name: '保存学习计划', exact: true }).click();
     await wait(async () => JSON.parse(await fs.readFile(path.join(dataFolder, 'study.json'), 'utf8')).settings.level === 'N4');
@@ -93,10 +96,10 @@ const assert = require('node:assert/strict');
     assert.ok(modelCalls.some(c => c.messages.some(m => m.role === 'tool' && m.content.includes('recorded'))));
     check('多轮日语对话经模型工具路由保存练习日志及生词，日志暂停且不伪造复习次数');
     await chat('复习卡片'); await chat('ねこ'); assert.equal(actions.some(a => a.action === 'answerCards'), false); await chat('3 良好');
-    assert.equal(actions.filter(a => a.action === 'answerCards').length, 1); assert.equal(actions.find(a => a.action === 'answerCards').params.answers[0].ease, 3);
+    assert.equal(actions.filter(a => a.action === 'guiAnswerCard').length, 1); assert.equal(actions.find(a => a.action === 'guiAnswerCard').params.ease, 3); assert.equal(actions.some(a => a.action === 'answerCards'), false);
     check('取题→用户作答→揭示答案→用户评分的多轮聊天完成一次 Anki 评分');
     await panel.getByRole('checkbox', { name: '开启计划提醒', exact: true }).click(); await wait(async () => (await state()).entries[0].remindersEnabled);
-    await app.close(); await launch(); const restored = (await state()).entries[0]; assert.equal(restored.remindersEnabled, true); assert.equal(restored.grants.length, 9);
+    await app.close(); await launch(); const restored = (await state()).entries[0]; assert.equal(restored.remindersEnabled, true); assert.equal(restored.grants.length, 10);
     await panel.getByRole('button', { name: '读取计划与学习状态', exact: true }).click(); await panel.getByLabel('日语程度', { exact: true }).waitFor(); assert.equal(await panel.getByLabel('日语程度', { exact: true }).inputValue(), 'N4');
     check('重启恢复计划与授权，设置读取可按需重连插件');
     ankiOffline = true; await panel.getByRole('button', { name: '读取计划与学习状态', exact: true }).click(); await panel.getByText('AnkiConnect HTTP 503', { exact: true }).waitFor(); ankiOffline = false;

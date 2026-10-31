@@ -23,6 +23,9 @@ async function fixture() {
     if (action === 'deckNames') result = ['大肥鱼::日语'];
     if (action === 'findCards') result = p.query.startsWith('nid:') ? [101] : p.query.includes('is:new') ? [] : [11];
     if (action === 'cardsInfo') result = [{ ...card }];
+    if (['guiDeckReview', 'guiReviewActive', 'guiShowQuestion', 'guiShowAnswer', 'guiStartCardTimer'].includes(action)) result = true;
+    if (action === 'guiCurrentCard') result = { ...card, buttons: [1, 2, 3, 4], nextReviews: ['1 分钟', '5 分钟', '1 天', '4 天'] };
+    if (action === 'getReviewsOfCards') result = {};
     if (action === 'modelNames') result = [...models.keys()];
     if (action === 'createModel') models.set(p.modelName, p.inOrderFields);
     if (action === 'modelFieldNames') result = models.get(p.modelName);
@@ -30,7 +33,7 @@ async function fixture() {
     if (action === 'findNotes') result = notes.filter(n => n.tags.includes(p.query.slice(4))).map(n => n.id);
     if (action === 'addNote') { result = 100 + notes.length; notes.push({ ...p.note, id: result }); }
     if (action === 'suspend') { if (failSuspend) throw new Error('temporary failure'); result = true; }
-    if (action === 'answerCards') { if (failGrade) throw new Error('response lost'); card.reps++; result = [true]; }
+    if (action === 'guiAnswerCard') { if (failGrade) throw new Error('response lost'); card.reps++; result = true; }
     return new Response(JSON.stringify({ result, error: null }), { headers: { 'Content-Type': 'application/json' } });
   };
   const plugin = new AnkiPlugin(root, { request, now: () => now }); await plugin.load();
@@ -87,14 +90,16 @@ describe('Anki 日语插件', () => {
     expect(await f.invoke('anki_review_grade', { token: review.token, ease: 3 })).toMatchObject({ graded: true });
     const second = new AnkiPlugin(f.root, { request: f.request, now: f.time }); await second.load();
     await expect(second.call('anki_review_grade', { token: review.token, ease: 3 })).rejects.toThrow('已使用');
-    expect(f.calls.filter(c => c.action === 'answerCards')).toHaveLength(1);
+    expect(f.calls.filter(c => c.action === 'guiAnswerCard')).toHaveLength(1);
+    expect(f.calls.filter(c => c.action === 'answerCards')).toHaveLength(0);
+    expect(f.calls.filter(c => c.action === 'guiStartCardTimer')).toHaveLength(1);
   });
   it('外部复习或编辑后拒绝旧评分；超时结果不自动重试', async () => {
     const f = await fixture(); await f.settings(); const review = await f.invoke('anki_review_next'); await f.invoke('anki_review_reveal', { token: review.token });
     f.card.reps++; await expect(f.invoke('anki_review_grade', { token: review.token, ease: 2 })).rejects.toThrow('改变');
     const next = await f.invoke('anki_review_next'); await f.invoke('anki_review_reveal', { token: next.token }); f.failGrade();
     await expect(f.invoke('anki_review_grade', { token: next.token, ease: 2 })).rejects.toThrow('未确认');
-    await expect(f.invoke('anki_review_grade', { token: next.token, ease: 2 })).rejects.toThrow('已使用'); expect(f.calls.filter(c => c.action === 'answerCards')).toHaveLength(1);
+    await expect(f.invoke('anki_review_grade', { token: next.token, ease: 2 })).rejects.toThrow('已使用'); expect(f.calls.filter(c => c.action === 'guiAnswerCard')).toHaveLength(1);
   });
   it('提醒只在所选学习日两小时窗口内触发，达到用时目标不再提醒，离线也可提醒', async () => {
     const f = await fixture(); expect(await f.invoke('anki_reminder')).toBeNull(); await f.settings();
@@ -108,5 +113,17 @@ describe('Anki 日语插件', () => {
     await expect(f.plugin.call('anki_status', {}, abort.signal)).rejects.toThrow(); expect(f.calls).toHaveLength(0);
     await fs.writeFile(path.join(f.root, 'study.json'), '{broken'); const second = new AnkiPlugin(f.root);
     await expect(second.load()).rejects.toThrow('已保留'); expect(await fs.readFile(path.join(f.root, 'study.json'), 'utf8')).toBe('{broken');
+  });
+  it('工作室课堂采用稳定编号和实际用时，响应丢失后按原内容恢复且不重建词卡', async () => {
+    const f = await fixture(); await f.settings(); const data = { ...payload('stable-course-session'), topic: '课堂单元', minutes: 0 };
+    f.failSuspend(true); await expect(f.invoke('anki_lesson_record', data)).rejects.toThrow(); expect(f.notes).toHaveLength(2);
+    const practice = await f.invoke('anki_practice_start', { topic: '普通聊天练习' }); expect(practice.sessionId.startsWith('lesson-')).toBe(false);
+    f.failSuspend(false); const result = await f.invoke('anki_lesson_record', data); expect(result.minutes).toBe(0); await f.invoke('anki_lesson_record', data); expect(f.notes).toHaveLength(2);
+    expect(f.calls.some(c => c.action === 'guiAnswerCard')).toBe(false);
+  });
+  it('原生评分显示实际间隔，HTML 块级元素保留分隔', async () => {
+    const f = await fixture(); await f.settings(); f.card.question = '<div>猫</div><p>读音？</p>'; const review = await f.invoke('anki_review_next'); expect(review.question).toContain('猫\n');
+    const revealed = await f.invoke('anki_review_reveal', { token: review.token }); expect(revealed.choices[3]).toEqual({ label: '良好', interval: '1 天' });
+    expect(f.calls.some(c => c.action === 'findCards' && String(c.params.query).includes('is:new'))).toBe(false);
   });
 });
