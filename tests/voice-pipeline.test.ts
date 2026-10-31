@@ -9,15 +9,16 @@ import { voicevoxStartArgs } from '../src/main/voice/voicevox';
 import { speechChunks, voiceConfigSchema, voiceDefaults, type VoiceRequest, type VoiceResponse } from '../src/shared/voice';
 
 afterEach(() => { vi.restoreAllMocks(); vi.unstubAllGlobals(); });
-function playback() {
+function playback(concurrency = 1) {
   const requests: Extract<VoiceRequest, { type: 'speak' }>[] = [];
   const replies: ((response: VoiceResponse) => void)[] = [];
   const played: MockAudio[] = [];
   class MockAudio {
-    onended?: () => void; onerror?: () => void; volume = 1;
+    onended?: () => void; onerror?: () => void; onplaying?: () => void; volume = 1;
     pause = vi.fn(); play = vi.fn(async () => { played.push(this); });
   }
   const voice = vi.fn((request: VoiceRequest): Promise<VoiceResponse> => {
+    if (request.type === 'state') { const config = structuredClone(voiceDefaults); config.tts.synthesisConcurrency = concurrency; return Promise.resolve({ ok: true, state: { config, hasSecrets: { ttsLocal: false, ttsCloud: false, asrLocal: false, asrCloud: false } } }); }
     if (request.type !== 'speak') return Promise.resolve({ ok: true });
     requests.push(request); return new Promise(resolve => replies.push(resolve));
   });
@@ -28,6 +29,34 @@ function playback() {
 const audio = (): VoiceResponse => ({ ok: true, audio: new ArrayBuffer(44) });
 
 describe('逐句预合成', () => {
+  it('流式完整句立即合成；两句并发、乱序完成仍按序播放，结尾不重读', async () => {
+    const f = playback(2), starts = vi.fn(); const stream = f.player.begin(starts);
+    stream.update('第一句。后半句还没结束', [{ text: '第一句。', language: 'zh' }]);
+    await vi.waitFor(() => expect(f.requests).toHaveLength(1));
+    stream.update('第一句。第二句。', [{ text: '第一句。第二句。', language: 'zh' }]);
+    await vi.waitFor(() => expect(f.requests).toHaveLength(2));
+    expect(f.requests.map(r => r.chunk)).toEqual([0, 1]);
+    f.replies[1](audio()); await Promise.resolve(); expect(f.played).toHaveLength(0);
+    f.replies[0](audio()); await vi.waitFor(() => expect(f.played).toHaveLength(1));
+    f.played[0].onplaying?.(); expect(starts.mock.calls).toEqual([[0]]);
+    stream.update('第一句。第二句。', [{ text: '第一句。第二句。', language: 'zh' }], true);
+    f.played[0].onended?.(); await vi.waitFor(() => expect(f.played).toHaveLength(2));
+    f.played[1].onplaying?.(); f.played[1].onended?.(); await stream.done;
+    expect(starts.mock.calls).toEqual([[0], [1]]); expect(f.requests).toHaveLength(2);
+  });
+  it('停止空队列立即完成，迟到句子不能复活已取消的流', async () => {
+    const f = playback(2), stream = f.player.begin();
+    await Promise.resolve(); f.player.stop(); await stream.done;
+    stream.update('迟到。', undefined, true); expect(f.requests).toHaveLength(0);
+  });
+  it('只有实际开始播放才通知显示句子，预取就绪及取消后的迟到事件不推进', async () => {
+    const f = playback(), starts = vi.fn(); const pending = f.player.speak('第一句。第二句。', false, undefined, undefined, starts);
+    await vi.waitFor(() => expect(f.requests).toHaveLength(1)); expect(starts).not.toHaveBeenCalled();
+    f.replies[0](audio()); await vi.waitFor(() => expect(f.played).toHaveLength(1)); expect(starts).not.toHaveBeenCalled();
+    f.played[0].onplaying?.(); f.played[0].onplaying?.(); expect(starts.mock.calls).toEqual([[0]]);
+    f.replies[1](audio()); await Promise.resolve(); expect(starts.mock.calls).toEqual([[0]]);
+    f.player.stop(); f.played[0].onplaying?.(); await pending; expect(starts.mock.calls).toEqual([[0]]);
+  });
   it('按句界拆分、保留引号，清理 Markdown，不拆小数和 Unicode 字符', () => {
     expect(speechChunks('**你好。**「こんにちは！」下一句。Value 3.14 is fine. Next!')).toEqual(['你好。', '「こんにちは！」', '下一句。', 'Value 3.14 is fine.', ' Next!']);
     const long = '🐟'.repeat(400); const chunks = speechChunks(long); expect(chunks.map(c => Array.from(c).length)).toEqual([180, 180, 40]); expect(chunks.join('')).toBe(long);
@@ -93,9 +122,11 @@ describe('设备与取消边界', () => {
       const a = crypto.randomUUID(), b = crypto.randomUUID();
       const old = service.request({ type: 'speak', text: '旧', playbackId: a }, 3, 'pet');
       const current = service.request({ type: 'speak', text: '新', playbackId: b }, 3, 'pet');
+      const parallel = service.request({ type: 'speak', text: '新第二句', playbackId: b, chunk: 1 }, 3, 'pet');
+      expect(signals.every(s => !s.aborted)).toBe(true);
       await service.request({ type: 'cancel', playbackOnly: true, playbackId: a }, 4, 'pet'); expect(signals.every(s => !s.aborted)).toBe(true);
       await service.request({ type: 'cancel', playbackOnly: true, playbackId: a }, 3, 'pet'); expect((await old).ok).toBe(false); expect(signals[1].aborted).toBe(false);
-      service.stopAll(); expect((await current).message).toContain('取消'); expect(signals[1].aborted).toBe(true);
+      service.stopAll(); expect((await current).message).toContain('取消'); expect((await parallel).message).toContain('取消'); expect(signals.slice(1).every(s => s.aborted)).toBe(true);
     } finally { await service.close(); await fs.rm(folder, { recursive: true, force: true }); }
   });
 });

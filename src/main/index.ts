@@ -22,7 +22,9 @@ import { softwareActionAllowed } from '../shared/action-context';
 import { StickerService } from './stickers/service';
 import { ToolRouter } from '../companion/tool-router';
 import { VoiceService } from './voice/service';
+import { SpeechDisplay } from './voice/display';
 import { conversationPolicyDefaults } from '../shared/conversation-session';
+import { companionRequestSchema } from '../shared/companion';
 import { StudioService } from './studio/service';
 
 protocol.registerSchemesAsPrivileged(['petasset', 'petsticker'].map(scheme => ({ scheme, privileges: { standard: true, secure: true, supportFetchAPI: true, corsEnabled: true } })));
@@ -37,6 +39,7 @@ const pending = new Map<string, { resolve: (r: CommandReceipt) => void; timer: R
 let viewport = { ...baseViewport };
 let companion: CompanionService | undefined;
 let voice: VoiceService | undefined;
+let speechDisplay: SpeechDisplay | undefined;
 let diary: DiaryService | undefined;
 let software: SoftwareService | undefined;
 let stickers: StickerService | undefined;
@@ -202,15 +205,29 @@ async function boot() {
     reviewTargets: () => software!.learningTargets(), recordReview: (id, payload, signal) => software!.recordLearning(id, payload, signal)
   });
   handle('studio', 'panel', raw => studio!.request(raw));
+  const publishCompanion = (state: ReturnType<CompanionService['view']>) => {
+    if (quitReady) return;
+    const visible = speechDisplay?.view(state) ?? state;
+    if (panel && !panel.isDestroyed()) panel.webContents.send('companion-state', visible);
+    chatWindows?.update(visible);
+  };
+  speechDisplay = new SpeechDisplay(value => {
+    // 退出时 flush 只清理队列，不能在聊天窗销毁后又创建一个气泡窗口。
+    if (quitReady) return;
+    if (panel && !panel.isDestroyed()) panel.webContents.send('companion-presentation', value);
+    chatWindows?.present(value, settings.value.bubbles);
+  }, () => { if (companion) publishCompanion(companion.view()); });
   companion = new CompanionService(app.getPath('userData'), {
     speechLanguages: () => voice?.speechLanguages ?? false,
     now: () => Date.now(), id: randomUUID,
-    changed: state => { panel?.webContents.send('companion-state', state); chatWindows?.update(state); },
+    changed: publishCompanion,
     present: value => {
       if (!value) voice?.stopAll();
       // 聊天采用新语音配置；其他入口仍可明确发送 enabled:false 的静默提醒。
       const presentation = value ? { ...value, speech: { ...value.speech, enabled: voice?.ttsEnabled ?? value.speech.enabled } } : null;
-      if (!pet.isDestroyed()) pet.webContents.send('companion-presentation', presentation); panel?.webContents.send('companion-presentation', presentation); chatWindows?.present(presentation, settings.value.bubbles);
+      // 播放器拿完整正文，所有聊天表面拿逐句显示副本；保存的历史不受播放进度影响。
+      speechDisplay!.present(presentation);
+      if (!pet.isDestroyed()) pet.webContents.send('companion-presentation', presentation);
     },
     capabilities: () => (debug?.groups ?? []).map(g => ({ groupId: g.groupId, name: g.name, description: g.description, tags: g.tags, channels: g.channels, expectedDurationMs: g.expectedDurationMs, available: g.enabled && !g.interaction && !debug?.failedGroups.includes(g.groupId) && softwareActionAllowed(g, { ...desktop, interacting: desktop.interacting || desktop.dragging, paused: settings.value.paused, lastInteraction: desktop.lastInteractionAt ?? Date.now() }, Date.now()) })),
     available: () => desktop.visible && !desktop.suspended && !desktop.dragging && !desktop.chatting && !settings.value.paused,
@@ -226,7 +243,8 @@ async function boot() {
       const result = await dialog.showOpenDialog(panel ?? pet, { title: '选择 VOICEVOX 解压目录或软件目录', properties: ['openDirectory'] });
       return result.canceled ? undefined : result.filePaths[0];
     },
-    emit: event => { for (const window of BrowserWindow.getAllWindows()) if (!window.webContents.isDestroyed()) window.webContents.send('voice-event', event); if (event.type === 'state') chatWindows?.refreshStatus(); },
+    emit: event => { if (event.type !== 'state') speechDisplay?.flush(); for (const window of BrowserWindow.getAllWindows()) if (!window.webContents.isDestroyed()) window.webContents.send('voice-event', event); if (event.type === 'state') chatWindows?.refreshStatus(); },
+    playbackProgress: request => speechDisplay?.progress(request),
     seal: async value => { if (!(await safeStorage.isAsyncEncryptionAvailable())) throw new Error('系统密钥加密不可用，未保存明文凭证'); return (await safeStorage.encryptStringAsync(value)).toString('base64'); },
     unseal: async value => (await safeStorage.decryptStringAsync(Buffer.from(value, 'base64'))).result
   });
@@ -281,7 +299,11 @@ async function boot() {
   });
   ipcMain.handle('speech-bubble-state', event => { if (!chatWindows?.isSender(event, 'bubble')) throw new Error('IPC_FORBIDDEN'); return chatWindows.bubbleState(); });
   ipcMain.handle('speech-bubble-size', (event, raw) => { if (!chatWindows?.isSender(event, 'bubble')) throw new Error('IPC_FORBIDDEN'); chatWindows.resizeBubble(z.object({ width: z.number().int().min(120).max(440), height: z.number().int().min(48).max(320) }).strict().parse(raw)); });
-  handle('companion', 'panel', raw => companion!.request(raw));
+  handle('companion', 'panel', async raw => {
+    const request = companionRequestSchema.parse(raw); const result = await companion!.request(request);
+    // 导出取完整历史，界面轮询才按播放进度显示，避免把“正在准备语音”导出成聊天内容。
+    return request.type === 'state' && request.forExport ? result : { ...result, state: speechDisplay!.view(result.state) };
+  });
   handle('open-panel', 'either', openPanel); handle('context-menu', 'pet', () => { menu().popup({ window: pet }); }); handle('reset-position', 'either', resetPosition); handle('show-pet', 'either', showPet);
   handle('save-settings', 'panel', applySettings); handle('reset-settings', 'panel', () => applySettings(structuredClone(defaults)));
   handle('set-viewport', 'pet', raw => { const next = z.object({ width: z.number().int().min(340).max(1024), height: z.number().int().min(420).max(1024) }).strict().parse(raw); if (next.width === viewport.width && next.height === viewport.height) return; viewport = next; resizePet(); savePosition(); });

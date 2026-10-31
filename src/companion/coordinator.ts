@@ -6,7 +6,7 @@ import { chooseInitiative, localDay } from './initiative';
 import { buildContext } from './context';
 import { grow, mayExpressFeedback } from './growth';
 import { growthDefaults, growthObservationSchema } from '../shared/growth';
-import { hasSpeechLanguages, parseSpeechLanguages, speechLanguagePrompt } from '../shared/speech-language';
+import { completedSpeechSegments, hasSpeechLanguages, parseSpeechLanguages, speechLanguagePrompt } from '../shared/speech-language';
 import type { CompanionHost, ModelPort, RepositoryPort, ToolPort } from './ports';
 import { conversationBreak, conversationSession, conversationPolicyDefaults, isConversationEvent, type ConversationPolicy } from '../shared/conversation-session';
 
@@ -55,13 +55,14 @@ export class CompanionCoordinator {
     const live = () => { this.expireConversations(); return !controller.signal.aborted && this.epoch === turn; };
     const data = this.repository.data; const now = this.host.now();
     const languageSpeech = Boolean(this.host.speechLanguages?.()) && (source === 'desktop' || source === 'initiative');
-    const presentationId = this.host.id(); let streamed = ''; let lastStreamAt = 0;
+    const presentationId = this.host.id(); let streamed = ''; let speechRevision = 0;
     const onText = source === 'initiative' ? undefined : (delta: string) => {
       if (!live()) return;
-      streamed = (streamed + delta).slice(0, 24000);
-      if (streamed.trim() && (!lastStreamAt || Date.now() - lastStreamAt >= 30)) {
-        lastStreamAt = Date.now();
-        this.host.present({ id: presentationId, phase: 'streaming', text: (languageSpeech ? parseSpeechLanguages(streamed, true).text : streamed).slice(0, 8000), emotion: 'calm', source, speech: { ...data.config.speech } });
+      streamed = (streamed + delta).trimStart().slice(0, 24000);
+      if (streamed.trim()) {
+        // 每个 SSE 增量立即送达文字队列，已闭合的逐句语言标注同时送达语音队列。
+        const speechSegments = languageSpeech ? completedSpeechSegments(streamed) : [];
+        this.host.present({ id: presentationId, speechRevision, phase: 'streaming', text: (languageSpeech ? parseSpeechLanguages(streamed, true).text : streamed).slice(0, 8000), speechSegments, emotion: 'calm', source, speech: { ...data.config.speech } });
       }
     };
     const event: CompanionEvent = { id, text, source, actor: source === 'initiative' ? 'system' : 'user', at: now, conversationId };
@@ -90,6 +91,9 @@ export class CompanionCoordinator {
       // 工具可持续执行到模型完成；用户停止或撤权仍通过同一取消信号立即生效。
       while (result.calls.length) {
         if (!live()) return '';
+        // 工具轮的前言不并入最终答案；换修订会撤销尚未播放的旧轮音频。
+        speechRevision++; streamed = '';
+        this.host.present({ id: presentationId, speechRevision, phase: 'streaming', text: '', speechSegments: [], emotion: 'calm', source, speech: { ...data.config.speech } });
         messages.push({ role: 'assistant', content: result.text || null, tool_calls: result.calls });
         for (const call of result.calls) {
           if (!definitions.some(t => t.name === call.function.name)) throw new Error('模型请求了未授权的工具');
@@ -103,7 +107,6 @@ export class CompanionCoordinator {
           outcomes.push(`${call.function.name}: ${output.slice(0, 1000)}`);
           messages.push({ role: 'tool', tool_call_id: call.id, content: output.slice(0, 12000) });
         }
-        streamed = ''; lastStreamAt = 0;
         result = await this.model.complete(messages, data.config.model, controller.signal, definitions, onText);
       }
       if (!live()) return '';
@@ -131,11 +134,12 @@ export class CompanionCoordinator {
       if (annotated && speechSegments && reply.length > prefix) speechSegments.push({ language: 'zh', text: reply.slice(prefix) });
       if (!reply.trim()) throw new Error('模型没有返回可显示的文字');
       if (source === 'initiative' && reply.includes('[安静]')) return '';
-      this.add({ id: this.host.id(), at: this.host.now(), source, actor: 'pet', conversationId, sessionId: event.sessionId, text: reply, ...(speechSegments ? { speechSegments } : {}), causeId: id });
-      await this.repository.save(); this.changed();
+      this.add({ id: presentationId, at: this.host.now(), source, actor: 'pet', conversationId, sessionId: event.sessionId, text: reply, ...(speechSegments ? { speechSegments } : {}), causeId: id });
+      // 在任何异步保存/状态刷新之前登记显示进度，避免历史轮询提前展示尚未播放的整段正文。
+      this.host.present({ id: presentationId, speechRevision, phase: 'complete', text: reply, speechSegments, emotion: 'calm', source, speech: { ...data.config.speech } });
+      await this.repository.save();
       if (!live()) return '';
-      // 正文完成后立即展示/朗读，记忆评价在后面进行，不阻塞用户看到回复。
-      this.host.present({ id: presentationId, phase: 'complete', text: reply, speechSegments, emotion: 'calm', source, speech: { ...data.config.speech } });
+      this.changed();
       let emotion: Emotion = 'calm';
       // 评价只看真实外部事件和工具结果，避免对自己的伤心措辞反复加分形成反馈循环。
       if (source !== 'initiative' && (data.config.mood.enabled || data.config.memory.automatic || (source === 'desktop' && data.growth?.enabled && mayExpressFeedback(text)))) {

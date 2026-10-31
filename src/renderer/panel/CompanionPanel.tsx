@@ -22,7 +22,7 @@ export function CompanionPanel() {
   const [memory, setMemory] = useState(''); const [factKey, setFactKey] = useState(''); const [scope, setScope] = useState<'private' | 'public'>('private');
   const [kind, setKind] = useState<'episode' | 'fact' | 'preference'>('fact'); const [query, setQuery] = useState('');
   const [goal, setGoal] = useState(''); const [due, setDue] = useState('');
-  const scroll = useMessageScroll(`${state?.data.events.at(-1)?.id}:${stream?.text ?? ''}`, `${tab}:${Boolean(state)}`);
+  const scroll = useMessageScroll(`${state?.data.events.at(-1)?.id}:${state?.data.events.at(-1)?.text}:${stream?.text ?? ''}`, `${tab}:${Boolean(state)}`);
   useEffect(() => {
     let live = true;
     void window.pet.companion({ type: 'state' }).then(r => { if (live) { setState(r.state); setDraft(r.state.data.config); } }).catch(e => { if (live) setNote(String(e)); });
@@ -55,9 +55,12 @@ export function CompanionPanel() {
     }).finally(() => { sending.current = false; });
     return true;
   }
-  function exportData() {
-    if (!state) return; const blob = new Blob([JSON.stringify(state.data, null, 2)], { type: 'application/json' });
-    const url = URL.createObjectURL(blob); const a = document.createElement('a'); a.href = url; a.download = '大肥鱼陪伴数据.json'; a.click(); setTimeout(() => URL.revokeObjectURL(url), 1000);
+  async function exportData() {
+    try {
+      const result = await window.pet.companion({ type: 'state', forExport: true });
+      const blob = new Blob([JSON.stringify(result.state.data, null, 2)], { type: 'application/json' });
+      const url = URL.createObjectURL(blob); const a = document.createElement('a'); a.href = url; a.download = '大肥鱼陪伴数据.json'; a.click(); setTimeout(() => URL.revokeObjectURL(url), 1000);
+    } catch { setNote('导出失败，请重试'); }
   }
   if (!state) return <div className="loading">正在读取陪伴状态…{note}</div>;
   const disabled = pending || state.busy;
@@ -71,7 +74,7 @@ export function CompanionPanel() {
     {tab === 'diary' && <DiaryPanel ready={state.ready} name={state.data.config.persona.name}/>}
     {tab === 'chat' && <section className="settings-card companion-chat">
       {!state.ready && <div className="companion-empty"><h3>让大肥鱼认识你</h3><p>在陪伴设置里连接本地或远程模型，就可以聊天、记住共同经历，并让表情跟着心情变化。</p><button className="primary" onClick={() => setTab('settings')}>配置智能陪伴</button></div>}
-      <div className="companion-messages" ref={scroll.ref} onScroll={scroll.onScroll} tabIndex={0} role="region" aria-label="聊天记录">{state.data.events.map(e => <article className={`companion-message ${e.actor}`} key={e.id}><small>{e.actor === 'pet' ? state.data.config.persona.name : e.actor === 'system' ? '自主唤醒' : '你'} · {e.source === 'desktop' ? '桌面' : e.source} · {new Date(e.at).toLocaleTimeString()}</small><MarkdownContent text={e.text}/></article>)}{stream && <article className="companion-message pet"><small>{state.data.config.persona.name} · 正在说…</small><MarkdownContent text={stream.text}/></article>}</div>
+      <div className="companion-messages" ref={scroll.ref} onScroll={scroll.onScroll} tabIndex={0} role="region" aria-label="聊天记录">{state.data.events.map(e => <article className={`companion-message ${e.actor}`} key={e.id}><small>{e.actor === 'pet' ? state.data.config.persona.name : e.actor === 'system' ? '自主唤醒' : '你'} · {e.source === 'desktop' ? '桌面' : e.source} · {new Date(e.at).toLocaleTimeString()}</small><MarkdownContent text={e.text}/></article>)}{stream && !state.data.events.some(e => e.id === stream.id) && <article className="companion-message pet"><small>{state.data.config.persona.name} · 正在说…</small><MarkdownContent text={stream.text}/></article>}</div>
       {scroll.overflow && !scroll.atBottom && <div className="companion-scroll-actions"><button onClick={scroll.toLatest}>回到最新消息 ↓</button></div>}
       <textarea aria-label="对大肥鱼说" placeholder="和大肥鱼说点什么…（Ctrl + Enter 发送）" value={text} maxLength={4000} onChange={e => setText(e.target.value)} onKeyDown={e => { if (e.key === 'Enter' && e.ctrlKey && !disabled && state.ready) void send(); }}/>
       <VoiceInput purpose="chat" disabled={disabled || !state.ready} onBusy={setRecording} onText={send}/>

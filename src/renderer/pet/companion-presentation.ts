@@ -2,27 +2,28 @@ import type { CompanionPresentation } from '../../shared/companion';
 import type { PetRuntime } from './PetRuntime';
 import { VoicePlayer } from '../voice/player';
 
-// 原生气泡独立排版；此处只负责语音和角色动作，增量文字不能反复触发朗读。
+// 同一个回复持续追加句子，完成通知只关闭输入队列，绝不重新朗读全文。
 export function mountCompanionPresentation(runtime: PetRuntime, ready = () => true) {
   const spoken = new Set<string>(); const player = new VoicePlayer();
-  let queue: CompanionPresentation[] = []; let speaking = false; let epoch = 0;
-  const stop = () => { epoch++; queue = []; speaking = false; player.stop(); };
-  const speakNext = async () => {
-    if (speaking || !queue.length) return;
-    const item = queue.shift()!; const current = epoch; speaking = true;
-    try { await player.speak(item.text, false, item.speechSegments); }
-    catch (error) { if (current === epoch) void window.pet.voice({ type: 'report-error', message: error instanceof Error ? error.message : '朗读失败' }); }
-    finally { if (epoch === current) { speaking = false; void speakNext(); } }
-  };
+  let active: { key: string; item: CompanionPresentation; stream: ReturnType<VoicePlayer['begin']> } | undefined;
+  const finished = (item: CompanionPresentation) => { void window.pet.voice({ type: 'playback-progress', presentationId: item.id, speechRevision: item.speechRevision, finished: true }).catch(() => {}); };
+  const stop = () => { const item = active?.item; active = undefined; player.stop(); if (item) finished(item); };
   const offVoice = window.pet.onVoice(event => { if (event.type !== 'state') stop(); });
   const off = window.pet.onPresentation(item => {
     if (!item) { stop(); return; }
-    if (item.phase === 'streaming') return;
-    if (item.groupId && ready()) void runtime.port('ai').submit({ protocolVersion: 1, type: 'play_group', commandId: item.id, groupId: item.groupId, expiresAtUnixMs: Date.now() + 3000 });
-    if (item.phase !== 'action' && item.speech.enabled && !spoken.has(item.id)) {
-      spoken.add(item.id); if (spoken.size > 100) spoken.delete(spoken.values().next().value!);
-      queue = [...queue, item].slice(-3); void speakNext();
+    if (item.phase !== 'streaming' && item.groupId && ready()) void runtime.port('ai').submit({ protocolVersion: 1, type: 'play_group', commandId: item.id, groupId: item.groupId, expiresAtUnixMs: Date.now() + 3000 });
+    if (item.phase === 'action' || !item.speech.enabled) return;
+    const key = item.id + ':' + (item.speechRevision ?? 0);
+    if (active?.key !== key) {
+      if (spoken.has(key)) return;
+      stop(); spoken.add(key); if (spoken.size > 100) spoken.delete(spoken.values().next().value!);
+      const stream = player.begin(chunk => { void window.pet.voice({ type: 'playback-progress', presentationId: item.id, speechRevision: item.speechRevision, chunk }).catch(() => {}); });
+      const session = { key, item, stream }; active = session;
+      void stream.done.catch(error => {
+        if (active === session) void window.pet.voice({ type: 'report-error', message: error instanceof Error ? error.message : '朗读失败' });
+      }).finally(() => { finished(session.item); if (active === session) active = undefined; });
     }
+    if (active?.key === key) { active.item = item; active.stream.update(item.text, item.speechSegments ?? (item.phase === 'streaming' ? [] : undefined), item.phase !== 'streaming'); }
   });
   return () => { off(); offVoice(); stop(); };
 }

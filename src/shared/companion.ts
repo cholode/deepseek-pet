@@ -53,11 +53,11 @@ export interface CompanionView {
   data: CompanionData; busy: boolean; ready: boolean; error?: string; notice?: string; recalls: RecallHit[];
   hasSecrets: Record<'model' | 'qq' | 'mcp', boolean>; tools: { name: string; description: string }[];
 }
-export interface CompanionPresentation { id: string; text: string; speechSegments?: SpeechSegment[]; emotion: Emotion; groupId?: string; speech: CompanionConfig['speech']; source: CompanionEvent['source']; phase?: 'streaming' | 'complete' | 'action' }
+export interface CompanionPresentation { id: string; text: string; speechSegments?: SpeechSegment[]; speechRevision?: number; emotion: Emotion; groupId?: string; speech: CompanionConfig['speech']; source: CompanionEvent['source']; phase?: 'streaming' | 'complete' | 'action' }
 export const companionRequestSchema = z.discriminatedUnion('type', [
   z.object({ type: z.literal('growth-configure'), enabled: z.boolean(), locked: z.array(traitSchema).max(4) }).strict(),
   z.object({ type: z.literal('growth-rollback'), id: z.string().max(200) }).strict(),
-  z.object({ type: z.literal('state') }).strict(),
+  z.object({ type: z.literal('state'), forExport: z.boolean().optional() }).strict(),
   z.object({ type: z.literal('configure'), config: companionConfigSchema, secrets: z.object({ model: z.string().max(4000).optional(), qq: z.string().max(4000).optional(), mcp: z.string().max(4000).optional() }).strict().optional() }).strict(),
   z.object({ type: z.literal('chat'), text: z.string().trim().min(1).max(4000) }).strict(),
   z.object({ type: z.literal('cancel') }).strict(),
