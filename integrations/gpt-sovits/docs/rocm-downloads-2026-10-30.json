@@ -1,0 +1,44 @@
+[
+  {
+    "url": "https://stable.repo.amd.com/rocm/core/whl-next/rocm-sdk-core/rocm_sdk_core-10.1.0-py3-none-win_amd64.whl",
+    "name": "rocm_sdk_core-10.1.0-py3-none-win_amd64.whl",
+    "bytes": 776978384,
+    "etag": "\"79a14571344a684b61719845ef7b3022-6\"",
+    "sha256": "b12f1c4cde14ed1cd8864006d17586c6b1e6a4e4695b9597cfe04ed7715e952f"
+  },
+  {
+    "url": "https://stable.repo.amd.com/rocm/core/whl-next/rocm-sdk-libraries/rocm_sdk_libraries-10.1.0-py3-none-win_amd64.whl",
+    "name": "rocm_sdk_libraries-10.1.0-py3-none-win_amd64.whl",
+    "bytes": 118645973,
+    "etag": "\"50fbe0d68159b22d04b83215e3140c78-1\"",
+    "sha256": "0c34bafbb4aa626cc710d8b130bb314f591194c3d79eeb5892b755ea0be06159"
+  },
+  {
+    "url": "https://stable.repo.amd.com/rocm/core/whl-next/rocm-sdk-device-gfx1103/rocm_sdk_device_gfx1103-10.1.0-py3-none-win_amd64.whl",
+    "name": "rocm_sdk_device_gfx1103-10.1.0-py3-none-win_amd64.whl",
+    "bytes": 59798288,
+    "etag": "\"e976aae3866c5ae9bca7554d06004aab\"",
+    "sha256": "3a74b6a13c6efd3d282337ebdd1dd4e7021a94b0bb8de9e158572ab457e98520"
+  },
+  {
+    "url": "https://stable.repo.amd.com/rocm/pytorch/whl-next/torch/torch-2.14.0%2Brocm10.1.0-cp312-cp312-win_amd64.whl",
+    "name": "torch-2.14.0+rocm10.1.0-cp312-cp312-win_amd64.whl",
+    "bytes": 115562766,
+    "etag": "\"ed50ab92251f1fc8e9f4d81bd00618bb-1\"",
+    "sha256": "81e26c307846267d9490ff8c7421382b954909772abb7770a16baec740f44e4b"
+  },
+  {
+    "url": "https://stable.repo.amd.com/rocm/pytorch/whl-next/amd-torch-device-gfx110x/amd_torch_device_gfx110x-2.14.0%2Brocm10.1.0-cp312-cp312-win_amd64.whl",
+    "name": "amd_torch_device_gfx110x-2.14.0+rocm10.1.0-cp312-cp312-win_amd64.whl",
+    "bytes": 307045455,
+    "etag": "\"787be0bb6391080cebc66a4823f04679-3\"",
+    "sha256": "7f48df45ea1916e311c97528acc4ce3b966482dd2095216909694400ff315942"
+  },
+  {
+    "url": "https://stable.repo.amd.com/rocm/pytorch/whl-next/torchaudio/torchaudio-2.11.0.3%2Brocm10.1.0-cp312-cp312-win_amd64.whl",
+    "name": "torchaudio-2.11.0.3+rocm10.1.0-cp312-cp312-win_amd64.whl",
+    "bytes": 2107595,
+    "etag": "\"07d33880a75be58eb77db3e4f7e5bf5a\"",
+    "sha256": "a6a9ba0ee21099452c259bc4815b99edb75959eceaf07dbd74bd6a5c8ac5f417"
+  }
+]

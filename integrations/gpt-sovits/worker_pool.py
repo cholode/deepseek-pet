@@ -65,7 +65,12 @@ def serve_pool(args, root):
         nonlocal ready
         try:
             loop = asyncio.get_running_loop()
-            values = await asyncio.gather(*(loop.run_in_executor(executor, start_worker, index) for index in range(args.workers)))
+            # Windows 核显共享系统内存，模型转换的临时副本同时出现容易把启动挤入换页。
+            # 仅初始化依次完成；就绪后的 HTTP 合成仍由全部进程同时计算。
+            if Path(sys.prefix).name == ".venv-rocm" and args.device != "cpu":
+                values = [await loop.run_in_executor(executor, start_worker, index) for index in range(args.workers)]
+            else:
+                values = await asyncio.gather(*(loop.run_in_executor(executor, start_worker, index) for index in range(args.workers)))
             workers.extend(values)
             for worker in values:
                 available.put_nowait(worker)

@@ -2,6 +2,7 @@
 import argparse
 import io
 import json
+import gc
 import os
 import sys
 import threading
@@ -82,6 +83,14 @@ def main():
     os.environ["version"] = "v2ProPlus"
     os.environ["NLTK_DATA"] = str(assets / "runtime/nltk_data")
     os.environ["GPT_SOVITS_DATA_DIR"] = str(assets)
+    if args.device != "cpu":
+        # 对话句长持续变化；ROCm 的全量卷积选优会为新形状花很久，使用官方 FAST 即时方案。
+        # 缓存放在绑定目录，多个推理进程和后续启动可以复用；不修改全局系统环境变量。
+        os.environ.setdefault("MIOPEN_FIND_MODE", "FAST")
+        for variable, name in [("MIOPEN_CUSTOM_CACHE_DIR", "kernels"), ("MIOPEN_USER_DB_PATH", "db")]:
+            directory = root / "cache" / "miopen" / name
+            directory.mkdir(parents=True, exist_ok=True)
+            os.environ.setdefault(variable, str(directory))
     os.chdir(assets)
     sys.path.insert(0, str(engine))
     sys.path.insert(0, str(engine / "GPT_SoVITS"))
@@ -119,6 +128,18 @@ def main():
     from GPT_SoVITS.TTS_infer_pack.TTS import TTS, TTS_Config
     from text.LangSegmenter import LangSegmenter
     LangSegmenter.getTexts = staticmethod(chinese_segments)
+    cpu_bert = bool(optimized and device == "cuda" and torch.version.hip and settings.get("rocm_cpu_bert", True))
+    if cpu_bert:
+        # 780M 实测中文 BERT 的小批次在 ROCm 上明显慢于 CPU；让 CPU 负责文字前端，
+        # 核显负责语义解码与音频生成。直接从原始权重加载 float32，避免先半精度再转回。
+        from text.chinese_bert import load_model, load_tokenizer
+        from torch.utils.mkldnn import to_mkldnn
+        def init_cpu_bert(self, base_path):
+            self.bert_tokenizer = load_tokenizer(base_path)
+            # ROCm Windows 包的普通 CPU BLAS 较慢，使用同包内 oneDNN 的预打包线性层。
+            # TTS 只取隐藏层，不计算从未使用的词表 logits；保留完整 BERT 编码器及原权重。
+            self.bert_model = to_mkldnn(load_model(base_path).eval().bert)
+        TTS.init_bert_weights = init_cpu_bert
     # 配置仅从用户绑定的安装目录读取；请求不能切模型、修改路径或执行控制命令。
     config = TTS_Config({"custom": {
         "device": device, "is_half": device == "cuda", "version": "v2ProPlus",
@@ -129,6 +150,18 @@ def main():
     }})
     config.configs_path = str(root / "inference.generated.yaml")
     pipeline = TTS(config)
+    if cpu_bert:
+        # 前端产生的提示/正文特征都留在 CPU；上游 to_batch 在同一边界整体移到 GPU。
+        pipeline.text_preprocessor.device = torch.device("cpu")
+    if optimized and device == "cuda":
+        # CPUFast 的脚本化注意力缓存不是 nn.Module 的 parameter/buffer，.to/.half 不会迁移它。
+        # 待主模型完成设备/精度转换后，用原权重重新构建缓存，保持所有矩阵都在同一设备。
+        state = torch.load(settings["gpt_weights"], map_location="cpu", weights_only=False)["weight"]
+        pipeline.t2s_model.model.rebuild_t2s_transformer_from_state_dict(state, prefix="model.")
+        del state
+        gc.collect()
+        # 核显与 CPU 共用内存；释放载入/转换时的临时显存，避免多进程启动峰值造成换页。
+        torch.cuda.empty_cache()
     # 中文前端也属于模型就绪条件；缺多音字模型时不要返回“已就绪”后才在首句失败。
     from text import chinese2  # noqa: F401
     from text import japanese  # noqa: F401
@@ -219,6 +252,7 @@ def main():
                 "model": model_id, "device": device, "threads": args.threads, "workers": 1,
                 "backend": "rocm" if device == "cuda" and torch.version.hip else device,
                 "deviceName": torch.cuda.get_device_name(0) if device == "cuda" else "CPU",
+                "frontendDevice": "cpu" if cpu_bert else device,
                 "engine": "cpu-fast" if optimized else "upstream",
                 "languages": ["zh", "ja"],
                 "voices": [{"id": key, "name": value["name"]} for key, value in voices.items()]}
@@ -240,6 +274,8 @@ def main():
                 audio = cache.pop(key)
             else:
                 audio = synthesize(body.input, body.voice, body.speed, language=body.language)
+                if device == "cuda" and torch.version.hip:
+                    torch.cuda.empty_cache()
             # 仅在内存保留最近八句，不把用户聊天文本和语音写成永久文件。
             cache[key] = audio
             while len(cache) > 8:

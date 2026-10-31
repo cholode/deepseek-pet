@@ -75,6 +75,28 @@ describe('GPT-SoVITS 本地接入', () => {
     await engine.close(); expect(fetcher).toHaveBeenCalledTimes(2);
     expect(fetcher.mock.calls.every(([url]) => String(url).endsWith('/health'))).toBe(true);
   });
+  it('只自动选择已经实测的独立 ROCm 环境，CPU 选项始终保留原环境', async () => {
+    const folder = await directory();
+    await fs.mkdir(path.join(folder, '.venv/Scripts'), { recursive: true });
+    await fs.mkdir(path.join(folder, '.venv-rocm/Scripts'), { recursive: true });
+    for (const file of ['.venv/Scripts/python.exe', '.venv-rocm/Scripts/python.exe', 'bridge.py', 'runtime.json', 'worker_pool.py']) await fs.writeFile(path.join(folder, file), 'fixture');
+    expect((await findGptSovits(folder)).executable).toBe(path.join(folder, '.venv/Scripts/python.exe'));
+    await fs.writeFile(path.join(folder, 'gpu-runtime.json'), JSON.stringify({ schemaVersion: 1, backend: 'rocm', validated: true }));
+    expect((await findGptSovits(folder)).executable).toBe(path.join(folder, '.venv-rocm/Scripts/python.exe'));
+    expect((await findGptSovits(folder, 'cpu')).executable).toBe(path.join(folder, '.venv/Scripts/python.exe'));
+    await fs.writeFile(path.join(folder, 'gpu-runtime.json'), JSON.stringify({ schemaVersion: 1, backend: 'rocm', validated: true, autoDevice: 'cpu' }));
+    expect(await findGptSovits(folder)).toMatchObject({ executable: path.join(folder, '.venv/Scripts/python.exe'), gpuRuntime: false });
+    expect(await findGptSovits(folder, 'cuda')).toMatchObject({ executable: path.join(folder, '.venv-rocm/Scripts/python.exe'), gpuRuntime: true });
+    await fs.unlink(path.join(folder, '.venv-rocm/Scripts/python.exe'));
+    await expect(findGptSovits(folder, 'cuda')).rejects.toThrow('GPU 环境缺失');
+    expect((await findGptSovits(folder)).executable).toBe(path.join(folder, '.venv/Scripts/python.exe'));
+  });
+  it('明确选择 GPU 时不能把当前端口的 CPU 服务当作 GPU 成功', async () => {
+    const fetcher = vi.fn<typeof fetch>().mockResolvedValue(Response.json({ service: 'deepblue-gpt-sovits', protocol: 1, ready: true, device: 'cpu', voices: [{ id: 'neutral', name: '中立' }] }));
+    vi.stubGlobal('fetch', fetcher); const engine = new GptSovitsProcess();
+    await expect(engine.ensure({ ...voiceDefaults.tts.gptSovits, device: 'cuda' }, new AbortController().signal)).rejects.toThrow('没有使用 GPU');
+    await engine.close();
+  });
   it('中文走本机音色接口，日文保持 VOICEVOX，原语音密钥不发送到桥接', async () => {
     const folder = await directory(); const payloads: unknown[] = [];
     const fetcher = vi.fn<typeof fetch>().mockImplementation(async (url, init) => {

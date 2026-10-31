@@ -1,0 +1,165 @@
+{
+  "health": {
+    "service": "deepblue-gpt-sovits",
+    "protocol": 1,
+    "ready": true,
+    "model": "gpt-sovits-v2proplus",
+    "device": "cpu",
+    "threads": 16,
+    "workers": 2,
+    "backend": "cpu",
+    "deviceName": "CPU",
+    "frontendDevice": "cpu",
+    "engine": "cpu-fast",
+    "languages": [
+      "zh",
+      "ja"
+    ],
+    "voices": [
+      {
+        "id": "neutral",
+        "name": "三月七 · 中立"
+      },
+      {
+        "id": "happy",
+        "name": "三月七 · 开心"
+      },
+      {
+        "id": "sad",
+        "name": "三月七 · 难过"
+      },
+      {
+        "id": "angry",
+        "name": "三月七 · 生气"
+      },
+      {
+        "id": "surprised",
+        "name": "三月七 · 吃惊"
+      },
+      {
+        "id": "afraid",
+        "name": "三月七 · 恐惧"
+      },
+      {
+        "id": "disgusted",
+        "name": "三月七 · 厌恶"
+      }
+    ],
+    "threadsPerWorker": 8,
+    "active": 0,
+    "peakActive": 0,
+    "error": null
+  },
+  "warmup": [
+    {
+      "text": "你好。",
+      "language": "zh",
+      "seconds": 0.016255900030955672,
+      "audioSeconds": 0.74,
+      "cache": "hit",
+      "worker": "0"
+    },
+    {
+      "text": "这是我的声音。",
+      "language": "zh",
+      "seconds": 2.0565324001945555,
+      "audioSeconds": 1.42,
+      "cache": "miss",
+      "worker": "1"
+    },
+    {
+      "text": "こんにちは。一緒に日本語を勉強しましょう。",
+      "language": "ja",
+      "seconds": 3.969559899996966,
+      "audioSeconds": 3.16,
+      "cache": "miss",
+      "worker": "0"
+    }
+  ],
+  "samples": [
+    {
+      "text": "第46题。今天我们一起练习新的日语句子。",
+      "language": "zh",
+      "seconds": 5.847596199950203,
+      "audioSeconds": 3.84,
+      "cache": "miss",
+      "worker": "0"
+    },
+    {
+      "text": "第47题。先听一遍，然后试着用自己的话回答。",
+      "language": "zh",
+      "seconds": 7.0203600998502225,
+      "audioSeconds": 4.58,
+      "cache": "miss",
+      "worker": "1"
+    },
+    {
+      "text": "第48题。答错也没有关系，我们可以慢慢练习。",
+      "language": "zh",
+      "seconds": 7.157708399929106,
+      "audioSeconds": 4.5,
+      "cache": "miss",
+      "worker": "0"
+    },
+    {
+      "text": "第49题。最后再回忆一下刚才学过的内容。",
+      "language": "zh",
+      "seconds": 6.884966399986297,
+      "audioSeconds": 4.32,
+      "cache": "miss",
+      "worker": "1"
+    }
+  ],
+  "elapsedSeconds": 13.921179800061509,
+  "healthAfter": {
+    "service": "deepblue-gpt-sovits",
+    "protocol": 1,
+    "ready": true,
+    "model": "gpt-sovits-v2proplus",
+    "device": "cpu",
+    "threads": 16,
+    "workers": 2,
+    "backend": "cpu",
+    "deviceName": "CPU",
+    "frontendDevice": "cpu",
+    "engine": "cpu-fast",
+    "languages": [
+      "zh",
+      "ja"
+    ],
+    "voices": [
+      {
+        "id": "neutral",
+        "name": "三月七 · 中立"
+      },
+      {
+        "id": "happy",
+        "name": "三月七 · 开心"
+      },
+      {
+        "id": "sad",
+        "name": "三月七 · 难过"
+      },
+      {
+        "id": "angry",
+        "name": "三月七 · 生气"
+      },
+      {
+        "id": "surprised",
+        "name": "三月七 · 吃惊"
+      },
+      {
+        "id": "afraid",
+        "name": "三月七 · 恐惧"
+      },
+      {
+        "id": "disgusted",
+        "name": "三月七 · 厌恶"
+      }
+    ],
+    "threadsPerWorker": 8,
+    "active": 0,
+    "peakActive": 2,
+    "error": null
+  }
+}

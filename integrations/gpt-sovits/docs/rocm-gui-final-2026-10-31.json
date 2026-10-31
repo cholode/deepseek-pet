@@ -1,0 +1,101 @@
+{
+  "checks": [
+    "真实本地模型按需启动并通过健康检查",
+    "三月七合成“这是我的声音”，真实 Electron 播放至结束",
+    "真实三月七中文与日文使用同一模型，四段音频播放完成",
+    "退出后桥接及实际 Python 推理进程停止"
+  ],
+  "errors": [],
+  "playback": [
+    {
+      "phase": "start",
+      "at": 1793408985947
+    },
+    {
+      "phase": "end",
+      "at": 1793408987813,
+      "duration": 1.82
+    },
+    {
+      "phase": "start",
+      "at": 1793408987813
+    },
+    {
+      "phase": "end",
+      "at": 1793408988952,
+      "duration": 1.06
+    },
+    {
+      "phase": "start",
+      "at": 1793408998783
+    },
+    {
+      "phase": "end",
+      "at": 1793409001152,
+      "duration": 2.3
+    },
+    {
+      "phase": "start",
+      "at": 1793409001153
+    },
+    {
+      "phase": "end",
+      "at": 1793409002352,
+      "duration": 1.14
+    }
+  ],
+  "timeline": [],
+  "poolHealth": {
+    "service": "deepblue-gpt-sovits",
+    "protocol": 1,
+    "ready": true,
+    "model": "gpt-sovits-v2proplus",
+    "device": "cuda",
+    "threads": 16,
+    "workers": 2,
+    "backend": "rocm",
+    "deviceName": "AMD Radeon 780M Graphics",
+    "frontendDevice": "cpu",
+    "engine": "cpu-fast",
+    "languages": [
+      "zh",
+      "ja"
+    ],
+    "voices": [
+      {
+        "id": "neutral",
+        "name": "三月七 · 中立"
+      },
+      {
+        "id": "happy",
+        "name": "三月七 · 开心"
+      },
+      {
+        "id": "sad",
+        "name": "三月七 · 难过"
+      },
+      {
+        "id": "angry",
+        "name": "三月七 · 生气"
+      },
+      {
+        "id": "surprised",
+        "name": "三月七 · 吃惊"
+      },
+      {
+        "id": "afraid",
+        "name": "三月七 · 恐惧"
+      },
+      {
+        "id": "disgusted",
+        "name": "三月七 · 厌恶"
+      }
+    ],
+    "threadsPerWorker": 8,
+    "active": 0,
+    "peakActive": 2,
+    "error": null
+  },
+  "realModel": true,
+  "realVoicevox": false
+}

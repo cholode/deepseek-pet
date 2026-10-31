@@ -1,0 +1,24 @@
+{
+  "torch": "2.14.0+rocm10.1.0",
+  "torchFile": "D:\\go-project\\vibecodingatempt\\tts\\gpt-sovits\\.venv-rocm\\Lib\\site-packages\\torch\\__init__.py",
+  "hip": "7.16.26385",
+  "available": true,
+  "checks": [
+    {
+      "dtype": "torch.float32",
+      "matrix": true,
+      "conv1d": true,
+      "seconds": 21.657
+    },
+    {
+      "dtype": "torch.float16",
+      "matrix": true,
+      "conv1d": true,
+      "seconds": 10.154
+    }
+  ],
+  "device": "AMD Radeon 780M Graphics",
+  "architecture": "gfx1103",
+  "memoryBytes": 13143670784,
+  "passed": true
+}
