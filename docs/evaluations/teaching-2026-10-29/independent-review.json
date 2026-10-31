@@ -1,0 +1,554 @@
+{
+  "reviewer": "Codex独立盲审",
+  "scope": "独立盲审：仅读取 blind-transcripts.json、curriculum.json、rubric.json，未读取候选方法映射、自动评分或排名。覆盖 10 个匿名候选的全部 6 个场景，逐项检查第 3、4、5、6、7、8 轮，另抽查开场与初次反馈。每维按冻结的五项 0–20 分汇总；三维等权。以下是对模拟对话中教学行为的整体审查评分，不代表真人学习效果或统计显著优劣。",
+  "ratings": [
+    {
+      "anonymous": "C01",
+      "logic": 79,
+      "humanity": 81,
+      "quality": 78,
+      "strengths": [
+        "能区分これ/この与ここ/これ，合理接受口语否定和语境省略。",
+        "六场景第8轮均停止新题；第3课新手疲劳时可先停下。"
+      ],
+      "weaknesses": [
+        "第1课熟练型迁移题直接给出整句「わたしは［大学の先生］です」，虽然随后说不是照抄，答案已泄露，且仍称为独立组织。",
+        "多次回答新问题后催回旧题，部分场景负担偏重；第3课熟练型对“短一点解释”的请求记录了0分。",
+        "个别总结将一次有提示的表现概括为已经分清，证据强度应更谨慎。"
+      ],
+      "evidence": [
+        {
+          "lessonId": "lesson-1",
+          "scenarioId": "beginner",
+          "turn": 3,
+          "note": "否定纠错解释是整块替换，不是です和ありません相加；随后只问身份名词。"
+        },
+        {
+          "lessonId": "lesson-1",
+          "scenarioId": "overconfident",
+          "turn": 6,
+          "note": "用户明确不要完整示范，却输出「わたしは［大学の先生］です」；第7轮学生几乎复用并被称自己拼对。"
+        },
+        {
+          "lessonId": "lesson-2",
+          "scenarioId": "beginner",
+          "turn": 4,
+          "note": "接受「わたしのです」但立即要求补做先前二选一题，有一定课堂连续性，也显得追赶脚本。"
+        },
+        {
+          "lessonId": "lesson-2",
+          "scenarioId": "overconfident",
+          "turn": 6,
+          "note": "给出的新场景明确双方在一起、词典距双方有距离；没有完成用户要求的“交换说话的人”。"
+        },
+        {
+          "lessonId": "lesson-3",
+          "scenarioId": "beginner",
+          "turn": 5,
+          "note": "按要求只分清ここ与これ，并表示先休息不出题，回应疲劳合适。"
+        },
+        {
+          "lessonId": "lesson-3",
+          "scenarioId": "overconfident",
+          "turn": 7,
+          "note": "正确说明「ここは図書館です」和短答都对，score=2，避免把风格偏好误作语法错误。"
+        },
+        {
+          "lessonId": "lesson-3",
+          "scenarioId": "overconfident",
+          "turn": 5,
+          "note": "学生仅请求短解释，此轮却score=0；会污染作答记录。"
+        }
+      ],
+      "total": 79.3
+    },
+    {
+      "anonymous": "C02",
+      "logic": 74,
+      "humanity": 78,
+      "quality": 69,
+      "strengths": [
+        "第1课会明确区分照着示范与独立掌握，多处提醒一次答对不等于长期记住。",
+        "基本纠错和已知话题省略解释大多正确，暂停请求均得到尊重。"
+      ],
+      "weaknesses": [
+        "第1课熟练型要求既介绍“我是公司的职员”又在一句中用じゃありません，任务自身含混；学生照要求写否定却被0分，后加新要求补“不是学生”。",
+        "第2课新手在正确接受それ后把其位置解释成“离你近、离我远”，与原场景相反。",
+        "第3课熟练型正确完整答句只因不够简短被给1分；部分新手场景一次出两题。"
+      ],
+      "evidence": [
+        {
+          "lessonId": "lesson-1",
+          "scenarioId": "beginner",
+          "turn": 2,
+          "note": "说明这次照示范打字只能算会跟读，不能算独立掌握；第8轮也限定为今天练会。"
+        },
+        {
+          "lessonId": "lesson-1",
+          "scenarioId": "overconfident",
+          "turn": 6,
+          "note": "任务要求介绍公司职员、同时用の和じゃありません，未清楚说明要另否定哪种身份；第7轮因此惩罚学生。"
+        },
+        {
+          "lessonId": "lesson-2",
+          "scenarioId": "beginner",
+          "turn": 7,
+          "note": "题二的伞原在教师桌上，却解释「②离你近、离我远，用それ」，位置与前文矛盾。"
+        },
+        {
+          "lessonId": "lesson-2",
+          "scenarioId": "overconfident",
+          "turn": 6,
+          "note": "明确教师说话、伞在学生手中，要求写教师问句，符合视角交换。"
+        },
+        {
+          "lessonId": "lesson-3",
+          "scenarioId": "beginner",
+          "turn": 5,
+          "note": "一句区分これ与ここ，允许休息，认知负担处理合适。"
+        },
+        {
+          "lessonId": "lesson-3",
+          "scenarioId": "overconfident",
+          "turn": 7,
+          "note": "学生「ここは食堂です」完整正确，教师仅以更自然应省略这里为由score=1，不公允。"
+        }
+      ],
+      "total": 73.7
+    },
+    {
+      "anonymous": "C03",
+      "logic": 74,
+      "humanity": 76,
+      "quality": 62,
+      "strengths": [
+        "主要语法边界如助词は读wa、名词否定整块替换、も替代は都能解释。",
+        "停止后不再出题，课堂有回顾与后续衔接。"
+      ],
+      "weaknesses": [
+        "多个明确正确的等价答案被只给1分：第1课じゃありません、第2课それは傘です以及第3课完整回答。",
+        "用户要求自己作答时，第3课新手迁移题直接指定「あそこです」作答，削弱回忆检验。",
+        "常在已经答对后称“再补一个小缺口”，频繁追加任务；これ/この解释有“这个的”等不必要的直译。"
+      ],
+      "evidence": [
+        {
+          "lessonId": "lesson-1",
+          "scenarioId": "beginner",
+          "turn": 4,
+          "note": "文本说じゃありません完全对且两者都行，结构化score却为1。"
+        },
+        {
+          "lessonId": "lesson-1",
+          "scenarioId": "overconfident",
+          "turn": 5,
+          "note": "用はな/hana与わたしは/watashi wa作最小对比，纠正过度泛化。"
+        },
+        {
+          "lessonId": "lesson-2",
+          "scenarioId": "beginner",
+          "turn": 4,
+          "note": "接受上文已明确傘时的わたしのです，但解释成の代替整个わたしの傘不够精确。"
+        },
+        {
+          "lessonId": "lesson-2",
+          "scenarioId": "overconfident",
+          "turn": 4,
+          "note": "明确承认それは傘です成立，score仍为1；第6轮也没有交换说话者。"
+        },
+        {
+          "lessonId": "lesson-3",
+          "scenarioId": "beginner",
+          "turn": 6,
+          "note": "要求问图书馆在哪里，再“用あそこです答一句”，把希望无提示迁移的答案提前给出。"
+        },
+        {
+          "lessonId": "lesson-3",
+          "scenarioId": "overconfident",
+          "turn": 7,
+          "note": "学生ここは図書館です语法和内容正确，仅因多说这里被score=1。"
+        }
+      ],
+      "total": 70.7
+    },
+    {
+      "anonymous": "C04",
+      "logic": 73,
+      "humanity": 79,
+      "quality": 68,
+      "strengths": [
+        "纠错通常具体，接受じゃありません、わたしのです、あそこです等合理表达。",
+        "第1课新手提示使用可延续到评分，第8轮均按要求结束。"
+      ],
+      "weaknesses": [
+        "第2课新手新场景先说教师桌上有伞，随后又说“你桌上那把伞”，让空间任务自相矛盾。",
+        "第1课新手设定“你是老师”却要求说“我不是老师”，有不必要的事实矛盾；第2课熟练型反馈又说词典在我手里却离你近。",
+        "部分短解释请求后仍加题，且第3课熟练型把请求短解释记为0分。"
+      ],
+      "evidence": [
+        {
+          "lessonId": "lesson-1",
+          "scenarioId": "beginner",
+          "turn": 6,
+          "note": "设定你是老师，却让学生说我不是老师；第7轮usedHint=true体现有提示而非完全独立。"
+        },
+        {
+          "lessonId": "lesson-1",
+          "scenarioId": "overconfident",
+          "turn": 6,
+          "note": "只给词块大学/の/先生和句型，虽然支持偏多，但没有直接输出完整句。"
+        },
+        {
+          "lessonId": "lesson-2",
+          "scenarioId": "beginner",
+          "turn": 6,
+          "note": "同一题先把伞放教师桌上，后又称在学生桌上；第7轮按后半条件纠正学生，不能证明前一题清晰。"
+        },
+        {
+          "lessonId": "lesson-2",
+          "scenarioId": "overconfident",
+          "turn": 7,
+          "note": "前一轮明确词典在教师手里且离学生远，反馈却写“词典在我手里、离你近”，空间说明不一致。"
+        },
+        {
+          "lessonId": "lesson-3",
+          "scenarioId": "beginner",
+          "turn": 5,
+          "note": "先给简短区分，但在学生说累后仍附一个待答题。"
+        },
+        {
+          "lessonId": "lesson-3",
+          "scenarioId": "overconfident",
+          "turn": 5,
+          "note": "学生请求短解释而未提交新答案，score=0；第7轮对选择问句及食堂です的评价本身正确。"
+        }
+      ],
+      "total": 73.3
+    },
+    {
+      "anonymous": "C05",
+      "logic": 84,
+      "humanity": 85,
+      "quality": 81,
+      "strengths": [
+        "纠错、当前问题和迁移练习衔接总体自然，多次按要求缩短，不把错答当掌握。",
+        "明确说明当堂回忆不是隔天测试；第1课熟练型主动承认上一题是提示后答对。",
+        "合理接受等价与省略表达，六个停止请求均结束，复习安排具体但不强迫当场继续。"
+      ],
+      "weaknesses": [
+        "第1课熟练型第7轮文字承认提示后答对，usedHint却为false；其他模板后作答也有类似标记不一致。",
+        "第3课熟练型对仅要求短解释的输入给了1分，且用户想回答选择问句，却被要求生成问句。",
+        "第2课新手的追加视角题把教师自己桌边的伞用中文描述为“那是伞”，容易给距离暗示；部分回应仍可更短。"
+      ],
+      "evidence": [
+        {
+          "lessonId": "lesson-1",
+          "scenarioId": "beginner",
+          "turn": 7,
+          "note": "明确叫“当堂回忆，不是隔天测试”，避免伪称完成间隔复习。"
+        },
+        {
+          "lessonId": "lesson-1",
+          "scenarioId": "overconfident",
+          "turn": 7,
+          "note": "主动指出之前给过の和句尾提示，因此不当独立回忆；但结构化usedHint=false与文字冲突。"
+        },
+        {
+          "lessonId": "lesson-2",
+          "scenarioId": "beginner",
+          "turn": 6,
+          "note": "分开站位、物品位置明确，每次只要求一句，适合新手；第7轮另换视角有中文远近暗示歧义。"
+        },
+        {
+          "lessonId": "lesson-2",
+          "scenarioId": "overconfident",
+          "turn": 8,
+          "note": "收束时明确当堂表现不等于隔天长期记忆，并留待下次检验。"
+        },
+        {
+          "lessonId": "lesson-3",
+          "scenarioId": "beginner",
+          "turn": 5,
+          "note": "一句区分ここ/これ后允许停下，没有额外灌输；第6轮校园问路任务清楚。"
+        },
+        {
+          "lessonId": "lesson-3",
+          "scenarioId": "overconfident",
+          "turn": 5,
+          "note": "仅请求简短解释的回合被score=1；第6轮把“我要回答二选一”转成“请问一句”，目标接合不足。"
+        }
+      ],
+      "total": 83.3
+    },
+    {
+      "anonymous": "C06",
+      "logic": 75,
+      "humanity": 77,
+      "quality": 62,
+      "strengths": [
+        "肯否最小对比与形式纠错大多清晰，能接受语境中的话题省略。",
+        "第3课疲劳响应简洁，六场景最终均停止。"
+      ],
+      "weaknesses": [
+        "第2课新手将听话者桌上的伞误判为离双方都远，接受学生错误「あれは傘です」并给2分，是最严重的教学错误。",
+        "第1课熟练型用早先自己设定的公司职员身份限定新探针，直接把はい、そうです判0，缺少对当前问题是一般表达咨询的区分。",
+        "一些新手轮次同时出两题，提示标记与答题证据衔接仍弱。"
+      ],
+      "evidence": [
+        {
+          "lessonId": "lesson-1",
+          "scenarioId": "beginner",
+          "turn": 5,
+          "note": "只抓です不能和ありません叠加这一点，且确认学生后续じゃありません正确。"
+        },
+        {
+          "lessonId": "lesson-1",
+          "scenarioId": "overconfident",
+          "turn": 4,
+          "note": "先承认表达可以，再按先前教师设定身份说不合适并score=0；固定探针与上下文存在冲突，应澄清而非简单判错。"
+        },
+        {
+          "lessonId": "lesson-2",
+          "scenarioId": "beginner",
+          "turn": 7,
+          "note": "前一轮伞明确在教师桌上且教师站该桌旁，却称伞离双方都远并给「あれ」2分。"
+        },
+        {
+          "lessonId": "lesson-2",
+          "scenarioId": "overconfident",
+          "turn": 3,
+          "note": "学生说自己发话、教师拿伞，回应却改写成学生拿伞、教师发话，视角处理不稳。"
+        },
+        {
+          "lessonId": "lesson-3",
+          "scenarioId": "beginner",
+          "turn": 6,
+          "note": "双方站校门、图书馆在远处，要求回答位置；第7轮接受あそこです合理。"
+        },
+        {
+          "lessonId": "lesson-3",
+          "scenarioId": "overconfident",
+          "turn": 6,
+          "note": "用户想回答二选一，教师改为要求生成问句，削弱本次目标匹配。"
+        }
+      ],
+      "total": 71.3
+    },
+    {
+      "anonymous": "C07",
+      "logic": 68,
+      "humanity": 75,
+      "quality": 51,
+      "strengths": [
+        "对基本形式错误的局部纠正可操作，暂停后没有再要求学生当场作答。",
+        "第1课能提醒上一轮是照着示范改写，而非充分独立练习。"
+      ],
+      "weaknesses": [
+        "第2课熟练型正确それ被给1分；声称伞在对方手里却离双方都远，错误地推荐あれ。",
+        "第3课熟练型正确完整回答因未省话题被给1分；总结声称学生会用未实际答出的も新句。",
+        "经常把一次一个问题扩大为两句复述或多任务，迁移题仍大量给句尾和核心词，互动较机械。"
+      ],
+      "evidence": [
+        {
+          "lessonId": "lesson-1",
+          "scenarioId": "beginner",
+          "turn": 6,
+          "note": "所谓不同身份迁移仍让学生说原来反复练过的公司职员，并给主语和否定结尾，区分度较低。"
+        },
+        {
+          "lessonId": "lesson-1",
+          "scenarioId": "overconfident",
+          "turn": 5,
+          "note": "在要求仅一个对比例子时转成照读完整否定答案，更多是模仿而非诊断。"
+        },
+        {
+          "lessonId": "lesson-2",
+          "scenarioId": "beginner",
+          "turn": 6,
+          "note": "用户要选词并说一句，却一次布置词典句及所属问句；还有两件词典的场景切换。"
+        },
+        {
+          "lessonId": "lesson-2",
+          "scenarioId": "overconfident",
+          "turn": 4,
+          "note": "伞在听话者手里的明确场景中，把正确それ降为1分，错误说“离对方也远”，推荐あれ。"
+        },
+        {
+          "lessonId": "lesson-3",
+          "scenarioId": "beginner",
+          "turn": 5,
+          "note": "疲劳时只用一句分清これ/ここ并主动停，处理合适。"
+        },
+        {
+          "lessonId": "lesson-3",
+          "scenarioId": "overconfident",
+          "turn": 7,
+          "note": "这里是图书馆的完整正确回答仅因不够简短被score=1；第8轮把尚未回答的そこも図書館です说成已会。"
+        }
+      ],
+      "total": 64.7
+    },
+    {
+      "anonymous": "C08",
+      "logic": 75,
+      "humanity": 79,
+      "quality": 61,
+      "strengths": [
+        "循序撤掉模板的意图可见，基本形式解释与话题省略接受较好。",
+        "第3课疲劳时能停下，六个停止请求均得到尊重。"
+      ],
+      "weaknesses": [
+        "第2课熟练型反复混淆谁拿伞及离谁近，虽然下一轮能给正确一般规则，但具体上下文不稳。",
+        "第3课正确完整答句因未省略ここは被给1分。",
+        "提示后答对的usedHint标记、已掌握表述偏乐观；部分说“先不用答新题”后又立刻追问。"
+      ],
+      "evidence": [
+        {
+          "lessonId": "lesson-1",
+          "scenarioId": "beginner",
+          "turn": 5,
+          "note": "口头说先不用答新题，随即要求回答否定应保留还是替换です；减负承诺执行不彻底。"
+        },
+        {
+          "lessonId": "lesson-1",
+          "scenarioId": "overconfident",
+          "turn": 7,
+          "note": "称“这一轮真正掌握”两点，然而は的边界没有新作答证明，表述超过观察。"
+        },
+        {
+          "lessonId": "lesson-2",
+          "scenarioId": "beginner",
+          "turn": 6,
+          "note": "各自桌旁及词典/伞位置明确，单句任务负担合适。"
+        },
+        {
+          "lessonId": "lesson-2",
+          "scenarioId": "overconfident",
+          "turn": 3,
+          "note": "原场景教师拿伞，回应写成伞在学生手里；第5轮又说东西在对方手里、离你近就用それ，指代说明矛盾。"
+        },
+        {
+          "lessonId": "lesson-3",
+          "scenarioId": "beginner",
+          "turn": 5,
+          "note": "用一句区分后提出休息，不再罗列整表。"
+        },
+        {
+          "lessonId": "lesson-3",
+          "scenarioId": "overconfident",
+          "turn": 7,
+          "note": "学生ここは図書館です本身正确，教师仅建议更简短，却score=1。"
+        }
+      ],
+      "total": 71.7
+    },
+    {
+      "anonymous": "C09",
+      "logic": 75,
+      "humanity": 80,
+      "quality": 63,
+      "strengths": [
+        "对当轮问题通常先回应，基本否定、所属省略和地点句解释清楚。",
+        "第2课熟练型交换为第三人B说话，角色与物体位置明确；暂停得到尊重。"
+      ],
+      "weaknesses": [
+        "第2课新手在解释所属省略时主动加入错误指示词规则：伞在教师这边才用あれ，并要求学生指手中伞用それ。",
+        "第3课新手迁移突然使用未教过的教学楼，学生沿用中文后被扣分，先备词汇安排不足。",
+        "第3课熟练型完整正确答句只因未省话题得1分，且迁移任务常扩为两句与新词。"
+      ],
+      "evidence": [
+        {
+          "lessonId": "lesson-1",
+          "scenarioId": "beginner",
+          "turn": 5,
+          "note": "确认じゃありません正确，缩到单一错误，并允许暂缓新内容。"
+        },
+        {
+          "lessonId": "lesson-1",
+          "scenarioId": "overconfident",
+          "turn": 7,
+          "note": "在正确身份句后立刻加入店长、この店等新词与两句任务，负担上升。"
+        },
+        {
+          "lessonId": "lesson-2",
+          "scenarioId": "beginner",
+          "turn": 4,
+          "note": "先正确接受わたしのです，随后把伞在教师这边讲成あれ，并让持伞的学生用それ提问，核心视角错误。"
+        },
+        {
+          "lessonId": "lesson-2",
+          "scenarioId": "overconfident",
+          "turn": 6,
+          "note": "明确B说话、B拿词典、学生听话；第7轮肯定これは辞書ですか合理。"
+        },
+        {
+          "lessonId": "lesson-3",
+          "scenarioId": "beginner",
+          "turn": 6,
+          "note": "要求说教学楼却未提供相应日语词，第7轮才补教室棟并给1分。"
+        },
+        {
+          "lessonId": "lesson-3",
+          "scenarioId": "overconfident",
+          "turn": 7,
+          "note": "学生ここは食堂です内容完整正确，因可简答食堂です而被score=1。"
+        }
+      ],
+      "total": 72.7
+    },
+    {
+      "anonymous": "C10",
+      "logic": 79,
+      "humanity": 84,
+      "quality": 71,
+      "strengths": [
+        "解释语气温和，能在明确要求两句话或一句话时明显缩短；停止回合收束较简洁。",
+        "大多数等价答案判定公允，主要语法纠错与简单场景任务连贯。"
+      ],
+      "weaknesses": [
+        "第2课新手追加视角题中，教师指自己桌上的伞却只给それ/あれ两选项，漏了正确これ，是明显坏题。",
+        "第1课新手所谓独立迁移是给完整模板和指定填词，学生照填后仍说自己用对，独立性记录不足。",
+        "部分要求“回答二选一”被改成“生成问句”；总结偶有过度认定学生已分清未独立验证的内容。"
+      ],
+      "evidence": [
+        {
+          "lessonId": "lesson-1",
+          "scenarioId": "beginner",
+          "turn": 6,
+          "note": "给出わたしは＿＿じゃありません且指定空填学生，几乎完整泄露目标句；第7轮usedHint=false。"
+        },
+        {
+          "lessonId": "lesson-1",
+          "scenarioId": "overconfident",
+          "turn": 6,
+          "note": "新增この会社但有读音和释义支撑，の的组句任务基本清楚。"
+        },
+        {
+          "lessonId": "lesson-2",
+          "scenarioId": "beginner",
+          "turn": 7,
+          "note": "教师指自己桌上的伞，要求在それ/あれ中选，正确选项これ被排除。"
+        },
+        {
+          "lessonId": "lesson-2",
+          "scenarioId": "overconfident",
+          "turn": 5,
+          "note": "准确用两句话指出听话者距离这一遗漏条件，没有继续增加术语。"
+        },
+        {
+          "lessonId": "lesson-3",
+          "scenarioId": "beginner",
+          "turn": 5,
+          "note": "一句区分ここ与これ并允许休息；第6轮新场景仍能用已教词句完成。"
+        },
+        {
+          "lessonId": "lesson-3",
+          "scenarioId": "overconfident",
+          "turn": 6,
+          "note": "学生希望自己回答二选一，教师要求生成选择问句，任务意图没有完全接住。"
+        }
+      ],
+      "total": 78
+    }
+  ],
+  "conclusion": "本次独立盲审最高为C05（83.3），其次C01（79.3）与C10（78.0）。C05在当堂回忆/长期记忆区分、具体复习衔接和回应疲劳方面较稳，但仍有提示标记不一致和非作答请求被赋分的问题。10个候选在全部已检查第8轮均尊重明确停课，没有继续要求回答新题。主要共同风险是：把表达风格偏好变成扣分、指示词空间视角在代词切换时出错、提示后答案被当成独立表现。没有候选被本审查判定为持续重复同一核心错误而完全未能给出正确规则，故未机械套用quality≤40上限；具体严重错误已显著扣分。排名是这一有限模拟样本中的行为判断，不能宣称真人教学最优。应保留原始证据，并对胜出方案做新场景复测；主程序应把当前作答、提示历史和分数归属从纯生成文本中分开维护。"
+}

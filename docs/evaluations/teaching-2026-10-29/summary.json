@@ -1,0 +1,202 @@
+{
+  "date": "2026-10-29",
+  "scope": "新版标准日本语初级上第1–3课",
+  "model": "deepseek-flash",
+  "runs": [
+    {
+      "directory": "2026-10-29T02-51-49-417Z",
+      "hash": "e4451228784da554a1f55a659d2eb3c74c2e863ab298780a2bab3df62c9ea3a8"
+    },
+    {
+      "directory": "2026-10-29T02-56-41-274Z",
+      "hash": "6fced7e47105620b26742d51047d5a88457d65ab10e2cd00a07851339165f2bd"
+    }
+  ],
+  "maxConcurrency": 10,
+  "scenarios": 120,
+  "teacherDialogueTurns": 960,
+  "judgeRatings": 240,
+  "apiCalls": 1578,
+  "tokens": 2608618,
+  "evaluationFormatRepairs": 1,
+  "teacherMedianMs": 1667,
+  "teacherP95Ms": 2143,
+  "ranking": [
+    {
+      "id": "retrieval",
+      "name": "主动回忆与交错",
+      "anonymous": "C05",
+      "logic": 80.33333333333334,
+      "humanity": 83.75,
+      "quality": 80.79166666666667,
+      "total": 81.625,
+      "meanScenarioMs": 25820.333333333336,
+      "roundTotals": [
+        81.83333333333333,
+        81.41666666666667
+      ],
+      "worstScenario": 79.66666666666667,
+      "completed": 12,
+      "scenarios": 12
+    },
+    {
+      "id": "fading",
+      "name": "示范渐隐",
+      "anonymous": "C08",
+      "logic": 79.25,
+      "humanity": 82.875,
+      "quality": 79.95833333333334,
+      "total": 80.69444444444446,
+      "meanScenarioMs": 26943.333333333336,
+      "roundTotals": [
+        79.94444444444444,
+        81.44444444444446
+      ],
+      "worstScenario": 77,
+      "completed": 12,
+      "scenarios": 12
+    },
+    {
+      "id": "mastery",
+      "name": "掌握后推进",
+      "anonymous": "C02",
+      "logic": 79.16666666666666,
+      "humanity": 82.83333333333334,
+      "quality": 80.04166666666667,
+      "total": 80.68055555555557,
+      "meanScenarioMs": 28060.333333333336,
+      "roundTotals": [
+        79.97222222222223,
+        81.3888888888889
+      ],
+      "worstScenario": 77.5,
+      "completed": 12,
+      "scenarios": 12
+    },
+    {
+      "id": "socratic",
+      "name": "引导发现",
+      "anonymous": "C01",
+      "logic": 78.875,
+      "humanity": 82.5,
+      "quality": 80.125,
+      "total": 80.5,
+      "meanScenarioMs": 27985,
+      "roundTotals": [
+        80.05555555555556,
+        80.94444444444444
+      ],
+      "worstScenario": 77.16666666666667,
+      "completed": 12,
+      "scenarios": 12
+    },
+    {
+      "id": "contrast",
+      "name": "错因辨析",
+      "anonymous": "C06",
+      "logic": 79.125,
+      "humanity": 82.41666666666667,
+      "quality": 79.70833333333334,
+      "total": 80.41666666666669,
+      "meanScenarioMs": 26745.583333333332,
+      "roundTotals": [
+        79.8888888888889,
+        80.94444444444446
+      ],
+      "worstScenario": 74.83333333333333,
+      "completed": 12,
+      "scenarios": 12
+    },
+    {
+      "id": "direct",
+      "name": "讲解—练习—应用",
+      "anonymous": "C04",
+      "logic": 79.16666666666666,
+      "humanity": 82.08333333333334,
+      "quality": 79.33333333333333,
+      "total": 80.19444444444443,
+      "meanScenarioMs": 26571.083333333336,
+      "roundTotals": [
+        80.75,
+        79.63888888888887
+      ],
+      "worstScenario": 76.33333333333333,
+      "completed": 12,
+      "scenarios": 12
+    },
+    {
+      "id": "task",
+      "name": "情境任务",
+      "anonymous": "C09",
+      "logic": 78.75,
+      "humanity": 82.25,
+      "quality": 79.16666666666667,
+      "total": 80.05555555555557,
+      "meanScenarioMs": 27436.833333333332,
+      "roundTotals": [
+        79.22222222222223,
+        80.8888888888889
+      ],
+      "worstScenario": 77,
+      "completed": 12,
+      "scenarios": 12
+    },
+    {
+      "id": "team",
+      "name": "教练—教师协作",
+      "anonymous": "C07",
+      "logic": 78.375,
+      "humanity": 82.125,
+      "quality": 78.33333333333334,
+      "total": 79.61111111111111,
+      "meanScenarioMs": 36669.25,
+      "roundTotals": [
+        80.8611111111111,
+        78.36111111111111
+      ],
+      "worstScenario": 71.66666666666667,
+      "completed": 12,
+      "scenarios": 12
+    },
+    {
+      "id": "adaptive",
+      "name": "自适应支架",
+      "anonymous": "C10",
+      "logic": 77.91666666666666,
+      "humanity": 82.5,
+      "quality": 78.16666666666667,
+      "total": 79.52777777777779,
+      "meanScenarioMs": 27319.333333333336,
+      "roundTotals": [
+        79.16666666666667,
+        79.8888888888889
+      ],
+      "worstScenario": 70.5,
+      "completed": 12,
+      "scenarios": 12
+    },
+    {
+      "id": "teachback",
+      "name": "学生复述教学",
+      "anonymous": "C03",
+      "logic": 77.5,
+      "humanity": 80.58333333333334,
+      "quality": 77,
+      "total": 78.36111111111111,
+      "meanScenarioMs": 28262.5,
+      "roundTotals": [
+        78.8611111111111,
+        77.86111111111113
+      ],
+      "worstScenario": 70.16666666666667,
+      "completed": 12,
+      "scenarios": 12
+    }
+  ],
+  "selection": "两轮所有场景/评委三维等权平均；独立盲审另列，不事后改权重。差距小，不据此宣称统计显著或真人长期记忆最优。",
+  "limitations": [
+    "模拟学生不能代表真人记忆收益",
+    "两位自动评委使用相同模型，存在相关偏差，另做匿名人工式复核",
+    "知识范围自编，不是教材正文或完整逐课覆盖"
+  ]
+}

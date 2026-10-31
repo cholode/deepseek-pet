@@ -1,0 +1,44 @@
+{
+  "checks": [
+    {
+      "lesson": "第1课 李さんは中国人です：身份介绍",
+      "method": "retrieval",
+      "score": 2,
+      "controlNotGraded": true,
+      "hintTracked": true,
+      "deduplicated": true,
+      "paused": true,
+      "reflection": true,
+      "externalWrites": 0
+    },
+    {
+      "lesson": "第2课 これは本です：指示物品与所属",
+      "method": "retrieval",
+      "score": 2,
+      "controlNotGraded": true,
+      "hintTracked": true,
+      "deduplicated": true,
+      "paused": true,
+      "reflection": true,
+      "externalWrites": 0
+    },
+    {
+      "lesson": "第3课 ここはデパートです：地点介绍与询问",
+      "method": "retrieval",
+      "score": 2,
+      "controlNotGraded": true,
+      "hintTracked": true,
+      "deduplicated": true,
+      "paused": true,
+      "reflection": true,
+      "externalWrites": 0
+    }
+  ],
+  "calls": 33,
+  "realModel": true,
+  "model": "deepseek-flash",
+  "noVoice": true,
+  "noWindows": true,
+  "scriptedAnswers": true,
+  "restart": true
+}
