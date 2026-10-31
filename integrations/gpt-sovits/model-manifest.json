@@ -1,0 +1,37 @@
+[
+  {
+    "repo": "lj1995/GPT-SoVITS",
+    "revision": "8f8857563c040d542de108a2c18b0425abd6c9c5",
+    "name": "chinese-hubert-base/pytorch_model.bin",
+    "size": 188811417,
+    "sha256": "24164f129c66499d1346e2aa55f183250c223161ec2770c0da3d3b08cf432d3c"
+  },
+  {
+    "repo": "lj1995/GPT-SoVITS",
+    "revision": "8f8857563c040d542de108a2c18b0425abd6c9c5",
+    "name": "chinese-roberta-wwm-ext-large/pytorch_model.bin",
+    "size": 651225145,
+    "sha256": "e53a693acc59ace251d143d068096ae0d7b79e4b1b503fa84c9dcf576448c1d8"
+  },
+  {
+    "repo": "lj1995/GPT-SoVITS",
+    "revision": "8f8857563c040d542de108a2c18b0425abd6c9c5",
+    "name": "sv/pretrained_eres2netv2w24s4ep4.ckpt",
+    "size": 107528697,
+    "sha256": "4f5a0bf73c61eb41b174e1bb54e7ee3c83233892be8e0af1f187024e8e581a35"
+  },
+  {
+    "repo": "XXXXRT/GPT-SoVITS-Pretrained",
+    "revision": "0c47645e02a7bc3688d7b263b0042c81e3cd82cd",
+    "name": "nltk_data.zip",
+    "size": 9924448,
+    "sha256": "eb3ec26ace3f9ccbb08a6d333e26f0941c47e230ece0717dc992bdb7e99808dd"
+  },
+  {
+    "repo": "baicai1145/g2pw",
+    "revision": "57112a7c10b49c26a171800cf4af04d32a41d5de",
+    "name": "g2pw.pth",
+    "size": 637591350,
+    "sha256": "e169c3262aa6314df230f7005f131561f9616a472560cf5c623f00264a17e6b8"
+  }
+]

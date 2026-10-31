@@ -1,0 +1,34 @@
+{
+  "ok": true,
+  "model": "deepseek-flash",
+  "elapsedMs": 1078,
+  "reply": {
+    "id": "2ab22c27-beb6-4ee5-bc05-76b3895dd82f",
+    "at": 1793328629998,
+    "source": "desktop",
+    "actor": "pet",
+    "conversationId": "desktop",
+    "sessionId": "b0e28689-7d96-4df9-9222-e714841a6873",
+    "text": "你愿意练，就已经很棒啦。私は学生です。意思是：我是学生。",
+    "speechSegments": [
+      {
+        "language": "zh",
+        "text": "你愿意练，就已经很棒啦。",
+        "emotion": "happy"
+      },
+      {
+        "language": "ja",
+        "text": "私は学生です。",
+        "emotion": "neutral"
+      },
+      {
+        "language": "zh",
+        "text": "意思是：我是学生。",
+        "emotion": "neutral"
+      }
+    ],
+    "causeId": "b0e28689-7d96-4df9-9222-e714841a6873"
+  },
+  "realModel": true,
+  "playedAudio": false
+}

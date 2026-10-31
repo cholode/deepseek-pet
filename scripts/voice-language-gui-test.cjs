@@ -67,12 +67,12 @@ const assert = require('node:assert/strict');
     check(realVoicevox ? '按需启动真实 VOICEVOX 并确认雨晴はう的普通音色' : '保存中日分声设置并确认角色列表');
     await panel.getByRole('button', { name: '试听中日切换', exact: true }).click(); await panel.getByText('试听结束', { exact: true }).waitFor({ timeout: 60000 });
     const previewLog = await panel.evaluate(() => window.voiceLanguageLog);
-    assert.deepEqual(previewLog.map(item => item.type), ['system-start', 'system-end', 'audio-start', 'audio-end', 'audio-start', 'audio-end', 'audio-start', 'audio-end', 'system-start', 'system-end']);
+    assert.deepEqual(previewLog.map(item => item.type), ['system-start', 'system-end', 'audio-start', 'audio-end', 'audio-start', 'audio-end', 'system-start', 'system-end']);
     assert.match(previewLog[0].voice, /Microsoft/); assert.match(previewLog[0].language, /^zh/);
-    check('真实微软中文 → 三句日语 WAV → 微软中文依次播放完毕，无声音重叠');
+    check('真实微软中文 → 两句日语 WAV → 微软中文依次播放完毕，无声音重叠');
     if (!realVoicevox) {
       assert.equal(queryTimeline[0].text, 'こんにちは。'); assert.ok(queryTimeline[0].at < previewLog[1].at);
-      assert.ok(queryTimeline[1].at < previewLog[3].at); assert.ok(queryTimeline[2].at < previewLog[5].at);
+      assert.ok(queryTimeline[1].at < previewLog[3].at);
       check('后句在前句播放结束前开始合成，中文与日语切换也有预取');
     }
     await panel.getByLabel('试听语言', { exact: true }).selectOption('ja'); await panel.getByLabel('试听文字', { exact: true }).fill('こんにちは。これが私の声です。');
@@ -82,7 +82,7 @@ const assert = require('node:assert/strict');
     await panel.getByRole('button', { name: '和她聊天', exact: true }).click(); await panel.getByLabel('对大肥鱼说').fill('教我先生这个日语词'); await panel.getByRole('button', { name: '发送', exact: true }).click();
     await wait(async () => (await pet.evaluate(() => window.voiceLanguageLog)).filter(item => item.type === 'system-end').length === 2, '聊天中日语音');
     const log = await pet.evaluate(() => window.voiceLanguageLog); assert.deepEqual(log.map(item => item.type), ['system-start', 'system-end', 'audio-start', 'audio-end', 'system-start', 'system-end']);
-    assert.match(prompts[0].content, /<voice lang="ja">/);
+    assert.match(prompts[0].content, /<voice lang="ja" emotion="happy">/);
     const state = await panel.evaluate(async () => (await window.pet.companion({ type: 'state' })).state);
     const event = state.data.events.find(item => item.actor === 'pet'); assert.equal(event.text, '今天练习：先生，意思是老师。'); assert.deepEqual(event.speechSegments.map(segment => segment.language), ['zh', 'ja', 'zh']);
     assert.equal((await panel.locator('body').innerText()).includes('<voice'), false);

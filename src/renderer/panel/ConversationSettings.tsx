@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { voiceDefaults, type VoiceConfig, type VoiceSecrets, type VoiceSecretName, type VoiceState } from '../../shared/voice';
+import { usesVoicevox, voiceDefaults, type VoiceConfig, type VoiceSecrets, type VoiceSecretName, type VoiceState } from '../../shared/voice';
 import { VoiceInput } from '../voice/VoiceInput';
 import { VoicePlayer } from '../voice/player';
 import type { SpeechLanguage } from '../../shared/speech-language';
@@ -29,13 +29,23 @@ export function ConversationSettings() {
   }
   async function preview(mixed = false) {
     const current = ++playback.current; player.current.stop(); setPlaying(true); setNote('正在合成并播放试听…');
-    const segments = mixed ? [{ language: 'zh' as const, text: '今天一起练习日语吧。' }, { language: 'ja' as const, text: 'こんにちは。雨晴はうです。一緒に日本語を勉強しましょう。' }, { language: 'zh' as const, text: '轮到你啦。' }] : undefined;
+    const segments = mixed ? [{ language: 'zh' as const, text: '今天一起练习日语吧。' }, { language: 'ja' as const, text: 'こんにちは。一緒に日本語を勉強しましょう。' }, { language: 'zh' as const, text: '轮到你啦。' }] : undefined;
     try { await player.current.speak(testText, true, segments, testLanguage); if (mounted.current && playback.current === current) setNote('试听结束'); } catch (error) { if (mounted.current && playback.current === current) setNote(error instanceof Error ? error.message : '试听失败'); }
     finally { if (mounted.current && playback.current === current) setPlaying(false); }
   }
   async function chooseVoicevox() {
     try { const result = await window.pet.voice({ type: 'voicevox-directory' }); if (!result.ok) throw new Error(result.message); if (result.directory) changeTts({ voicevox: { ...config.tts.voicevox, directory: result.directory, autoStart: true } }); }
     catch (error) { setNote(error instanceof Error ? error.message : '选择目录失败'); }
+  }
+  async function gptAction(type: 'gpt-sovits-directory' | 'gpt-sovits-check') {
+    setChecking(true); setNote(type === 'gpt-sovits-check' ? '正在加载本地 GPT-SoVITS 模型…' : '');
+    try {
+      const result = await window.pet.voice({ type }); if (!result.ok) throw new Error(result.message);
+      if (!mounted.current) return;
+      if (result.directory) changeTts({ gptSovits: { ...config.tts.gptSovits, directory: result.directory, autoStart: true } });
+      if (result.message) setNote(result.message);
+    } catch (error) { if (mounted.current) setNote(error instanceof Error ? error.message : 'GPT-SoVITS 连接失败'); }
+    finally { if (mounted.current) setChecking(false); }
   }
   async function checkVoicevox() {
     setChecking(true); setNote('正在连接 VOICEVOX…');
@@ -55,6 +65,24 @@ export function ConversationSettings() {
     const candidates = config.tts.mode === 'language' ? voices.filter(v => /^zh(?:-|_)/i.test(v.lang) && /Microsoft/i.test(v.name)) : voices;
     return <><label>{config.tts.mode === 'language' ? '中文 · 微软本地声音' : '系统声音'}<select aria-label="系统声音" value={config.tts.systemVoice} onChange={e => changeTts({ systemVoice: e.target.value })}><option value="">自动选择{config.tts.mode === 'language' ? '微软中文' : '本地'}声音</option>{candidates.map(voice => <option key={voice.voiceURI} value={voice.voiceURI}>{voice.name} · {voice.lang}</option>)}</select></label><small>无需 API Key，使用 Windows 已安装的本地声音。</small></>;
   }
+  function gptSovitsFields() {
+    const value = config.tts.gptSovits;
+    const update = (patch: Partial<typeof value>) => changeTts({ gptSovits: { ...value, ...patch } });
+    return <>
+      <label>GPT-SoVITS 服务目录<input aria-label="GPT-SoVITS 服务目录" readOnly value={value.directory} placeholder="选择已安装的本地语音服务文件夹"/></label>
+      <div className="companion-inline"><button onClick={() => void gptAction('gpt-sovits-directory')}>选择 GPT-SoVITS 目录</button><button disabled={dirty} onClick={() => void gptAction('gpt-sovits-check')}>检查本地声音</button></div>
+      <label>GPT-SoVITS 地址<input aria-label="GPT-SoVITS 地址" value={value.url} onChange={e => update({ url: e.target.value })}/></label>
+      <label>参考音色情绪<select aria-label="参考音色情绪" value={value.voice} onChange={e => update({ voice: e.target.value })}>{[['neutral', '中立'], ['happy', '开心'], ['sad', '难过'], ['angry', '生气'], ['surprised', '吃惊'], ['afraid', '恐惧'], ['disgusted', '厌恶']].map(([id, label]) => <option key={id} value={id}>{label}</option>)}</select><small>使用音色包中的对应参考音频，实际表现以试听为准。</small></label>
+      <label className="companion-check"><input aria-label="按需启动 GPT-SoVITS" type="checkbox" checked={value.autoStart} onChange={e => update({ autoStart: e.target.checked })}/>自动启动并提前准备本地 GPT-SoVITS</label>
+      {config.tts.mode === 'language' && <label className="companion-check"><input aria-label="日文使用同一音色" type="checkbox" checked={value.japanese} onChange={e => update({ japanese: e.target.checked })}/>日文也使用这个 GPT-SoVITS 音色</label>}
+      <label className="companion-check"><input aria-label="自动选择语音情绪" type="checkbox" checked={value.autoEmotion} onChange={e => update({ autoEmotion: e.target.checked })}/>根据每句话自动选择情绪</label>
+      <small>普通续句沿用前一句的声音，明确出现新情绪才切换参考音频，避免一句话里频繁换声；试听使用上面选定的情绪。中文训练的音色可以跨语言合成，日语发音请以试听为准。</small>
+      <label>语音合成 CPU 线程数<input aria-label="中文合成 CPU 线程数" type="number" min="1" max="64" value={value.cpuThreads} onChange={e => update({ cpuThreads: Number(e.target.value) })}/></label>
+      <label>同时合成句数<input aria-label="同时合成句数" type="number" min="1" max="4" value={value.workers} onChange={e => update({ workers: Number(e.target.value) })}/><small>独立进程并发计算，按原句序播放；CPU 线程总数在进程间分配。并发数越大，内存占用越高。</small></label>
+      <label>合成设备<select aria-label="GPT-SoVITS 合成设备" value={value.device} onChange={e => update({ device: e.target.value as typeof value.device })}><option value="auto">自动（优先采用本机实测推荐）</option><option value="cpu">CPU</option><option value="cuda">GPU（CUDA / ROCm）</option></select><small>GPU 需要匹配的运行环境；核显不一定更快。自动模式采用本机实测推荐；没有推荐时优先可用 GPU，否则使用 CPU。</small></label>
+      <small>开启自动朗读后，打开大肥鱼就提前加载模型和默认参考音，不等第一条回复才启动。模型保留在本机；退出时关闭由它启动的服务。切换音色、修改线程数后请保存再试听。</small>
+    </>;
+  }
   function serviceFields(kind: 'tts' | 'asr') {
     const source = config[kind].source; const value = config[kind][source]; const title = kind === 'tts' ? '朗读' : '识别';
     const secret: VoiceSecretName = `${kind}${source === 'local' ? 'Local' : 'Cloud'}`;
@@ -69,9 +97,10 @@ export function ConversationSettings() {
   return <div className="companion-settings conversation-settings">
     <p className="companion-help">设置对话间隔、大肥鱼的声音与语音输入。录音只在你点击后开始，聊天中的语音识别成功后自动发送；这里的识别测试只显示文字。语音由 AI 合成。</p>
     {(note || state?.error) && <div className="notice" role="status">{note || state?.error}</div>}
+    {state?.preparing && <p className="companion-help" role="status">正在提前准备本地声音，完成后可直接朗读…</p>}
     <section className="settings-card" aria-label="TTS 试听"><h3>TTS 试听</h3>
       <label>试听句子<textarea className="voice-test-text" aria-label="试听文字" value={testText} maxLength={1000} placeholder="输入想试听的句子" onChange={e => setTestText(e.target.value)}/></label>
-      {config.tts.mode === 'language' && <label>试听语言<select aria-label="试听语言" value={testLanguage} onChange={e => { const language = e.target.value as SpeechLanguage; setTestLanguage(language); if (['这是我的声音', 'これが私の声です。'].includes(testText)) setTestText(language === 'ja' ? 'これが私の声です。' : '这是我的声音'); }}><option value="zh">中文 · 微软声音</option><option value="ja">日文 · 雨晴はう</option></select></label>}
+      {config.tts.mode === 'language' && <label>试听语言<select aria-label="试听语言" value={testLanguage} onChange={e => { const language = e.target.value as SpeechLanguage; setTestLanguage(language); if (['这是我的声音', 'これが私の声です。'].includes(testText)) setTestText(language === 'ja' ? 'これが私の声です。' : '这是我的声音'); }}><option value="zh">中文 · {config.tts.languageChinese === 'system' ? '微软声音' : '已选中文声音'}</option><option value="ja">日文 · {usesVoicevox(config.tts) ? '雨晴はう' : '同一 GPT-SoVITS 音色'}</option></select></label>}
       <small>{dirty ? '声音设置有修改，请先保存对话设置后再试听。' : '使用已保存的朗读来源、声音、语速和音量播放，无需开启自动朗读。'}</small>
       <div className="companion-inline"><button disabled={dirty || saving || checking || playing || recording || !testText.trim()} onClick={() => void preview()}>试听声音</button>{config.tts.mode === 'language' && <button disabled={dirty || saving || checking || playing || recording} onClick={() => void preview(true)}>试听中日切换</button>}<button disabled={!playing} onClick={() => { playback.current++; player.current.stop(); setPlaying(false); setNote('已停止试听'); }}>停止试听</button></div>
     </section>
@@ -82,11 +111,17 @@ export function ConversationSettings() {
       </section>
       <section className="settings-card"><h3>语音朗读 · TTS</h3>
         <label className="companion-check"><input aria-label="自动朗读回复" type="checkbox" checked={config.tts.enabled} onChange={e => changeTts({ enabled: e.target.checked })}/>自动朗读大肥鱼的回复</label>
-        <label>声音分配<select aria-label="声音分配" value={config.tts.mode} onChange={e => changeTts({ mode: e.target.value as 'single' | 'language', systemVoice: '' })}><option value="single">所有内容使用同一个声音</option><option value="language">中日分声：微软中文 + 雨晴はう</option></select></label>
+        <label>声音分配<select aria-label="声音分配" value={config.tts.mode} onChange={e => changeTts({ mode: e.target.value as 'single' | 'language', systemVoice: '' })}><option value="single">所有内容使用同一个声音</option><option value="language">分别指定中文和日文（支持同一音色）</option></select></label>
         {config.tts.mode === 'language' ? <>
           <p className="companion-help">聊天模型在生成回复时标注中文和日文，混合句子也按顺序切换。聊天里不显示标注；纯汉字的日语词也由模型判断。漏标时自动补齐，仍失败则保留文字并跳过朗读。</p>
-          {systemVoiceFields()}
-          <h4>日文 · VOICEVOX:雨晴はう（ノーマル）</h4>
+          <label>中文朗读方式<select aria-label="中文朗读方式" value={config.tts.languageChinese === 'system' ? 'system' : config.tts.source === 'cloud' ? 'cloud' : config.tts.localEngine} onChange={e => {
+            const engine = e.target.value;
+            if (engine === 'system') changeTts({ languageChinese: 'system' });
+            else if (engine === 'cloud') changeTts({ languageChinese: 'configured', source: 'cloud' });
+            else changeTts({ languageChinese: 'configured', source: 'local', localEngine: engine as 'http' | 'gpt-sovits' });
+          }}><option value="system">Windows 微软中文</option><option value="gpt-sovits">GPT-SoVITS 本地声音</option><option value="http">本机 TTS 兼容服务</option><option value="cloud">云端 TTS 服务</option></select></label>
+          {config.tts.languageChinese === 'system' || (config.tts.source === 'local' && config.tts.localEngine === 'system') ? systemVoiceFields() : config.tts.source === 'local' && config.tts.localEngine === 'gpt-sovits' ? gptSovitsFields() : serviceFields('tts')}
+          {usesVoicevox(config.tts) && <><h4>日文 · VOICEVOX:雨晴はう（ノーマル）</h4>
           <label>VOICEVOX 地址<input aria-label="VOICEVOX 地址" value={config.tts.voicevox.url} onChange={e => changeTts({ voicevox: { ...config.tts.voicevox, url: e.target.value } })}/><small>本机地址，通常为 http://127.0.0.1:50021。</small></label>
           <label>VOICEVOX 软件目录<input aria-label="VOICEVOX 软件目录" readOnly value={config.tts.voicevox.directory} placeholder="选择已解压的 VOICEVOX 文件夹"/></label>
           <div className="companion-inline"><button onClick={() => void chooseVoicevox()}>选择 VOICEVOX 目录</button><button disabled={dirty} onClick={() => void checkVoicevox()}>检查日语声音</button></div>
@@ -94,15 +129,15 @@ export function ConversationSettings() {
           <label>日语合成设备<select aria-label="日语合成设备" value={config.tts.voicevox.device} onChange={e => changeTts({ voicevox: { ...config.tts.voicevox, device: e.target.value as 'cpu' | 'gpu' } })}><option value="cpu">CPU</option><option value="gpu">GPU / 核显（需要对应引擎）</option></select></label>
           <label>CPU 合成线程数<input aria-label="CPU 合成线程数" type="number" min="0" max="64" step="1" value={config.tts.voicevox.cpuThreads} onChange={e => changeTts({ voicevox: { ...config.tts.voicevox, cpuThreads: Number(e.target.value) } })}/><small>0 为自动，使用逻辑处理器数量的一半，最多 16 线程。线程更多不一定更快。</small></label>
           <small>设备和线程数在保存后、下次自动启动引擎时生效。AMD / Intel 核显使用 DirectML 版 VOICEVOX；手动启动的引擎需在该软件中调整。</small>
-          <small>首次日语朗读可能稍等片刻。只启动所选目录内的语音引擎；退出大肥鱼时关闭由它启动的引擎。已手动打开的 VOICEVOX 会继续运行。</small>
+          <small>首次日语朗读可能稍等片刻。只启动所选目录内的语音引擎；退出大肥鱼时关闭由它启动的引擎。已手动打开的 VOICEVOX 会继续运行。</small></>}
         </> : <>
         <label>朗读来源<select aria-label="朗读来源" value={config.tts.source} onChange={e => changeTts({ source: e.target.value as 'local' | 'cloud' })}><option value="local">本地</option><option value="cloud">云端</option></select></label>
-        {config.tts.source === 'local' && <label>本地朗读方式<select aria-label="本地朗读方式" value={config.tts.localEngine} onChange={e => changeTts({ localEngine: e.target.value as 'system' | 'http' })}><option value="system">Windows 系统声音</option><option value="http">本机 TTS 服务（兼容音频接口）</option></select></label>}
-        {config.tts.source === 'local' && config.tts.localEngine === 'system' ? systemVoiceFields() : serviceFields('tts')}
+        {config.tts.source === 'local' && <label>本地朗读方式<select aria-label="本地朗读方式" value={config.tts.localEngine} onChange={e => changeTts({ localEngine: e.target.value as VoiceConfig['tts']['localEngine'] })}><option value="system">Windows 系统声音</option><option value="http">本机 TTS 服务（兼容音频接口）</option><option value="gpt-sovits">GPT-SoVITS 本地声音</option></select></label>}
+        {config.tts.source === 'local' && config.tts.localEngine === 'system' ? systemVoiceFields() : config.tts.source === 'local' && config.tts.localEngine === 'gpt-sovits' ? gptSovitsFields() : serviceFields('tts')}
         </>}
         <div className="companion-columns"><label>语速：{config.tts.rate.toFixed(1)}×<input aria-label="朗读语速" type="range" min="0.5" max="2" step="0.1" value={config.tts.rate} onChange={e => changeTts({ rate: Number(e.target.value) })}/></label><label>音量：{Math.round(config.tts.volume * 100)}%<input aria-label="朗读音量" type="range" min="0" max="1" step="0.05" value={config.tts.volume} onChange={e => changeTts({ volume: Number(e.target.value) })}/></label></div>
-        <small>回复按句播放，播放前句时提前合成下一句；保持中日切换顺序，停止时一起取消。</small>
-        {config.tts.mode === 'single' && config.tts.source === 'cloud' && <p className="companion-help">朗读时会将回复文本发送到此云端语音服务，可能产生用量费用。聊天模型和语音模型独立配置。</p>}
+        <small>开启朗读后，第一句语音就绪才显示正文；文字随播放逐句展开，同时准备下一句。停止或失败时显示完整回复。</small>
+        {(config.tts.mode === 'single' || config.tts.languageChinese === 'configured') && config.tts.source === 'cloud' && <p className="companion-help">朗读时会将对应文本发送到此云端语音服务，可能产生用量费用。聊天模型和语音模型独立配置。</p>}
       </section>
       <section className="settings-card"><h3>语音识别 · ASR</h3>
         <label className="companion-check"><input aria-label="启用语音输入" type="checkbox" checked={config.asr.enabled} onChange={e => changeAsr({ enabled: e.target.checked })}/>启用聊天中的麦克风按钮</label>

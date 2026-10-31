@@ -1,0 +1,87 @@
+{
+  "health": {
+    "service": "deepblue-gpt-sovits",
+    "protocol": 1,
+    "ready": true,
+    "model": "gpt-sovits-v2proplus",
+    "device": "cpu",
+    "threads": 16,
+    "engine": "cpu-fast",
+    "languages": [
+      "zh",
+      "ja"
+    ],
+    "voices": [
+      {
+        "id": "neutral",
+        "name": "三月七 · 中立"
+      },
+      {
+        "id": "happy",
+        "name": "三月七 · 开心"
+      },
+      {
+        "id": "sad",
+        "name": "三月七 · 难过"
+      },
+      {
+        "id": "angry",
+        "name": "三月七 · 生气"
+      },
+      {
+        "id": "surprised",
+        "name": "三月七 · 吃惊"
+      },
+      {
+        "id": "afraid",
+        "name": "三月七 · 恐惧"
+      },
+      {
+        "id": "disgusted",
+        "name": "三月七 · 厌恶"
+      }
+    ]
+  },
+  "results": [
+    {
+      "name": "ja-greeting",
+      "language": "ja",
+      "voice": "happy",
+      "text": "こんにちは。一緒に日本語を勉強しましょう。",
+      "elapsed": 5.456,
+      "bytes": 202284
+    },
+    {
+      "name": "ja-student",
+      "language": "ja",
+      "voice": "neutral",
+      "text": "私は学生です。",
+      "elapsed": 2.935,
+      "bytes": 98604
+    },
+    {
+      "name": "ja-kanji",
+      "language": "ja",
+      "voice": "neutral",
+      "text": "先生",
+      "elapsed": 1.307,
+      "bytes": 57644
+    },
+    {
+      "name": "zh-happy",
+      "language": "zh",
+      "voice": "happy",
+      "text": "答对啦，今天也一起开心地学习日语吧。",
+      "elapsed": 5.257,
+      "bytes": 201004
+    },
+    {
+      "name": "zh-sad",
+      "language": "zh",
+      "voice": "sad",
+      "text": "没关系，我们慢慢来，再试一次吧。",
+      "elapsed": 6.346,
+      "bytes": 302124
+    }
+  ]
+}

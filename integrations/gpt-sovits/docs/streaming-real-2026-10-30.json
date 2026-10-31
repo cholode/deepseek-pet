@@ -1,0 +1,19 @@
+{
+  "preparedMs": 1102,
+  "records": [
+    {
+      "text": "请直接用中文介绍十个日语学习小习惯，每个用一句短句解释，不列标题不调用工具。第一句先说“准备好啦。”，之后接着介绍，十句都要写完整。",
+      "reply": "准备好啦。\n每天早上对着镜子说一句日语，让嘴巴先记住发音。\n把手机语言换成日语，常用词不知不觉就认熟了。\n看到身边的东西就默默想一遍它的日语说法。\n每天只背五个新词，但第二天一定要回头复习。\n听日语歌时试着跟读一句，模仿语速和语调。\n看动漫时先关掉字幕听一遍，再开字幕验证。\n写日记时用日语记三行，不会的词先空着再查。\n把学过的句子录下来自己听，找出别扭的地方。\n遇到生词先猜意思，查完再回头确认猜得对不对。\n睡前花两分钟回想今天学的三个词，想不起来的就明天再看。\n\n![猫儿这个惊讶](petsticker://local/1955f12c1faaf2fa3d590da3035c34bd2469772c412efd6d7e9164b389fce22d.gif)",
+      "textReadyMs": 2607,
+      "firstAudioMs": 1452,
+      "clickToAudioMs": 1533,
+      "synthesisStartMs": 999,
+      "synthesisBeforeModelComplete": true,
+      "audioBeforeModelComplete": true
+    }
+  ],
+  "model": "deepseek-flash",
+  "realModel": true,
+  "realAudio": true,
+  "isolatedHistory": true
+}

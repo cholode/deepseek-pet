@@ -1,0 +1,25 @@
+# CPUFast 仅推理依赖。PyTorch 从官方 CPU 索引单独安装；不安装训练和 WebUI。
+numpy<2
+av
+einops
+fast-langdetect==0.3.2
+fastapi>=0.115.2
+g2p_en
+g2pk2
+huggingface_hub<1.0
+jieba==0.42.1
+ko_pron
+nltk
+packaging
+psutil
+pypinyin
+pyopenjtalk-plus==0.4.1.post10
+pydantic<=2.10.6
+PyYAML
+soundfile
+split-lang
+tokenizers
+ToJyutping
+tqdm
+uvicorn
+wordsegment

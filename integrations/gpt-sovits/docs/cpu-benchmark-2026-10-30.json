@@ -1,0 +1,185 @@
+{
+  "coldSeconds": 3.324864499969408,
+  "results": [
+    {
+      "round": 1,
+      "threads": 8,
+      "text": "今天也一起开心地学习日语吧。",
+      "seconds": 2.8655703000258654,
+      "audioSeconds": 2.34,
+      "cpuSeconds": 22.6875,
+      "cache": "bypassed"
+    },
+    {
+      "round": 1,
+      "threads": 8,
+      "text": "先试着回忆昨天学过的单词，然后再看看答案。",
+      "seconds": 4.991417799843475,
+      "audioSeconds": 4.44,
+      "cpuSeconds": 39.390625,
+      "cache": "bypassed"
+    },
+    {
+      "round": 1,
+      "threads": 4,
+      "text": "今天也一起开心地学习日语吧。",
+      "seconds": 3.387000200105831,
+      "audioSeconds": 2.34,
+      "cpuSeconds": 13.484375,
+      "cache": "bypassed"
+    },
+    {
+      "round": 1,
+      "threads": 4,
+      "text": "先试着回忆昨天学过的单词，然后再看看答案。",
+      "seconds": 6.281407799804583,
+      "audioSeconds": 4.44,
+      "cpuSeconds": 25.0,
+      "cache": "bypassed"
+    },
+    {
+      "round": 1,
+      "threads": 2,
+      "text": "今天也一起开心地学习日语吧。",
+      "seconds": 4.43281860020943,
+      "audioSeconds": 2.34,
+      "cpuSeconds": 8.875,
+      "cache": "bypassed"
+    },
+    {
+      "round": 1,
+      "threads": 2,
+      "text": "先试着回忆昨天学过的单词，然后再看看答案。",
+      "seconds": 7.545921600190923,
+      "audioSeconds": 4.44,
+      "cpuSeconds": 14.96875,
+      "cache": "bypassed"
+    },
+    {
+      "round": 1,
+      "threads": 1,
+      "text": "今天也一起开心地学习日语吧。",
+      "seconds": 5.83219030010514,
+      "audioSeconds": 2.34,
+      "cpuSeconds": 5.828125,
+      "cache": "bypassed"
+    },
+    {
+      "round": 1,
+      "threads": 1,
+      "text": "先试着回忆昨天学过的单词，然后再看看答案。",
+      "seconds": 10.66440589982085,
+      "audioSeconds": 4.44,
+      "cpuSeconds": 10.59375,
+      "cache": "bypassed"
+    },
+    {
+      "round": 1,
+      "threads": 16,
+      "text": "今天也一起开心地学习日语吧。",
+      "seconds": 2.510665399953723,
+      "audioSeconds": 2.34,
+      "cpuSeconds": 38.234375,
+      "cache": "bypassed"
+    },
+    {
+      "round": 1,
+      "threads": 16,
+      "text": "先试着回忆昨天学过的单词，然后再看看答案。",
+      "seconds": 4.273413700051606,
+      "audioSeconds": 4.44,
+      "cpuSeconds": 66.640625,
+      "cache": "bypassed"
+    },
+    {
+      "round": 2,
+      "threads": 16,
+      "text": "今天也一起开心地学习日语吧。",
+      "seconds": 2.2442817999981344,
+      "audioSeconds": 2.34,
+      "cpuSeconds": 35.28125,
+      "cache": "bypassed"
+    },
+    {
+      "round": 2,
+      "threads": 16,
+      "text": "先试着回忆昨天学过的单词，然后再看看答案。",
+      "seconds": 3.95064579998143,
+      "audioSeconds": 4.44,
+      "cpuSeconds": 61.734375,
+      "cache": "bypassed"
+    },
+    {
+      "round": 2,
+      "threads": 1,
+      "text": "今天也一起开心地学习日语吧。",
+      "seconds": 5.004869599826634,
+      "audioSeconds": 2.34,
+      "cpuSeconds": 5.40625,
+      "cache": "bypassed"
+    },
+    {
+      "round": 2,
+      "threads": 1,
+      "text": "先试着回忆昨天学过的单词，然后再看看答案。",
+      "seconds": 9.106987400213256,
+      "audioSeconds": 4.44,
+      "cpuSeconds": 9.046875,
+      "cache": "bypassed"
+    },
+    {
+      "round": 2,
+      "threads": 2,
+      "text": "今天也一起开心地学习日语吧。",
+      "seconds": 3.956172800157219,
+      "audioSeconds": 2.34,
+      "cpuSeconds": 7.875,
+      "cache": "bypassed"
+    },
+    {
+      "round": 2,
+      "threads": 2,
+      "text": "先试着回忆昨天学过的单词，然后再看看答案。",
+      "seconds": 7.236597300041467,
+      "audioSeconds": 4.44,
+      "cpuSeconds": 14.390625,
+      "cache": "bypassed"
+    },
+    {
+      "round": 2,
+      "threads": 4,
+      "text": "今天也一起开心地学习日语吧。",
+      "seconds": 3.2567837999667972,
+      "audioSeconds": 2.34,
+      "cpuSeconds": 12.90625,
+      "cache": "bypassed"
+    },
+    {
+      "round": 2,
+      "threads": 4,
+      "text": "先试着回忆昨天学过的单词，然后再看看答案。",
+      "seconds": 5.82706050015986,
+      "audioSeconds": 4.44,
+      "cpuSeconds": 23.15625,
+      "cache": "bypassed"
+    },
+    {
+      "round": 2,
+      "threads": 8,
+      "text": "今天也一起开心地学习日语吧。",
+      "seconds": 2.6107670997735113,
+      "audioSeconds": 2.34,
+      "cpuSeconds": 20.828125,
+      "cache": "bypassed"
+    },
+    {
+      "round": 2,
+      "threads": 8,
+      "text": "先试着回忆昨天学过的单词，然后再看看答案。",
+      "seconds": 4.6952730000484735,
+      "audioSeconds": 4.44,
+      "cpuSeconds": 37.1875,
+      "cache": "bypassed"
+    }
+  ]
+}

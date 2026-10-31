@@ -1,0 +1,30 @@
+{
+  "preparedMs": 14321,
+  "records": [
+    {
+      "text": "上午好",
+      "reply": "上午好呀！\n\n![午休](petsticker://local/5cecae500ac33db7971e4d17573b2463bbdd94d9778add30fe1830ffac828404.gif)",
+      "textReadyMs": 958,
+      "firstAudioMs": 2914,
+      "clickToAudioMs": 2995
+    },
+    {
+      "text": "你好呀",
+      "reply": "你好呀，今天怎么样？\n\n![ciallo](petsticker://local/d674ed37857ae56245b49716560e63df76c320425089262a6244a9f825cb53a3.gif)",
+      "textReadyMs": 604,
+      "firstAudioMs": 3155,
+      "clickToAudioMs": 3186
+    },
+    {
+      "text": "晚上好",
+      "reply": "晚上好，今天累不累？\n\n![搓搓金猪](petsticker://local/d0dfdf6899047218d2a648943f1fad61267b4342c6c1fdd61b15adf56c56920f.gif)",
+      "textReadyMs": 785,
+      "firstAudioMs": 3493,
+      "clickToAudioMs": 3530
+    }
+  ],
+  "model": "deepseek-flash",
+  "realModel": true,
+  "realAudio": true,
+  "isolatedHistory": true
+}

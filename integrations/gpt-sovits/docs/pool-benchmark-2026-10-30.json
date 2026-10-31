@@ -1,0 +1,177 @@
+[
+  {
+    "label": "single",
+    "elapsedMs": 17552.509299999998,
+    "samples": [
+      {
+        "input": "第46题。今天我们一起练习新的日语句子。",
+        "startMs": 0.04260000000000019,
+        "endMs": 4098.919000000001,
+        "ms": 4098.8787,
+        "worker": null,
+        "cache": "miss",
+        "bytes": 245804
+      },
+      {
+        "input": "第47题。先听一遍，然后试着用自己的话回答。",
+        "startMs": 4098.970700000001,
+        "endMs": 8636.983100000001,
+        "ms": 4538.0133,
+        "worker": null,
+        "cache": "miss",
+        "bytes": 293164
+      },
+      {
+        "input": "第48题。答错也没有关系，我们可以慢慢练习。",
+        "startMs": 8637.0102,
+        "endMs": 12952.1837,
+        "ms": 4315.1744,
+        "worker": null,
+        "cache": "miss",
+        "bytes": 288044
+      },
+      {
+        "input": "第49题。最后再回忆一下刚才学过的内容。",
+        "startMs": 12952.204800000001,
+        "endMs": 17552.487999999998,
+        "ms": 4600.283799999997,
+        "worker": null,
+        "cache": "miss",
+        "bytes": 276524
+      }
+    ],
+    "health": {
+      "service": "deepblue-gpt-sovits",
+      "protocol": 1,
+      "ready": true,
+      "model": "gpt-sovits-v2proplus",
+      "device": "cpu",
+      "threads": 16,
+      "engine": "cpu-fast",
+      "languages": [
+        "zh",
+        "ja"
+      ],
+      "voices": [
+        {
+          "id": "neutral",
+          "name": "三月七 · 中立"
+        },
+        {
+          "id": "happy",
+          "name": "三月七 · 开心"
+        },
+        {
+          "id": "sad",
+          "name": "三月七 · 难过"
+        },
+        {
+          "id": "angry",
+          "name": "三月七 · 生气"
+        },
+        {
+          "id": "surprised",
+          "name": "三月七 · 吃惊"
+        },
+        {
+          "id": "afraid",
+          "name": "三月七 · 恐惧"
+        },
+        {
+          "id": "disgusted",
+          "name": "三月七 · 厌恶"
+        }
+      ]
+    }
+  },
+  {
+    "label": "pool",
+    "elapsedMs": 10992.334000000003,
+    "samples": [
+      {
+        "input": "第46题。今天我们一起练习新的日语句子。",
+        "startMs": 0.002300000000104774,
+        "endMs": 4782.370500000001,
+        "ms": 4782.369200000001,
+        "worker": "0",
+        "cache": "miss",
+        "bytes": 245804
+      },
+      {
+        "input": "第47题。先听一遍，然后试着用自己的话回答。",
+        "startMs": 0.37520000000222353,
+        "endMs": 5645.259700000002,
+        "ms": 5644.885699999999,
+        "worker": "1",
+        "cache": "miss",
+        "bytes": 293164
+      },
+      {
+        "input": "第48题。答错也没有关系，我们可以慢慢练习。",
+        "startMs": 0.6071000000010827,
+        "endMs": 10357.524500000003,
+        "ms": 10356.9189,
+        "worker": "0",
+        "cache": "miss",
+        "bytes": 288044
+      },
+      {
+        "input": "第49题。最后再回忆一下刚才学过的内容。",
+        "startMs": 0.880700000001525,
+        "endMs": 10992.3168,
+        "ms": 10991.4371,
+        "worker": "1",
+        "cache": "miss",
+        "bytes": 276524
+      }
+    ],
+    "health": {
+      "service": "deepblue-gpt-sovits",
+      "protocol": 1,
+      "ready": true,
+      "model": "gpt-sovits-v2proplus",
+      "device": "cpu",
+      "threads": 16,
+      "workers": 2,
+      "engine": "cpu-fast",
+      "languages": [
+        "zh",
+        "ja"
+      ],
+      "voices": [
+        {
+          "id": "neutral",
+          "name": "三月七 · 中立"
+        },
+        {
+          "id": "happy",
+          "name": "三月七 · 开心"
+        },
+        {
+          "id": "sad",
+          "name": "三月七 · 难过"
+        },
+        {
+          "id": "angry",
+          "name": "三月七 · 生气"
+        },
+        {
+          "id": "surprised",
+          "name": "三月七 · 吃惊"
+        },
+        {
+          "id": "afraid",
+          "name": "三月七 · 恐惧"
+        },
+        {
+          "id": "disgusted",
+          "name": "三月七 · 厌恶"
+        }
+      ],
+      "threadsPerWorker": 8,
+      "active": 0,
+      "peakActive": 2,
+      "error": null
+    }
+  }
+]

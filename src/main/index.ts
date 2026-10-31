@@ -219,6 +219,7 @@ async function boot() {
   await companion.start();
   await studio.start();
   voice = new VoiceService(path.join(app.getPath('userData'), 'conversation-settings.json'), {
+    chooseGptSovitsDirectory: async () => { const result = await dialog.showOpenDialog(panel ?? pet, { title: '选择 GPT-SoVITS 语音服务目录（含 bridge.py）', properties: ['openDirectory'] }); return result.canceled ? undefined : result.filePaths[0]; },
     chooseWhisperDirectory: async () => { const result = await dialog.showOpenDialog(panel ?? pet, { title: '选择 whisper.cpp 引擎目录', properties: ['openDirectory'] }); return result.canceled ? undefined : result.filePaths[0]; },
     chooseWhisperModel: async () => { const result = await dialog.showOpenDialog(panel ?? pet, { title: '选择 Whisper GGML 模型', filters: [{ name: 'Whisper 模型', extensions: ['bin'] }], properties: ['openFile'] }); return result.canceled ? undefined : result.filePaths[0]; },
     chooseVoicevoxDirectory: async () => {

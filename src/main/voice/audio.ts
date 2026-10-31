@@ -1,4 +1,5 @@
-import type { VoiceConfig } from '../../shared/voice';
+import { usesGptSovits, usesVoicevox, type VoiceConfig } from '../../shared/voice';
+import type { SpeechEmotion, SpeechLanguage } from '../../shared/speech-language';
 import { z } from 'zod';
 
 export function voiceEndpoint(raw: string, source: 'local' | 'cloud'): URL {
@@ -12,8 +13,11 @@ export function validateVoiceConfig(config: VoiceConfig) {
   for (const kind of ['tts', 'asr'] as const) for (const source of ['local', 'cloud'] as const) if (config[kind][source].url) voiceEndpoint(config[kind][source].url, source);
   const vox = voiceEndpoint(config.tts.voicevox.url, 'local');
   if (vox.pathname !== '/') throw new Error('VOICEVOX 地址只填写本机地址和端口');
-  if (config.tts.mode === 'language' && config.tts.voicevox.autoStart && !config.tts.voicevox.directory) throw new Error('请先选择 VOICEVOX 目录，或关闭按需启动');
+  if (usesVoicevox(config.tts) && config.tts.voicevox.autoStart && !config.tts.voicevox.directory) throw new Error('请先选择 VOICEVOX 目录，或关闭按需启动');
   if (config.tts.voicevox.autoStart && vox.protocol !== 'http:') throw new Error('按需启动 VOICEVOX 请使用本机 HTTP 地址');
+  const gpt = voiceEndpoint(config.tts.gptSovits.url, 'local');
+  if (gpt.protocol !== 'http:' || gpt.pathname !== '/') throw new Error('GPT-SoVITS 请填写本机 HTTP 服务根地址');
+  if (usesGptSovits(config.tts) && config.tts.gptSovits.autoStart && !config.tts.gptSovits.directory) throw new Error('请先选择 GPT-SoVITS 服务目录');
 }
 async function bounded(response: Response, maximum: number): Promise<Uint8Array<ArrayBuffer>> {
   if (!response.ok) { await response.body?.cancel(); throw new Error(`语音服务返回 HTTP ${response.status}；请检查服务、模型与密钥`); }
@@ -30,6 +34,12 @@ export function validateRecording(audio: ArrayBuffer) {
 }
 export class VoiceAudio {
   constructor(private fetcher: typeof fetch = fetch) {}
+  async speakGptSovits(config: VoiceConfig['tts'], text: string, signal: AbortSignal, language: SpeechLanguage = 'zh', emotion?: SpeechEmotion) {
+    const url = new URL('v1/audio/speech', voiceEndpoint(config.gptSovits.url, 'local'));
+    const voice = config.gptSovits.autoEmotion && emotion ? emotion : config.gptSovits.voice;
+    const response = await this.fetcher(url, { method: 'POST', redirect: 'error', signal, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ model: 'gpt-sovits-v2proplus', input: text, voice, language, speed: config.rate, response_format: 'wav' }) });
+    return this.wav(await bounded(response, 20 * 1024 * 1024));
+  }
   async checkAsr(config: VoiceConfig['asr'], key: string, signal: AbortSignal) {
     const service = config[config.source]; const url = voiceEndpoint(service.url, config.source);
     const response = await this.fetcher(url, { method: 'OPTIONS', redirect: 'error', signal: AbortSignal.any([signal, AbortSignal.timeout(6000)]), headers: key ? { Authorization: `Bearer ${key}` } : {} });
