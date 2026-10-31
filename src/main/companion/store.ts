@@ -2,6 +2,7 @@ import { promises as fs } from 'node:fs';
 import path from 'node:path';
 import { companionDataSchema, companionDefaults, type CompanionData } from '../../shared/companion';
 import { initialMood } from '../../companion/mood';
+import { growthDefaults } from '../../shared/growth';
 import type { RepositoryPort } from '../../companion/ports';
 const MAX_STORE_BYTES = 128 * 1024 * 1024;
 
@@ -9,13 +10,14 @@ const MAX_STORE_BYTES = 128 * 1024 * 1024;
 export class CompanionStore implements RepositoryPort {
   data: CompanionData; warning?: string; private writing = Promise.resolve();
   constructor(readonly file: string, now = Date.now()) {
-    this.data = { version: 1, config: structuredClone(companionDefaults), memories: [], goals: [], mood: initialMood(now), events: [], processedIds: [], initiative: { lastAt: 0, day: '', count: 0, lastTopic: '' }, qqCursor: 0 };
+    this.data = { version: 1, config: structuredClone(companionDefaults), growth: structuredClone(growthDefaults), memories: [], goals: [], mood: initialMood(now), events: [], processedIds: [], initiative: { lastAt: 0, day: '', count: 0, lastTopic: '' }, qqCursor: 0 };
   }
   async load() {
     await fs.mkdir(path.dirname(this.file), { recursive: true });
     try {
       const stat = await fs.stat(this.file); if (stat.size > MAX_STORE_BYTES) throw new Error('文件过大');
       this.data = companionDataSchema.parse(JSON.parse(await fs.readFile(this.file, 'utf8')));
+      this.data.growth ??= structuredClone(growthDefaults);
     } catch (e) {
       if ((e as NodeJS.ErrnoException).code !== 'ENOENT') {
         await fs.rename(this.file, `${this.file}.corrupt-${Date.now()}`);

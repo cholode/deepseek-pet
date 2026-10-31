@@ -6,6 +6,8 @@ import type { CompanionHost, ToolPort } from '../../companion/ports';
 import { CompanionCoordinator } from '../../companion/coordinator';
 import { recallMemories, remember } from '../../companion/memory';
 import { applyEmotion, initialMood } from '../../companion/mood';
+import { growthDefaults } from '../../shared/growth';
+import { rollbackGrowth } from '../../companion/growth';
 import { CompanionStore } from './store';
 import { SecretStore } from './secrets';
 import { CompatibleModel } from './model';
@@ -64,6 +66,10 @@ export class CompanionService {
       if (mcpChanged) { data.config.mcp.allowedTools = []; this.toolList = []; }
       if (qqChanged) data.qqCursor = now;
       this.coordinator.error = undefined; this.mode(this.coordinator.ready);
+    } else if (request.type === 'growth-configure') {
+      data.growth = { ...(data.growth ?? structuredClone(growthDefaults)), enabled: request.enabled, locked: request.locked };
+    } else if (request.type === 'growth-rollback') {
+      data.growth = rollbackGrowth(data.growth ?? structuredClone(growthDefaults), request.id, now);
     } else if (request.type === 'remember') {
       data.memories = remember(data.memories, { text: request.text, kind: request.kind, factKey: request.factKey, scope: request.scope, pinned: request.pinned, id: randomUUID(), importance: 1, createdAt: now, eventAt: now, sourceId: 'manual', evidence: request.text });
     } else if (request.type === 'forget') {

@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import { speechSegmentSchema, type SpeechSegment } from './speech-language';
+import { growthSchema, traitSchema } from './growth';
 
 // 跨进程契约只包含数据；人格、记忆、模型和渠道均不依赖 Electron 或人物渲染器。
 export const emotionNames = ['happy', 'calm', 'curious', 'confused', 'shy', 'frustrated', 'sleepy'] as const;
@@ -42,7 +43,7 @@ export type Mood = z.infer<typeof moodSchema>;
 export const eventSchema = z.object({ id: z.string(), at: z.number(), source: z.enum(['desktop', 'qq-private', 'qq-group', 'initiative', 'interaction']), actor: z.enum(['user', 'pet', 'system']), conversationId: z.string(), sessionId: z.string().optional(), sessionEndedAt: z.number().finite().optional(), text: z.string().max(8000), speechSegments: z.array(speechSegmentSchema).max(2000).optional(), causeId: z.string().optional() }).strict();
 export type CompanionEvent = z.infer<typeof eventSchema>;
 export const companionDataSchema = z.object({
-  version: z.literal(1), config: companionConfigSchema, memories: z.array(memorySchema).max(10000), goals: z.array(goalSchema).max(200), mood: moodSchema,
+  version: z.literal(1), config: companionConfigSchema, growth: growthSchema.optional(), memories: z.array(memorySchema).max(10000), goals: z.array(goalSchema).max(200), mood: moodSchema,
   events: z.array(eventSchema).max(400), processedIds: z.array(z.string()).max(1000),
   initiative: z.object({ lastAt: z.number(), day: z.string(), count: z.number(), lastTopic: z.string() }), qqCursor: z.number()
 });
@@ -54,6 +55,8 @@ export interface CompanionView {
 }
 export interface CompanionPresentation { id: string; text: string; speechSegments?: SpeechSegment[]; emotion: Emotion; groupId?: string; speech: CompanionConfig['speech']; source: CompanionEvent['source']; phase?: 'streaming' | 'complete' | 'action' }
 export const companionRequestSchema = z.discriminatedUnion('type', [
+  z.object({ type: z.literal('growth-configure'), enabled: z.boolean(), locked: z.array(traitSchema).max(4) }).strict(),
+  z.object({ type: z.literal('growth-rollback'), id: z.string().max(200) }).strict(),
   z.object({ type: z.literal('state') }).strict(),
   z.object({ type: z.literal('configure'), config: companionConfigSchema, secrets: z.object({ model: z.string().max(4000).optional(), qq: z.string().max(4000).optional(), mcp: z.string().max(4000).optional() }).strict().optional() }).strict(),
   z.object({ type: z.literal('chat'), text: z.string().trim().min(1).max(4000) }).strict(),
