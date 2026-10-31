@@ -1,9 +1,12 @@
 import type { ToolPort } from './ports';
+import type { CompanionEvent } from '../shared/companion';
 
 // 只路由当前轮发现的能力；表情不进入“正在操作软件”的动作情境。
 export class ToolRouter implements ToolPort {
   private routes = new Map<string, ToolPort>();
   constructor(private ports: ToolPort[]) {}
+  beginTurn(event: CompanionEvent) { for (const port of this.ports) port.beginTurn?.(event); }
+  context() { return this.ports.map(p => p.context?.() ?? '').filter(Boolean).join('\n'); }
   async list(signal: AbortSignal) {
     this.routes.clear();
     const definitions = [];

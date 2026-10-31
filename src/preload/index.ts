@@ -6,7 +6,10 @@ import type { DiaryView } from '../shared/diary';
 import type { SoftwareView } from '../shared/software';
 import type { StickerView } from '../shared/stickers';
 import type { VoiceEvent } from '../shared/voice';
+import type { StudioView } from '../shared/studio';
 const bridge: PetBridge = {
+  studio: request => ipcRenderer.invoke('studio', request),
+  onStudio: fn => { const listener = (_e: Electron.IpcRendererEvent, state: StudioView) => fn(state); ipcRenderer.on('studio-state', listener); return () => ipcRenderer.removeListener('studio-state', listener); },
   voice: request => ipcRenderer.invoke('voice', request),
   onVoice: fn => { const listener = (_e: Electron.IpcRendererEvent, event: VoiceEvent) => fn(event); ipcRenderer.on('voice-event', listener); return () => ipcRenderer.removeListener('voice-event', listener); },
   stickers: request => ipcRenderer.invoke('stickers', request),

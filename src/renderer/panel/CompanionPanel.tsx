@@ -5,6 +5,7 @@ import { ConversationSettings } from './ConversationSettings';
 import { VoiceInput } from '../voice/VoiceInput';
 import { DiaryPanel } from './DiaryPanel';
 import { GrowthPanel } from './GrowthPanel';
+import { StudioPanel } from './StudioPanel';
 import { MarkdownContent } from '../chat/MarkdownContent';
 import { useMessageScroll } from '../chat/useMessageScroll';
 import './companion.css';
@@ -61,10 +62,11 @@ export function CompanionPanel() {
   if (!state) return <div className="loading">正在读取陪伴状态…{note}</div>;
   const disabled = pending || state.busy;
   return <div className="companion-panel">
-    <div className="companion-tabs">{[['chat', '和她聊天'], ['growth', '性格成长'], ['memory', '共同记忆'], ['mood', '心情与约定'], ['diary', '日记'], ['conversation', '对话设置'], ['settings', '陪伴设置']].map(([id, label]) => <button key={id} className={tab === id ? 'active' : ''} onClick={() => setTab(id)}>{label}</button>)}<span>{state.busy ? '正在想…' : state.ready ? '智能陪伴已启用' : '等待配置模型'}</span></div>
+    <div className="companion-tabs">{[['chat', '和她聊天'], ['studio', '学习工作室'], ['growth', '性格成长'], ['memory', '共同记忆'], ['mood', '心情与约定'], ['diary', '日记'], ['conversation', '对话设置'], ['settings', '陪伴设置']].map(([id, label]) => <button key={id} className={tab === id ? 'active' : ''} onClick={() => setTab(id)}>{label}</button>)}<span>{state.busy ? '正在想…' : state.ready ? '智能陪伴已启用' : '等待配置模型'}</span></div>
     {(note || state.error) && <div className="notice" role="status">{note || state.error}</div>}
     {state.notice && <p className="companion-help">{state.notice}</p>}
     {tab === 'conversation' && <ConversationSettings/>}
+    {tab === 'studio' && <StudioPanel ready={state.ready}/>}
     {tab === 'growth' && <GrowthPanel state={state} disabled={disabled} request={request}/>}
     {tab === 'diary' && <DiaryPanel ready={state.ready} name={state.data.config.persona.name}/>}
     {tab === 'chat' && <section className="settings-card companion-chat">

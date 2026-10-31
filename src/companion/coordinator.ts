@@ -75,6 +75,9 @@ export class CompanionCoordinator {
     try {
       await this.repository.save();
       const messages = buildContext(data, event, this.recalls, this.sessionPolicy(), languageSpeech);
+      this.software?.beginTurn?.(event);
+      // 附加到现有系统上下文，保留最后一条用户消息的位置；语音和普通聊天使用相同请求结构。
+      if (source === 'desktop' && this.software?.context) messages[0].content += `\n${this.software.context()}`;
       if (languageSpeech) messages[0].content += `\n${speechLanguagePrompt}`;
       // 外部聊天和自动唤醒只能聊天；桌面用户明确启用且逐项选择的 MCP 工具才会暴露给模型。
       const legacy = source === 'desktop' && data.config.mcp.enabled ? (await this.tools.list(controller.signal)).filter(t => data.config.mcp.allowedTools.includes(t.name)) : [];

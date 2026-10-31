@@ -23,6 +23,7 @@ import { StickerService } from './stickers/service';
 import { ToolRouter } from '../companion/tool-router';
 import { VoiceService } from './voice/service';
 import { conversationPolicyDefaults } from '../shared/conversation-session';
+import { StudioService } from './studio/service';
 
 protocol.registerSchemesAsPrivileged(['petasset', 'petsticker'].map(scheme => ({ scheme, privileges: { standard: true, secure: true, supportFetchAPI: true, corsEnabled: true } })));
 if (process.env.PET_TEST_USER) app.setPath('userData', path.resolve(process.env.PET_TEST_USER));
@@ -39,6 +40,7 @@ let voice: VoiceService | undefined;
 let diary: DiaryService | undefined;
 let software: SoftwareService | undefined;
 let stickers: StickerService | undefined;
+let studio: StudioService | undefined;
 let chatWindows: PetChatWindows | undefined;
 const resourceRoot = () => app.isPackaged ? path.join(process.resourcesPath, 'pet-resources') : path.join(app.getAppPath(), 'resources');
 const send = (m: RuntimeMessage) => { if (pet && !pet.isDestroyed()) pet.webContents.send('runtime', m); };
@@ -184,6 +186,22 @@ async function boot() {
     const data = await stickers!.image(request.url);
     return data ? new Response(new Uint8Array(data), { headers: { 'Content-Type': 'image/gif', 'Cache-Control': 'no-store', 'X-Content-Type-Options': 'nosniff' } }) : new Response('表情尚未缓存', { status: 404 });
   });
+  studio = new StudioService(path.join(app.getPath('userData'), 'learning-studio'), {
+    conversationPolicy: () => voice?.conversationPolicy ?? conversationPolicyDefaults,
+    generate: async (messages, signal) => (await new CompatibleModel(() => companion!.secrets.get('model'), fetch, 7000).complete(messages, { ...companion!.store.data.config.model, temperature: 0.4 }, signal)).text,
+    ready: () => companion?.coordinator.ready ?? false,
+    available: () => !desktop.suspended && !settings.value.paused && !companion?.coordinator.busy && !desktop.chatting,
+    changed: state => { if (panel && !panel.isDestroyed()) panel.webContents.send('studio-state', state); },
+    notify: text => {
+      const speech = companion?.store.data.config.speech;
+      if (speech && desktop.visible && settings.value.bubbles) chatWindows?.present({ id: randomUUID(), text, emotion: 'happy', source: 'initiative', speech: { ...speech, enabled: false }, phase: 'complete' }, true);
+      if (Notification.isSupported()) { const notification = new Notification({ title: '大肥鱼 · 学习工作室', body: text }); notification.on('click', openPanel); notification.show(); }
+    },
+    chooseSource: async () => { const result = await dialog.showOpenDialog(panel ?? pet, { title: '导入有权使用的学习资料', properties: ['openFile'], filters: [{ name: '学习资料', extensions: ['pdf', 'epub', 'txt', 'md', 'html', 'htm'] }] }); return result.canceled ? undefined : result.filePaths[0]; },
+    openArtifact: async file => { const message = await shell.openPath(file); if (message) throw new Error(message); },
+    reviewTargets: () => software!.learningTargets(), recordReview: (id, payload, signal) => software!.recordLearning(id, payload, signal)
+  });
+  handle('studio', 'panel', raw => studio!.request(raw));
   companion = new CompanionService(app.getPath('userData'), {
     speechLanguages: () => voice?.speechLanguages ?? false,
     now: () => Date.now(), id: randomUUID,
@@ -197,8 +215,9 @@ async function boot() {
     capabilities: () => (debug?.groups ?? []).map(g => ({ groupId: g.groupId, name: g.name, description: g.description, tags: g.tags, channels: g.channels, expectedDurationMs: g.expectedDurationMs, available: g.enabled && !g.interaction && !debug?.failedGroups.includes(g.groupId) && softwareActionAllowed(g, { ...desktop, interacting: desktop.interacting || desktop.dragging, paused: settings.value.paused, lastInteraction: desktop.lastInteractionAt ?? Date.now() }, Date.now()) })),
     available: () => desktop.visible && !desktop.suspended && !desktop.dragging && !desktop.chatting && !settings.value.paused,
     lastInteractionAt: () => Math.max(0, ...(debug?.events.filter(e => e.type === 'interaction').map(e => e.occurredAtUnixMs) ?? []), ...(companion?.store.data.events.filter(e => e.actor === 'user').map(e => e.at) ?? []))
-  }, enabled => send({ type: 'companion-mode', enabled }), new ToolRouter([software, stickers]), () => voice?.conversationPolicy ?? conversationPolicyDefaults);
+  }, enabled => send({ type: 'companion-mode', enabled }), new ToolRouter([software, stickers, studio]), () => voice?.conversationPolicy ?? conversationPolicyDefaults);
   await companion.start();
+  await studio.start();
   voice = new VoiceService(path.join(app.getPath('userData'), 'conversation-settings.json'), {
     chooseWhisperDirectory: async () => { const result = await dialog.showOpenDialog(panel ?? pet, { title: '选择 whisper.cpp 引擎目录', properties: ['openDirectory'] }); return result.canceled ? undefined : result.filePaths[0]; },
     chooseWhisperModel: async () => { const result = await dialog.showOpenDialog(panel ?? pet, { title: '选择 Whisper GGML 模型', filters: [{ name: 'Whisper 模型', extensions: ['bin'] }], properties: ['openFile'] }); return result.canceled ? undefined : result.filePaths[0]; },
@@ -278,7 +297,7 @@ async function boot() {
   handle('move-start', 'pet', raw => { const m = z.object({ id: z.string().min(1).max(100), dx: z.number().finite().min(-1000).max(1000), dy: z.number().finite().min(-1000).max(1000), ms: z.number().finite().min(1).max(30000), easing: z.enum(['linear', 'easeOut', 'easeInOut']) }).strict().parse(raw); if (settings.value.fixedPosition || desktop.dragging || !desktop.visible) throw new Error('MOVEMENT_LOCKED'); const b = pet.getBounds(); const to = clampRect({ ...b, x: b.x + m.dx, y: b.y + m.dy }, screen.getDisplayMatching(b).workArea); movement = { id: m.id, from: { x: b.x, y: b.y }, to, started: performance.now(), ms: m.ms, easing: m.easing }; samplingState(); });
   handle('move-stop', 'pet', id => { if (movement?.id === id) { movement = undefined; savePosition(); samplingState(); } });
   screen.on('display-added', recoverPosition); screen.on('display-removed', recoverPosition); screen.on('display-metrics-changed', recoverPosition);
-  powerMonitor.on('suspend', () => { movement = undefined; endDrag(); desktop.suspended = true; companion?.cancel(); diary?.suspend(); samplingState(); broadcastDesktop(); }); powerMonitor.on('resume', () => { desktop.suspended = false; recoverPosition(); diary?.resume(); samplingState(); broadcastDesktop(); });
+  powerMonitor.on('suspend', () => { movement = undefined; endDrag(); desktop.suspended = true; companion?.cancel(); diary?.suspend(); studio?.suspend(); samplingState(); broadcastDesktop(); }); powerMonitor.on('resume', () => { desktop.suspended = false; recoverPosition(); diary?.resume(); samplingState(); broadcastDesktop(); });
   globalShortcut.register('CommandOrControl+Alt+P', restoreInteraction);
   load(pet, 'pet'); if (process.argv.includes('--panel')) openPanel();
   diary.startAutomatic();

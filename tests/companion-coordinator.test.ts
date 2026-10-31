@@ -1,9 +1,22 @@
 import { describe, expect, it, vi } from 'vitest';
 import { fixture, memory, assessment, now } from './companion-fixture';
 import type { ToolCall } from '../src/companion/ports';
+import { CompanionCoordinator } from '../src/companion/coordinator';
 
 const call: ToolCall = { id: 'call-1', type: 'function', function: { name: 'read_game', arguments: '{"window":"game"}' } };
 describe('决策编排与可替换端口', () => {
+  it('课堂上下文合入系统说明，真实用户消息保持最后一条，外部聊天不泄露课堂', async () => {
+    const f = fixture(); f.data.config.memory.automatic = false; f.data.config.mood.enabled = false;
+    const plugin = { ...f.tools, context: () => '私人课堂进度', beginTurn: vi.fn() };
+    const coordinator = new CompanionCoordinator(f.repository, f.model, f.tools, f.host, plugin);
+    f.model.complete.mockResolvedValue({ text: '收到', calls: [] });
+    await coordinator.chat('今日は日本語を勉強します。');
+    expect(f.model.complete.mock.calls[0][0].at(-1)).toMatchObject({ role: 'user', content: '今日は日本語を勉強します。' });
+    expect(f.model.complete.mock.calls[0][0][0].content).toContain('私人课堂进度');
+    expect(plugin.beginTurn).toHaveBeenCalledWith(expect.objectContaining({ actor: 'user', text: '今日は日本語を勉強します。' }));
+    await coordinator.chat('你好', 'qq-group', 'qq-new', 'group');
+    expect(JSON.stringify(f.model.complete.mock.calls[1][0])).not.toContain('私人课堂进度');
+  });
   it('模型回应、提炼记忆、情绪和已有动作串成一轮', async () => {
     const f = fixture();
     f.model.complete.mockResolvedValueOnce({ text: '记住啦，喜欢星露谷！', calls: [] }).mockResolvedValueOnce(assessment({ memories: [{ text: '用户喜欢星露谷', evidence: '喜欢星露谷', kind: 'preference', factKey: '用户.游戏' }] }));

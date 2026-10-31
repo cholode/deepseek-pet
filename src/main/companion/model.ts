@@ -7,7 +7,7 @@ import { readCompletionStream } from './stream';
 const responseSchema = z.object({ choices: z.array(z.object({ message: z.object({ content: z.string().nullable().optional(), tool_calls: z.array(z.object({ id: z.string(), type: z.literal('function'), function: z.object({ name: z.string(), arguments: z.string().max(20000) }) })).optional() }) })).min(1) });
 // 通用 Chat Completions 适配器：DeepSeek、本地 Ollama 等服务都通过同一个端口接入。
 export class CompatibleModel implements ModelPort {
-  constructor(private key: () => string, private request: typeof fetch = fetch) {}
+  constructor(private key: () => string, private request: typeof fetch = fetch, private maxOutputTokens = 1500) {}
   async complete(messages: ChatMessage[], config: CompanionConfig['model'], signal: AbortSignal, tools: ToolDefinition[] = [], onText?: (delta: string) => void) {
     const root = endpoint(config.baseUrl).toString().replace(/\/$/, '');
     // DeepSeek 官方接口默认开启思考，必须显式关闭；不向其他兼容服务强塞专用参数。
@@ -15,7 +15,7 @@ export class CompatibleModel implements ModelPort {
     const response = await this.request(`${root}/chat/completions`, {
       method: 'POST', redirect: 'error', signal: AbortSignal.any([signal, AbortSignal.timeout(config.timeoutMs)]),
       headers: { 'Content-Type': 'application/json', ...(this.key() ? { Authorization: `Bearer ${this.key()}` } : {}) },
-      body: JSON.stringify({ model: config.model, messages, stream: Boolean(onText), temperature: config.temperature, max_tokens: 1500,
+      body: JSON.stringify({ model: config.model, messages, stream: Boolean(onText), temperature: config.temperature, max_tokens: this.maxOutputTokens,
         ...thinking,
         ...(tools.length ? { tools: tools.map(t => ({ type: 'function', function: { name: t.name, description: t.description, parameters: t.inputSchema } })), tool_choice: 'auto' } : {}) })
     });
