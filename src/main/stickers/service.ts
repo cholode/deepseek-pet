@@ -1,6 +1,7 @@
 import path from 'node:path';
 import { promises as fs } from 'node:fs';
 import { z } from 'zod';
+import { isSimpleGreeting } from '../../shared/greeting';
 import type { ToolPort } from '../../companion/ports';
 import { stickerSettingsSchema, stickerRequestSchema, stickerImageUrl, stickerMarkdown, type Sticker, type StickerPlugin, type StickerSettings, type StickerView, type StickerItem, type StickerResponse } from '../../shared/stickers';
 import { imageUrl, searchStickers } from './catalog';
@@ -93,6 +94,8 @@ export class StickerService implements ToolPort {
       } finally { this.changing = false; }
     } catch (e) { return { ok: false, message: e instanceof Error ? e.message : '表情操作失败', state: this.view() }; }
   }
+  private quickGreeting = false;
+  beginTurn(event: { text: string }) { this.selected = undefined; this.quickGreeting = isSimpleGreeting(event.text); }
   async list(signal: AbortSignal) {
     signal.throwIfAborted(); this.selected = undefined;
     if (!this.plugin || !this.settings.enabled || !this.allowed().length) return [];
@@ -130,7 +133,9 @@ export class StickerService implements ToolPort {
       const pool = candidates.length ? candidates : allowed;
       const fresh = pool.filter(item => !this.recent.includes(item.id));
       const choices = fresh.length ? fresh : pool;
-      const cached = choices.filter(item => this.cache.has(item));
+      // 简短问候不为挑一张新 GIF 等待网络；优先已缓存的合适表情，再选其他可用缓存。
+      const matchingCache = choices.filter(item => this.cache.has(item));
+      const cached = this.quickGreeting && !matchingCache.length ? allowed.filter(item => this.cache.has(item)).sort((a, b) => Number(this.recent.includes(a.id)) - Number(this.recent.includes(b.id))) : matchingCache;
       const attempt = AbortSignal.any([signal, AbortSignal.timeout(5000)]);
       for (const item of [...cached, ...choices.filter(item => !this.cache.has(item))].slice(0, 2)) {
         try { await this.call('dafeiyu_sticker_send', { id: item.id }, attempt); break; }

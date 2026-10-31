@@ -7,6 +7,7 @@ import { buildContext } from './context';
 import { grow, mayExpressFeedback } from './growth';
 import { growthDefaults, growthObservationSchema } from '../shared/growth';
 import { completedSpeechSegments, hasSpeechLanguages, parseSpeechLanguages, speechLanguagePrompt } from '../shared/speech-language';
+import { isSimpleGreeting } from '../shared/greeting';
 import type { CompanionHost, ModelPort, RepositoryPort, ToolPort } from './ports';
 import { conversationBreak, conversationSession, conversationPolicyDefaults, isConversationEvent, type ConversationPolicy } from '../shared/conversation-session';
 
@@ -67,6 +68,9 @@ export class CompanionCoordinator {
     };
     const event: CompanionEvent = { id, text, source, actor: source === 'initiative' ? 'system' : 'user', at: now, conversationId };
     const session = conversationSession(data.events, event, this.sessionPolicy()); event.sessionId = session.id; this.activeEvent = event;
+    // “你好”也可能是上一道日语题的答案。仅在新对话或连续问候中走快捷路径，任务上下文仍保留工具。
+    const previousUser = session.history.filter(item => item.actor === 'user').at(-1);
+    const greeting = source === 'desktop' && isSimpleGreeting(text) && (!previousUser || isSimpleGreeting(previousUser.text));
     if (session.reason && session.hadPrevious && event.actor === 'user') this.notice = '已开始新一段对话，上一段话题已结束；共同记忆和学习计划仍保留。';
     this.add(event); this.mark(id);
     data.mood = decayMood(data.mood, data.config.mood, now);
@@ -78,11 +82,12 @@ export class CompanionCoordinator {
       const messages = buildContext(data, event, this.recalls, this.sessionPolicy(), languageSpeech);
       this.software?.beginTurn?.(event);
       // 附加到现有系统上下文，保留最后一条用户消息的位置；语音和普通聊天使用相同请求结构。
-      if (source === 'desktop' && this.software?.context) messages[0].content += `\n${this.software.context()}`;
+      if (source === 'desktop' && !greeting && this.software?.context) messages[0].content += `\n${this.software.context()}`;
+      if (greeting) messages[0].content += '\n用户本轮只是在打招呼。按你的性格自然回一句很短的问候即可，通常 4–10 个字，不把招呼扩写成长句、连续问题或学习安排。表情由宿主自动附上，无需搜索或发送工具。';
       if (languageSpeech) messages[0].content += `\n${speechLanguagePrompt}`;
       // 外部聊天和自动唤醒只能聊天；桌面用户明确启用且逐项选择的 MCP 工具才会暴露给模型。
-      const legacy = source === 'desktop' && data.config.mcp.enabled ? (await this.tools.list(controller.signal)).filter(t => data.config.mcp.allowedTools.includes(t.name)) : [];
-      const software = source === 'desktop' && this.software ? await this.software.list(controller.signal) : [];
+      const legacy = source === 'desktop' && !greeting && data.config.mcp.enabled ? (await this.tools.list(controller.signal)).filter(t => data.config.mcp.allowedTools.includes(t.name)) : [];
+      const software = source === 'desktop' && !greeting && this.software ? await this.software.list(controller.signal) : [];
       const definitions = [...legacy, ...software];
       if (new Set(definitions.map(t => t.name)).size !== definitions.length) throw new Error('工具名称冲突，请调整 MCP 授权');
       if (definitions.length > 100) throw new Error('已授权工具超过 100 项，请减少启用的能力');

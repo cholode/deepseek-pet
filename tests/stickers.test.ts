@@ -34,6 +34,15 @@ async function setup(fetcher: typeof fetch = vi.fn(async () => new Response(data
 afterEach(async () => { await Promise.all(services.splice(0).map(service => service.close())); await Promise.all(roots.splice(0).map(root => fs.rm(root, { recursive: true, force: true }))); });
 
 describe('表情插件与缓存', () => {
+  it('纯问候重置上一轮选择，直接复用可用缓存而不下载新图', async () => {
+    const { service, configure, fetcher, item, other } = await setup();
+    await configure({ enabled: true, frequency: 'always' });
+    await service.cache.ensure(other, false, signal());
+    service.beginTurn({ text: '上午好' });
+    expect(await service.decorateReply('开心，今天也一起加油。')).toContain(imageUrl(other)); expect(fetcher).toHaveBeenCalledTimes(1);
+    await configure({ blocked: [other.id] }); service.beginTurn({ text: '你好' });
+    expect(await service.decorateReply('开心。')).toContain(imageUrl(item)); expect(fetcher).toHaveBeenCalledTimes(2);
+  });
   it('322 张真实目录离线加载，默认不提供工具或下载', async () => {
     const { catalog, manifest } = await readStickerPlugin(source);
     expect(catalog.items).toHaveLength(322); expect(manifest.version).toBe('1.0.0');

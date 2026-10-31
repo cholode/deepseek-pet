@@ -39,3 +39,7 @@
 - `upstream/` 保留上游元数据及素材清单快照，`catalog.json` 由 `node scripts/build-sticker-catalog.cjs` 在开发时生成。运行时不自动更新目录或执行远程代码。
 
 架构见 [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)，验证见 [docs/VALIDATION.md](docs/VALIDATION.md)。
+
+### 问候时的表情响应
+
+新对话或连续问候中只含“上午好”“你好”等招呼时，聊天无需通过模型多轮搜索/发送表情，宿主在“每次回复”模式继续自动附图，优先当前允许使用的已有缓存，避免为更换新图等待网络。真实软件或学习请求仍走正常工具流程；禁用、套组、离线和单张限制保持。此项是宿主调度改进，表情数据插件版本不变。
