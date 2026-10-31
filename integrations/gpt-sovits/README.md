@@ -68,6 +68,8 @@ CPU 环境安装 `torch==2.9.1+cpu`、`torchaudio==2.9.1+cpu`，其余见 `requi
 
 10 月 30 日首次下载曾超时，10 月 31 日已通过 AMD 官方源直连及分块续传完成安装与实际验证。应用不会自动下载安装系统驱动。
 
+10 月 31 日进一步诊断：ROCm 环境的中文多音字前端改用 oneDNN 后，同进程四句从 31.85 秒降到 23.29–23.42 秒，测试音频逐字节相同。健康检查的 `phonemeBackend` 表明是否启用。两份模型共用一块核显，隔离并发约 25.31 秒，没有超过优化后的单路；真实双路服务还出现预热超时。本机当前推荐 **CPU 两路**；手动试用 GPU 时建议 **一路、8 个 CPU 线程**。原 115.07 秒样本保留，但不能当作稳定的 GPU 性能。详细测量、排除项和限制见 [GPU 性能诊断](docs/gpu-diagnosis-2026-10-31.md)。
+
 线程更多不保证更快。手动运行 `python -I -X utf8 -u bridge.py --benchmark` 会加载一份模型，对 1、2、4、8、16 线程做两轮测试，线程顺序反转，固定两段语料，绕过桥接整句缓存。只把测试语料音频和结果写到服务目录的 `benchmarks/`；正常聊天不写音频文件。首轮准备时间与稳定合成时间分开记录。结果中的 coldSeconds 是模型载入后的首句合成耗时，不是整个进程冷启动时间。
 
 ## 本机接口
@@ -79,6 +81,8 @@ CPU 环境安装 `torch==2.9.1+cpu`、`torchaudio==2.9.1+cpu`，其余见 `requi
 - 不提供远程加载模型、训练、任意命令、任意文件读取或全局退出接口。
 
 应用侧测试：`npm test`；GUI 协议测试：`node scripts/gpt-sovits-gui-test.cjs`。设置 `PET_GPT_SOVITS_DIRECTORY` 可运行真实三月七中日模型测试，并检查双进程健康状态与并发峰值；默认协议测试才使用音频夹具。设置 `PET_VOICEVOX_DIRECTORY` 可另外测试双引擎组合。`node scripts/streaming-speech-gui-test.cjs` 用可控 SSE 和音频夹具检查真实 Electron 的首句同步、独立文字流、并发乱序、失败与取消；旧 `speech-sync-gui-test.cjs` 已转为此脚本的兼容入口。`PET_TEST_EXECUTABLE` 可指定打包后的程序重复验证。
+
+真实 GPU 单路验收可设置 `PET_GPT_DEVICE=cuda`、`PET_GPT_WORKERS=1`、`PET_GPT_THREADS=8`；未设置时仍测试两路 / 共 16 线程。`PET_GPT_BENCHMARK=1` 在真实播放后追加同四句 HTTP 实测，检查音频缓存是否命中。
 
 ## 文字与声音同步
 

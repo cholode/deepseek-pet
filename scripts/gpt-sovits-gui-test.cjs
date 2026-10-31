@@ -11,6 +11,10 @@ const { promisify } = require('node:util');
   const real = process.env.PET_GPT_SOVITS_DIRECTORY;
   const realVoicevox = process.env.PET_VOICEVOX_DIRECTORY;
   const packaged = Boolean(process.env.PET_TEST_EXECUTABLE);
+  const workers = Number(process.env.PET_GPT_WORKERS || 2);
+  const threads = Number(process.env.PET_GPT_THREADS || 16);
+  assert.ok(Number.isInteger(workers) && workers >= 1 && workers <= 4);
+  assert.ok(Number.isInteger(threads) && threads >= 1 && threads <= 64);
   const folder = path.resolve(`test-results/gpt-sovits${real ? '-real' : ''}${packaged ? '-packaged' : ''}`);
   await fs.mkdir(folder, { recursive: true });
   const userDir = await fs.mkdtemp(path.join(folder, 'user-'));
@@ -58,12 +62,12 @@ const { promisify } = require('node:util');
     await panel.getByRole('button', { name: '保存对话设置', exact: true }).click();
     await wait(() => panel.getByRole('button', { name: '试听声音', exact: true }).isEnabled(), '保存');
     if (real) {
-      await panel.evaluate(async ({ directory, device, voicevox }) => {
+      await panel.evaluate(async ({ directory, device, voicevox, workers, threads }) => {
         const { state } = await window.pet.voice({ type: 'state' });
-        state.config.tts.gptSovits.directory = directory; state.config.tts.gptSovits.device = device; state.config.tts.gptSovits.autoStart = true; state.config.tts.gptSovits.cpuThreads = 16; state.config.tts.gptSovits.japanese = !voicevox;
+        state.config.tts.gptSovits.directory = directory; state.config.tts.gptSovits.device = device; state.config.tts.gptSovits.autoStart = true; state.config.tts.gptSovits.cpuThreads = threads; state.config.tts.gptSovits.workers = workers; state.config.tts.gptSovits.japanese = !voicevox;
         if (voicevox) { state.config.tts.voicevox.directory = voicevox; state.config.tts.voicevox.autoStart = true; state.config.tts.voicevox.device = 'gpu'; state.config.tts.voicevox.cpuThreads = 8; }
         const result = await window.pet.voice({ type: 'configure', config: state.config, secrets: {} }); if (!result.ok) throw Error(result.message);
-      }, { directory: real, device: process.env.PET_GPT_DEVICE || 'auto', voicevox: realVoicevox });
+      }, { directory: real, device: process.env.PET_GPT_DEVICE || 'auto', voicevox: realVoicevox, workers, threads });
       await panel.getByRole('button', { name: '和她聊天', exact: true }).click();
       await panel.getByRole('button', { name: '对话设置', exact: true }).click();
     }
@@ -72,7 +76,9 @@ const { promisify } = require('node:util');
     check(real ? '真实本地模型按需启动并通过健康检查' : '选择中文引擎与参考情绪，保存并检查服务');
     if (real) {
       poolHealth = await (await fetch('http://127.0.0.1:9882/health')).json();
-      assert.equal(poolHealth.workers, 2); assert.equal(poolHealth.threadsPerWorker, 8);
+      assert.equal(poolHealth.workers, workers);
+      assert.equal(poolHealth.threadsPerWorker ?? poolHealth.threads, Math.max(1, Math.floor(threads / workers)));
+      if (process.env.PET_GPT_DEVICE === 'cuda') assert.equal(poolHealth.device, 'cuda');
     }
     await panel.getByRole('button', { name: '试听声音', exact: true }).click();
     await panel.getByText('试听结束', { exact: true }).waitFor({ timeout: 120000 });
@@ -95,10 +101,10 @@ const { promisify } = require('node:util');
     const stored = JSON.parse(await fs.readFile(path.join(userDir, 'conversation-settings.json'), 'utf8'));
     assert.equal(stored.config.tts.languageChinese, 'configured'); assert.equal(stored.config.tts.gptSovits.voice, 'happy');
     if (real && process.env.PET_GPT_BENCHMARK) {
-      const result = await promisify(execFile)(path.join(real, '.venv/Scripts/python.exe'), ['-I', '-X', 'utf8', '-u', path.resolve('integrations/gpt-sovits/benchmark_service.py'), '--url', 'http://127.0.0.1:9882', '--concurrency', '2', '--output', path.resolve('test-results/rocm-gui-pool')], { windowsHide: true, timeout: 300000 });
+      const result = await promisify(execFile)(path.join(real, '.venv/Scripts/python.exe'), ['-I', '-X', 'utf8', '-u', path.resolve('integrations/gpt-sovits/benchmark_service.py'), '--url', 'http://127.0.0.1:9882', '--concurrency', String(Math.min(workers, 2)), '--output', path.resolve('test-results/rocm-gui-pool')], { windowsHide: true, timeout: 300000 });
       console.log(result.stdout);
     }
-    if (real) { poolHealth = await (await fetch('http://127.0.0.1:9882/health')).json(); assert.equal(poolHealth.peakActive, 2); }
+    if (real) { poolHealth = await (await fetch('http://127.0.0.1:9882/health')).json(); if (workers > 1) assert.equal(poolHealth.peakActive, Math.min(workers, 2)); }
     assert.deepEqual(errors, []); await app.close(); app = undefined;
     if (real) { await wait(async () => { try { await fetch('http://127.0.0.1:9882/health', { signal: AbortSignal.timeout(1000) }); return false; } catch { return true; } }, '清理自己的 Python'); check('退出后桥接及实际 Python 推理进程停止'); }
     if (realVoicevox) { await wait(async () => { try { await fetch('http://127.0.0.1:50031/version', { signal: AbortSignal.timeout(1000) }); return false; } catch { return true; } }, '清理自己的 VOICEVOX'); check('退出关闭自己的 VOICEVOX，未干扰其他端口的服务'); }

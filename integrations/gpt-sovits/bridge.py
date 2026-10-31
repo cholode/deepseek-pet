@@ -165,6 +165,13 @@ def main():
     # 中文前端也属于模型就绪条件；缺多音字模型时不要返回“已就绪”后才在首句失败。
     from text import chinese2  # noqa: F401
     from text import japanese  # noqa: F401
+    cpu_g2pw = bool(optimized and device == "cuda" and torch.version.hip and settings.get("rocm_cpu_g2pw", True))
+    if cpu_g2pw:
+        # 多音字 G2PW 是另一份 CPU 模型，不能只优化上面的文本 BERT。
+        # 本机 ROCm 包使用 OpenBLAS，同一前端在原 CPU/MKL 包里明显更快。
+        # 用 oneDNN 预打包线性层，保留原权重/读音选择；不关闭多音字模型或换词典。
+        from torch.utils.mkldnn import to_mkldnn
+        chinese2.g2pw.model = to_mkldnn(chinese2.g2pw.model)
     voices = settings["voices"]
     for voice in voices.values():
         if not Path(voice["audio"]).is_file() or not voice["text"].strip():
@@ -253,6 +260,7 @@ def main():
                 "backend": "rocm" if device == "cuda" and torch.version.hip else device,
                 "deviceName": torch.cuda.get_device_name(0) if device == "cuda" else "CPU",
                 "frontendDevice": "cpu" if cpu_bert else device,
+                "phonemeBackend": "onednn" if cpu_g2pw else "default",
                 "engine": "cpu-fast" if optimized else "upstream",
                 "languages": ["zh", "ja"],
                 "voices": [{"id": key, "name": value["name"]} for key, value in voices.items()]}

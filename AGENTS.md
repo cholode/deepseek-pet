@@ -40,7 +40,7 @@
 
 ## 实现文档
 
-2026-10-31 按用户要求安装 Radeon 780M 的独立 ROCm 环境。GPU Python 在绑定目录的 .venv-rocm，实际张量与中日合成通过后写 gpu-runtime.json 就绪标记；CPU 始终保留原 .venv。自动模式遵循可选 autoDevice 实测推荐；本机 GPU 双路四句 115.07 秒慢于 CPU 13.92 秒，故自动推荐 CPU，手动 GPU 仍可用。明确选择 GPU 不能把已运行的 CPU 服务当成功。CPUFast 的未注册注意力权重缓存在设备/精度切换后重建；ROCm 中文 BERT 使用 CPU oneDNN 编码器，语义解码与音频生成使用核显，健康检查分别报告。GPU 进程依次初始化、就绪后并发合成。模型和参考声音不变，不修改系统驱动，不改主程序 1.5.0 或根 README。GPU 安装、测试、来源继续维护在 integrations/gpt-sovits。
+2026-10-31 按用户要求安装 Radeon 780M 的独立 ROCm 环境。GPU Python 在绑定目录的 .venv-rocm，实际张量与中日合成通过后写 gpu-runtime.json 就绪标记；CPU 始终保留原 .venv。自动模式遵循可选 autoDevice 实测推荐，当前推荐 CPU；手动 GPU 仍可用。最初 GPU 双路 115.07 秒是历史 HTTP 样本，后续隔离复测约 32 秒，不能将其写成稳定速度。中文 G2PW 是另一份 CPU 前端，改用 oneDNN 后单路四句约 23.3 秒，仍慢于 CPU 双路约 17.5 秒；双 GPU 服务存在预热超时，手动 GPU 建议一路。明确选择 GPU 不能把已运行的 CPU 服务当成功。CPUFast 的未注册注意力权重缓存在设备/精度切换后重建；ROCm 中文 BERT 和 G2PW 使用 CPU oneDNN，语义解码与音频生成使用核显，健康检查分别报告。GPU 进程依次初始化、就绪后并发合成。模型和参考声音不变，不修改系统驱动，不改主程序 1.5.0 或根 README。GPU 安装、测试、诊断与来源继续维护在 integrations/gpt-sovits。
 
 2026-10-30 按用户最新要求，覆盖此前“完整回复后合成、逐句跟随显示、同模型串行”的流程：模型流式输出的闭合 voice 片段立即排入合成队列，默认两路独立进程并发，保持原文顺序播放。仅首句文字等待其实际播放，下一帧释放已缓冲文字，后续文字流与声音独立推进。工具换轮用 speechRevision 取消旧队列；完成通知只关闭输入，不重播全文。GPT-SoVITS 可设 1–4 个进程及自动/CPU/CUDA（含兼容 ROCm）设备，总 CPU 线程预算分配到各进程；本机实际启用的设备以健康检查为准。停止、失败、退出均释放文字，退出时不得因 flush 重建聊天窗。说明及服务代码仍在 integrations/gpt-sovits，主程序 1.5.0、根 README 不变。
 
