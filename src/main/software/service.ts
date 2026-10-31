@@ -21,6 +21,11 @@ export function pluginResult(raw: string): unknown {
   if (!text) throw new Error('插件未返回可读取的数据');
   return JSON.parse(text);
 }
+export function learningRecordResult(raw: string): string {
+  const result = pluginResult(raw);
+  if (!result || typeof result !== 'object' || !('recorded' in result) || result.recorded !== true) throw new Error('学习插件没有确认记录成功，请核查外部记录');
+  return JSON.stringify(result);
+}
 export class SoftwareService implements ToolPort {
   readonly plugins: SoftwarePlugins;
   private entries: SoftwareEntry[] = [];
@@ -193,7 +198,7 @@ export class SoftwareService implements ToolPort {
       signal.throwIfAborted();
       try {
         await this.ensureConnected(entry, signal);
-        for (const tool of entry.tools.filter(t => entry.grants.some(g => g.name === t.name && g.signature === t.signature))) definitions.push({
+        for (const tool of entry.tools.filter(t => t.name !== this.plugins.records.get(entry.pluginId)?.manifest.learningRecordTool && entry.grants.some(g => g.name === t.name && g.signature === t.signature))) definitions.push({
           name: softwareToolName(entry.id, tool.name), description: `软件：${entry.name}；插件：${this.plugins.records.get(entry.pluginId)!.manifest.name}；能力：${tool.name}。${tool.description}`.slice(0, 1600), inputSchema: tool.inputSchema
         });
       } catch { signal.throwIfAborted(); /* 一个插件失败不阻断聊天和其他软件；错误在软件页中显示。 */ }
@@ -202,9 +207,21 @@ export class SoftwareService implements ToolPort {
     if (definitions.length > 100) throw new Error('启用的插件能力超过 100 项，请在可操作软件中减少授权');
     return definitions;
   }
+  // 宿主只认识通用学习记录协议，不依赖具体软件。授权仍绑定插件工具的签名。
+  learningTargets() {
+    return this.entries.filter(entry => {
+      const name = this.plugins.records.get(entry.pluginId)?.manifest.learningRecordTool;
+      return entry.enabled && entry.tools.some(t => t.name === name && entry.grants.some(g => g.name === t.name && g.signature === t.signature));
+    }).map(e => ({ id: e.id, name: e.name }));
+  }
+  async recordLearning(id: string, payload: Record<string, unknown>, signal: AbortSignal) {
+    const entry = this.entry(id); const name = this.plugins.records.get(entry.pluginId)?.manifest.learningRecordTool;
+    if (!name || !this.learningTargets().some(t => t.id === id)) throw new Error('学习记录插件未启用或未授权');
+    return learningRecordResult(await this.call(softwareToolName(id, name), payload, signal));
+  }
   async call(name: string, args: Record<string, unknown>, parent: AbortSignal, silent = false): Promise<string> {
     if (this.busy || this.closed || this.invoking) throw new Error('软件管理或其他工具正在处理，请稍后重试');
-    if (JSON.stringify(args).length > 20000) throw new Error('工具参数过大');
+    if (JSON.stringify(args).length > 128000) throw new Error('工具参数过大');
     const entry = this.entries.find(e => e.tools.some(t => softwareToolName(e.id, t.name) === name));
     const tool = entry?.tools.find(t => softwareToolName(entry.id, t.name) === name);
     const permitted = () => entry && tool && entry.enabled && this.entries.includes(entry) && entry.grants.some(g => g.name === tool.name && g.signature === tool.signature);

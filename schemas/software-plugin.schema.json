@@ -106,6 +106,10 @@
       "type": "string",
       "pattern": "^[a-zA-Z0-9_-]{1,64}$"
     },
+    "learningRecordTool": {
+      "type": "string",
+      "pattern": "^[a-zA-Z0-9_-]{1,64}$"
+    },
     "transport": {
       "oneOf": [
         {

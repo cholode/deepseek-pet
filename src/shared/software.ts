@@ -15,6 +15,7 @@ export const softwarePluginSchema = z.object({
   description: z.string().trim().min(1).max(2000), author: z.string().trim().max(120).default(''),
   configuration: z.object({ title: z.string().max(80), readTool: toolName, writeTool: toolName, fields: z.array(configurationField).max(20) }).strict().optional(),
   reminderTool: toolName.optional(),
+  learningRecordTool: toolName.optional(),
   transport: z.discriminatedUnion('type', [
     z.object({ type: z.literal('stdio'), runtime: z.enum(['executable', 'node', 'python']), entry: relativePath, args: z.array(z.string().max(2000)).max(30).default([]) }).strict(),
     z.object({ type: z.literal('streamable-http'), defaultUrl: z.string().max(500).default('') }).strict()
