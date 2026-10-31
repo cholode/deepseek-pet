@@ -2,7 +2,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { promises as fs } from 'node:fs';
 import path from 'node:path';
 import os from 'node:os';
-import { hasSpeechLanguages, parseSpeechLanguages, speechLanguagePrompt } from '../src/shared/speech-language';
+import { completedSpeechSegments, hasSpeechLanguages, parseSpeechLanguages, speechLanguagePrompt } from '../src/shared/speech-language';
 import { voiceConfigSchema, voiceDefaults } from '../src/shared/voice';
 import { VoiceAudio, validateVoiceConfig } from '../src/main/voice/audio';
 import { VoiceService } from '../src/main/voice/service';
@@ -14,6 +14,23 @@ const mixed = '<voice lang="zh">今天练习 **</voice><voice lang="ja">先生</
 const folders: string[] = [];
 afterEach(async () => { vi.unstubAllGlobals(); vi.restoreAllMocks(); await Promise.all(folders.splice(0).map(folder => fs.rm(folder, { recursive: true, force: true }))); });
 describe('模型输出的语言元数据', () => {
+  it('任意网络分片只提交闭合标签，相邻同语言无标点句保持稳定前缀', () => {
+    const first = '<voice lang="zh" emotion="happy">准备好啦</voice>';
+    const second = '<voice lang="zh" emotion="happy">我们开始</voice>';
+    for (let i = 0; i < first.length; i++) expect(completedSpeechSegments(first.slice(0, i))).toEqual([]);
+    const prefix = [{ language: 'zh', emotion: 'happy', text: '准备好啦' }];
+    for (let i = 0; i < second.length; i++) expect(completedSpeechSegments(first + second.slice(0, i))).toEqual(prefix);
+    const all = [...prefix, { language: 'zh', emotion: 'happy', text: '我们开始' }];
+    expect(completedSpeechSegments(first + second)).toEqual(all);
+    expect(parseSpeechLanguages(first + second).segments).toEqual(all);
+    expect(completedSpeechSegments('漏标' + first)).toEqual([]);
+  });
+  it('情绪与语言在同次输出中解析；未知情绪温和回退，不合并不同情绪', () => {
+    const source = '<voice emotion="happy" lang="zh">答对啦！</voice><voice lang="zh" emotion="sad">再试试。</voice><voice lang="ja" emotion="unknown">先生</voice>';
+    expect(hasSpeechLanguages(source)).toBe(true);
+    expect(parseSpeechLanguages(source).segments).toEqual([{ language: 'zh', emotion: 'happy', text: '答对啦！' }, { language: 'zh', emotion: 'sad', text: '再试试。' }, { language: 'ja', emotion: 'neutral', text: '先生' }]);
+    for (let i = 0; i < source.length; i++) expect(parseSpeechLanguages(source.slice(0, i), true).text).not.toContain('<');
+  });
   it('同一个汉字串根据模型标注使用不同语言，显示正文仍保留 Markdown', () => {
     expect(parseSpeechLanguages('<voice lang="zh">先生</voice><voice lang="ja">先生</voice>')).toEqual({ text: '先生先生', segments: [{ language: 'zh', text: '先生' }, { language: 'ja', text: '先生' }] });
     expect(parseSpeechLanguages(mixed).text).toBe('今天练习 **先生**，意思是老师。');

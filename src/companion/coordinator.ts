@@ -111,7 +111,7 @@ export class CompanionCoordinator {
       if (languageSpeech && !annotated && result.text.trim()) {
         // 只在协议缺失时补标注，不执行工具；正文必须保持一致，不能伪装成新的回复。
         try {
-          const repair = await this.model.complete([...messages, { role: 'assistant', content: result.text }, { role: 'user', content: '上一条回复缺少或不符合语音语言标注。请保留上一条正文的每一个字，只补齐 <voice lang="zh">...</voice> 和 <voice lang="ja">...</voice> 标签。日语单词即使只有汉字也标 ja；中文解释标 zh。所有正文必须在标签内。不要解释，不要调用工具。' }], { ...data.config.model, temperature: 0, timeoutMs: Math.min(20000, data.config.model.timeoutMs) }, controller.signal);
+          const repair = await this.model.complete([...messages, { role: 'assistant', content: result.text }, { role: 'user', content: '上一条回复缺少或不符合语音语言标注。请保留上一条正文的每一个字，只补齐 <voice lang="zh">...</voice> 和 <voice lang="ja">...</voice> 标签，每句还可补 emotion="neutral|happy|sad|angry|surprised|afraid|disgusted"，普通解释用 neutral。日语单词即使只有汉字也标 ja；中文解释标 zh。所有正文必须在标签内。不要解释，不要调用工具。' }], { ...data.config.model, temperature: 0, timeoutMs: Math.min(20000, data.config.model.timeoutMs) }, controller.signal);
           if (!live()) return '';
           const content = (value: string) => parseSpeechLanguages(value).text.replace(/\s/g, '');
           if (!repair.calls.length && hasSpeechLanguages(repair.text) && content(repair.text) === content(result.text)) { result = repair; annotated = true; }
