@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { chatDraftFields, hasChatContent } from './chat-draft';
 import type { Emotion } from './companion';
 
 // 悬停窗口只接收聊天所需信息，不暴露密钥、记忆管理或 MCP 配置权限。
@@ -13,7 +14,8 @@ export interface SpeechBubbleState { id: string; text: string; streaming: boolea
 export const quickChatRequestSchema = z.discriminatedUnion('type', [
   z.object({ type: z.literal('state') }).strict(),
   z.object({ type: z.literal('tab'), tab: z.enum(['chat', 'status']) }).strict(),
-  z.object({ type: z.literal('send'), text: z.string().trim().min(1).max(4000) }).strict(),
+  z.object({ type: z.literal('send'), ...chatDraftFields }).strict().refine(hasChatContent, '请输入文字或选择表情'),
+  z.object({ type: z.literal('composer'), picker: z.boolean(), attachment: z.boolean() }).strict(),
   z.object({ type: z.literal('cancel') }).strict(),
   z.object({ type: z.literal('dismiss') }).strict(),
   z.object({ type: z.literal('settings') }).strict(),

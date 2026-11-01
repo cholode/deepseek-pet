@@ -1,7 +1,7 @@
 import path from 'node:path';
 import { promises as fs } from 'node:fs';
 import { randomUUID } from 'node:crypto';
-import { stickerCatalogSchema, stickerPluginSchema } from '../../shared/stickers';
+import { localStickerPack, stickerCatalogSchema, stickerPluginSchema } from '../../shared/stickers';
 
 async function readData(directory: string, name: string, limit: number) {
   const file = path.join(directory, name), stat = await fs.lstat(file);
@@ -12,6 +12,7 @@ export async function readStickerPlugin(directory: string) {
   const manifest = stickerPluginSchema.parse(JSON.parse(await readData(directory, 'sticker-plugin.json', 16000)));
   const catalog = stickerCatalogSchema.parse(JSON.parse(await readData(directory, 'catalog.json', 5 * 1024 * 1024)));
   if (new Set(catalog.items.map(item => item.id)).size !== catalog.items.length) throw new Error('表情目录包含重复 ID');
+  if (catalog.items.some(item => item.id.startsWith('custom:') || item.pack === localStickerPack)) throw new Error('插件不能占用“我的表情”的套组或 ID');
   if (catalog.items.some(item => new URL(item.url).origin !== manifest.origin)) throw new Error('表情地址超出插件声明的来源');
   return { manifest, catalog };
 }

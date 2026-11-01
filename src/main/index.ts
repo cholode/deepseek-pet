@@ -20,6 +20,7 @@ import { CompatibleModel } from './companion/model';
 import { SoftwareService } from './software/service';
 import { softwareActionAllowed } from '../shared/action-context';
 import { StickerService } from './stickers/service';
+import { stickerMime } from '../shared/stickers';
 import { ToolRouter } from '../companion/tool-router';
 import { VoiceService } from './voice/service';
 import { SpeechDisplay } from './voice/display';
@@ -179,6 +180,10 @@ async function boot() {
   handle('software', 'panel', raw => software!.request(raw));
   stickers = new StickerService(path.join(app.getPath('userData'), 'stickers'), path.join(app.isPackaged ? process.resourcesPath : app.getAppPath(), 'plugins', 'nekowhale-stickers'), {
     choosePlugin: async () => { const choice = await dialog.showOpenDialog(panel ?? pet, { title: '选择解压后的表情插件目录（包含 sticker-plugin.json）', properties: ['openDirectory'] }); return choice.canceled ? undefined : choice.filePaths[0]; },
+    chooseImages: async () => {
+      const choice = await dialog.showOpenDialog(panel ?? pet, { title: '导入自己的图片和 GIF 表情', properties: ['openFile', 'multiSelections'], filters: [{ name: '图片与动态表情', extensions: ['png', 'jpg', 'jpeg', 'webp', 'gif'] }] });
+      return choice.canceled ? undefined : choice.filePaths;
+    },
     changed: state => { if (panel && !panel.isDestroyed()) panel.webContents.send('stickers-state', state); },
     preview: text => { const speech = companion?.store.data.config.speech; if (speech) chatWindows?.present({ id: randomUUID(), phase: 'complete', text, emotion: 'calm', source: 'initiative', speech: { ...speech, enabled: false } }, true); }
   });
@@ -187,7 +192,7 @@ async function boot() {
   protocol.handle('petsticker', async request => {
     if (request.method !== 'GET') return new Response('Forbidden', { status: 403 });
     const data = await stickers!.image(request.url);
-    return data ? new Response(new Uint8Array(data), { headers: { 'Content-Type': 'image/gif', 'Cache-Control': 'no-store', 'X-Content-Type-Options': 'nosniff' } }) : new Response('表情尚未缓存', { status: 404 });
+    return data ? new Response(new Uint8Array(data), { headers: { 'Content-Type': stickerMime(request.url)!, 'Cache-Control': 'no-store', 'X-Content-Type-Options': 'nosniff' } }) : new Response('表情图片不可用', { status: 404 });
   });
   studio = new StudioService(path.join(app.getPath('userData'), 'learning-studio'), {
     conversationPolicy: () => voice?.conversationPolicy ?? conversationPolicyDefaults,
@@ -232,7 +237,7 @@ async function boot() {
     capabilities: () => (debug?.groups ?? []).map(g => ({ groupId: g.groupId, name: g.name, description: g.description, tags: g.tags, channels: g.channels, expectedDurationMs: g.expectedDurationMs, available: g.enabled && !g.interaction && !debug?.failedGroups.includes(g.groupId) && softwareActionAllowed(g, { ...desktop, interacting: desktop.interacting || desktop.dragging, paused: settings.value.paused, lastInteraction: desktop.lastInteractionAt ?? Date.now() }, Date.now()) })),
     available: () => desktop.visible && !desktop.suspended && !desktop.dragging && !desktop.chatting && !settings.value.paused,
     lastInteractionAt: () => Math.max(0, ...(debug?.events.filter(e => e.type === 'interaction').map(e => e.occurredAtUnixMs) ?? []), ...(companion?.store.data.events.filter(e => e.actor === 'user').map(e => e.at) ?? []))
-  }, enabled => send({ type: 'companion-mode', enabled }), new ToolRouter([software, stickers, studio]), () => voice?.conversationPolicy ?? conversationPolicyDefaults);
+  }, enabled => send({ type: 'companion-mode', enabled }), new ToolRouter([software, stickers, studio]), () => voice?.conversationPolicy ?? conversationPolicyDefaults, (text, id, signal) => stickers!.composeUserMessage(text, id, signal));
   await companion.start();
   await studio.start();
   voice = new VoiceService(path.join(app.getPath('userData'), 'conversation-settings.json'), {
@@ -278,13 +283,18 @@ async function boot() {
     recordInteraction(); await shell.openExternal(url);
   });
   ipcMain.handle('speech-bubble-dismiss', event => { if (!chatWindows?.isSender(event, 'bubble')) throw new Error('IPC_FORBIDDEN'); chatWindows.dismissSpeech(); });
-  // 悬停窗口仅开放发送/停止和跳转设置，不能借此调用完整管理 IPC。
+  ipcMain.handle('sticker-picker', async (event, raw) => {
+    if (!chatWindows?.isSender(event, 'chat')) trusted(event, 'panel');
+    return stickers!.pickerRequest(raw);
+  });
+  // 悬停窗口仅开放发送/停止、表情浏览和跳转设置，不能借此调用完整管理 IPC。
   ipcMain.handle('quick-chat', async (event, raw): Promise<QuickChatResponse> => {
     if (!chatWindows?.isSender(event, 'chat')) throw new Error('IPC_FORBIDDEN');
     const request = quickChatRequestSchema.parse(raw);
     if (request.type === 'send' || request.type === 'cancel') recordInteraction();
     if (request.type === 'tab') chatWindows.selectTab(request.tab);
     if (request.type === 'hold') chatWindows.hold(request.value);
+    if (request.type === 'composer') chatWindows.setComposer(request);
     if (request.type === 'dismiss') chatWindows.dismiss();
     if (request.type === 'settings') {
       chatWindows.dismiss(); openPanel();
@@ -292,7 +302,7 @@ async function boot() {
       else panel!.webContents.send('runtime', { type: 'open-companion' });
     }
     if (request.type === 'send' || request.type === 'cancel') {
-      const response = await companion!.request(request.type === 'send' ? { type: 'chat', text: request.text } : { type: 'cancel' });
+      const response = await companion!.request(request.type === 'send' ? { type: 'chat', text: request.text, stickerId: request.stickerId } : { type: 'cancel' });
       return { ok: response.ok, message: response.message, state: chatWindows.state() };
     }
     return { ok: true, state: chatWindows.state() };

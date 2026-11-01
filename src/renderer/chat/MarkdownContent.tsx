@@ -9,7 +9,7 @@ function StickerImage({ src, alt }: { src?: string; alt?: string }) {
   const [failed, setFailed] = useState(false);
   return stickerImageUrl(src) && !failed
     ? <img className="chat-sticker" src={src} alt={alt || '表情包'} title={alt || '表情包'} onError={() => setFailed(true)} draggable={false}/>
-    : <span className="markdown-image">[{failed ? '表情未缓存，可在小屋重新预览下载' : `图片：${alt || '未提供说明'}`}]</span>;
+    : <span className="markdown-image">[{failed ? '表情图片不可用，可在小屋重新预览或导入' : `图片：${alt || '未提供说明'}`}]</span>;
 }
 const components: Components = {
   a: ({ href, children }) => {

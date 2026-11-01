@@ -1,12 +1,12 @@
 import { createHash } from 'node:crypto';
-import type { Sticker } from '../../shared/stickers';
+import { isLocalSticker, type LibrarySticker } from '../../shared/stickers';
 
-export function stickerKey(item: Sticker) { return createHash('sha256').update(`${item.url}\n${item.hash}`).digest('hex'); }
-export function imageUrl(item: Sticker) { return `petsticker://local/${stickerKey(item)}.gif`; }
+export function stickerKey(item: LibrarySticker) { return isLocalSticker(item) ? item.sha256 : createHash('sha256').update(`${item.url}\n${item.hash}`).digest('hex'); }
+export function imageUrl(item: LibrarySticker) { return `petsticker://local/${stickerKey(item)}.${isLocalSticker(item) ? item.format : 'gif'}`; }
 
 // 基于上游 dsh-nekowhale-stickers 的字段权重与中文双字匹配思路，适配本地目录。
 // 来源与许可随独立插件的 NOTICE / LICENSE 保留。
-export function searchStickers(items: readonly Sticker[], query: string) {
+export function searchStickers<T extends LibrarySticker>(items: readonly T[], query: string): T[] {
   const terms = query.toLowerCase().split(/[\s,，。.!！?？、;；:：/|]+/u).filter(Boolean);
   if (!terms.length) return [...items];
   return items.map(item => {

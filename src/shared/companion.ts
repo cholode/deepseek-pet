@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { chatDraftFields, hasChatContent } from './chat-draft';
 import { speechSegmentSchema, type SpeechSegment } from './speech-language';
 import { growthSchema, traitSchema } from './growth';
 
@@ -59,7 +60,7 @@ export const companionRequestSchema = z.discriminatedUnion('type', [
   z.object({ type: z.literal('growth-rollback'), id: z.string().max(200) }).strict(),
   z.object({ type: z.literal('state'), forExport: z.boolean().optional() }).strict(),
   z.object({ type: z.literal('configure'), config: companionConfigSchema, secrets: z.object({ model: z.string().max(4000).optional(), qq: z.string().max(4000).optional(), mcp: z.string().max(4000).optional() }).strict().optional() }).strict(),
-  z.object({ type: z.literal('chat'), text: z.string().trim().min(1).max(4000) }).strict(),
+  z.object({ type: z.literal('chat'), ...chatDraftFields }).strict().refine(hasChatContent, '请输入文字或选择表情'),
   z.object({ type: z.literal('cancel') }).strict(),
   z.object({ type: z.literal('remember'), text: shortText, kind: z.enum(['episode', 'fact', 'preference']), factKey: z.string().max(100), scope: z.enum(['private', 'public']), pinned: z.boolean() }).strict(),
   z.object({ type: z.literal('forget'), id: z.string().max(100) }).strict(),

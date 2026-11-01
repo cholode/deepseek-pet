@@ -20,7 +20,7 @@ export function SpeechBubble() {
     if (!box.current || text === undefined) return;
     const context = document.createElement('canvas').getContext('2d')!;
     context.font = '14px "Microsoft YaHei", sans-serif';
-    const width = Math.min(360, Math.max(120, Math.ceil(text.split('\n').reduce((max, line) => Math.max(max, context.measureText(line).width), 0)) + 34));
+    const width = Math.min(360, Math.max(120, Math.ceil(text.split('\n').reduce((max, line) => Math.max(max, context.measureText(line).width), 0)) + 62));
     box.current.style.width = `${width}px`;
     const measure = () => {
       if (!box.current) return;
@@ -39,8 +39,10 @@ export function SpeechBubble() {
     : side === 'left' ? `M 17 ${p - 11} L 4 ${p} L 17 ${p + 11}` : `M ${w - 17} ${p - 11} L ${w - 4} ${p} L ${w - 17} ${p + 11}`;
   return <div className="speech-shell" style={{ width: w, height: h }} data-side={side} onKeyDown={e => { if (e.key === 'Escape') { e.preventDefault(); void window.pet.dismissSpeechBubble(); } }}>
     <div className={`speech-bubble ${state.streaming ? 'streaming' : ''}`} ref={box}>
+      {/* 关闭入口不依赖溢出检测；独立于滚动内容，右侧留位避免文字和 GIF 遮住按钮。 */}
+      <button className="speech-dismiss" aria-label="关闭回复" title="关闭回复（Esc）" onClick={() => void window.pet.dismissSpeechBubble()}>×</button>
       <div className="speech-content" ref={scroll.ref} onScroll={scroll.onScroll} tabIndex={0} role="region" aria-label="大肥鱼回复内容"><MarkdownContent text={state.text}/></div>
-      {scroll.overflow && <div className="speech-controls"><span>滚动阅读</span><button onClick={scroll.toStart}>开头</button><button onClick={scroll.toLatest} disabled={scroll.atBottom}>最新</button><button aria-label="关闭回复" title="关闭回复（Esc）" onClick={() => void window.pet.dismissSpeechBubble()}>×</button></div>}
+      {scroll.overflow && <div className="speech-controls"><span>滚动阅读</span><button onClick={scroll.toStart}>开头</button><button onClick={scroll.toLatest} disabled={scroll.atBottom}>最新</button></div>}
     </div>
     <svg className="speech-tail" viewBox={`0 0 ${w} ${h}`} aria-hidden="true"><path d={path}/></svg>
   </div>;

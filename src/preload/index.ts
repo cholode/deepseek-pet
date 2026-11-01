@@ -13,6 +13,7 @@ const bridge: PetBridge = {
   voice: request => ipcRenderer.invoke('voice', request),
   onVoice: fn => { const listener = (_e: Electron.IpcRendererEvent, event: VoiceEvent) => fn(event); ipcRenderer.on('voice-event', listener); return () => ipcRenderer.removeListener('voice-event', listener); },
   stickers: request => ipcRenderer.invoke('stickers', request),
+  stickerPicker: request => ipcRenderer.invoke('sticker-picker', request),
   onStickers: fn => { const listener = (_e: Electron.IpcRendererEvent, state: StickerView) => fn(state); ipcRenderer.on('stickers-state', listener); return () => ipcRenderer.removeListener('stickers-state', listener); },
   openChatLink: url => ipcRenderer.invoke('chat-open-link', url),
   dismissSpeechBubble: () => ipcRenderer.invoke('speech-bubble-dismiss'),

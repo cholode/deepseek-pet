@@ -5,6 +5,13 @@ import type { Rect } from '../src/shared/geometry';
 const intersects = (a: Rect, b: Rect) => a.x < b.x + b.width && b.x < a.x + a.width && a.y < b.y + b.height && b.y < a.y + a.height;
 const regions = [{ target: 'head' as const, x: 70, y: 85, width: 200, height: 170 }, { target: 'body' as const, x: 88, y: 241, width: 217, height: 168 }];
 describe('悬停聊天与独立气泡布局', () => {
+  it('表情选择器与附件增加原生窗口高度，关闭后恢复短条且不影响状态页', () => {
+    const area = { x: -1200, y: -100, width: 1200, height: 700 }, pet = { x: -900, y: 180, width: 340, height: 420 };
+    const composer = { picker: true, attachment: true };
+    const layout = inputBarLayout(chatAnchors(pet, regions), area, 'chat', composer);
+    expect(layout.bounds.height).toBe(444); expect(layout.bounds.y + layout.bounds.height).toBeLessThanOrEqual(area.y + area.height);
+    expect(quickPanelSize('status', composer).height).toBe(224); expect(quickPanelSize('chat').height).toBe(94);
+  });
   it('短暂停留才打开，跨越窗口间隙不会闪退', () => {
     const p = new HoverChatPolicy();
     expect(p.update(0, true, false, false, false)).toBe(false);

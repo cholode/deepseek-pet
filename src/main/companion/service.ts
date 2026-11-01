@@ -21,7 +21,7 @@ export class CompanionService {
   private mcp: McpTools; private qq: OneBotChannel; private timer?: ReturnType<typeof setInterval>;
   private polling = false; private closed = false; private external = new AbortController(); private toolList: CompanionView['tools'] = [];
   private handling = false; private lastQqErrorAt = 0;
-  constructor(directory: string, private host: CompanionHost, private mode: (enabled: boolean) => void, private software?: ToolPort, sessionPolicy?: () => ConversationPolicy) {
+  constructor(directory: string, private host: CompanionHost, private mode: (enabled: boolean) => void, private software?: ToolPort, sessionPolicy?: () => ConversationPolicy, private prepareSticker?: (text: string, id: string, signal: AbortSignal) => Promise<string>) {
     this.store = new CompanionStore(path.join(directory, 'companion.json'));
     this.secrets = new SecretStore(path.join(directory, 'companion-secrets.json'));
     this.mcp = new McpTools(() => this.store.data.config.mcp, () => this.secrets.get('mcp'));
@@ -49,7 +49,13 @@ export class CompanionService {
   }
   private async execute(request: CompanionRequest) {
     const data = this.store.data; const now = this.host.now();
-    if (request.type === 'chat') { await this.coordinator.chat(request.text); return; }
+    if (request.type === 'chat') {
+      const signal = this.external.signal;
+      if (!this.coordinator.ready) throw new Error('请先配置模型名称并启用智能陪伴');
+      if (request.stickerId && !this.prepareSticker) throw new Error('表情功能尚未准备好');
+      const text = request.stickerId ? await this.prepareSticker!(request.text, request.stickerId, signal) : request.text;
+      signal.throwIfAborted(); await this.coordinator.chat(text); return;
+    }
     if (request.type === 'configure') {
       endpoint(request.config.model.baseUrl);
       endpoint(request.config.qq.baseUrl, true);

@@ -33,6 +33,9 @@
     "pack:anki": "node scripts/pack-anki.cjs",
     "pack:stickers": "node scripts/pack-stickers.cjs",
     "test:stickers-gui": "node scripts/stickers-gui-test.cjs",
+    "test:local-stickers-gui": "node scripts/local-stickers-gui-test.cjs",
+    "test:expression-picker-gui": "node scripts/expression-picker-gui-test.cjs",
+    "test:speech-close-gui": "node scripts/speech-close-gui-test.cjs",
     "test:tool-continuation-gui": "node scripts/tool-continuation-gui-test.cjs",
     "test:teaching-benchmark": "node scripts/teaching-benchmark.cjs"
   },
@@ -46,7 +49,8 @@
     "react-dom": "19.2.8",
     "react-markdown": "^10.1.0",
     "remark-gfm": "^4.0.1",
-    "zod": "^4.3.6"
+    "zod": "^4.3.6",
+    "sharp": "^0.35.4"
   },
   "devDependencies": {
     "@eslint/js": "^9.39.2",
@@ -59,7 +63,6 @@
     "electron-vite": "5.0.0",
     "eslint": "^9.39.2",
     "playwright": "^1.58.0",
-    "sharp": "^0.35.4",
     "tsx": "^4.21.0",
     "typescript": "^5.9.3",
     "typescript-eslint": "^8.56.0",

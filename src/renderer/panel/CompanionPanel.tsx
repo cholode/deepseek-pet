@@ -8,6 +8,8 @@ import { GrowthPanel } from './GrowthPanel';
 import { StudioPanel } from './StudioPanel';
 import { MarkdownContent } from '../chat/MarkdownContent';
 import { useMessageScroll } from '../chat/useMessageScroll';
+import { ExpressionButton, ExpressionPicker, StickerDraft } from '../chat/ExpressionPicker';
+import { useChatDraft } from '../chat/useChatDraft';
 import './companion.css';
 
 // UI 仅发送受限请求；所有模型调用、记忆写入和渠道权限在主进程服务中执行。
@@ -18,7 +20,8 @@ export function CompanionPanel() {
   const [secrets, setSecrets] = useState<Partial<Record<'model' | 'qq' | 'mcp', string>>>({});
   const [recording, setRecording] = useState(false);
   const sending = useRef(false);
-  const [text, setText] = useState(''); const [note, setNote] = useState(''); const [pending, setPending] = useState(false);
+  const chatDraft = useChatDraft(); const { text, setText, sticker, setSticker, picker, setPicker } = chatDraft;
+  const [note, setNote] = useState(''); const [pending, setPending] = useState(false);
   const [memory, setMemory] = useState(''); const [factKey, setFactKey] = useState(''); const [scope, setScope] = useState<'private' | 'public'>('private');
   const [kind, setKind] = useState<'episode' | 'fact' | 'preference'>('fact'); const [query, setQuery] = useState('');
   const [goal, setGoal] = useState(''); const [due, setDue] = useState('');
@@ -44,13 +47,14 @@ export function CompanionPanel() {
   }
   function send(voiceText?: string): boolean {
     const value = (voiceText ?? text).trim(); const fromVoice = voiceText !== undefined;
-    if (!value || value.length > 4000 || (!fromVoice && recording) || !state?.ready || state.busy || pending || sending.current) return false;
-    sending.current = true; if (!fromVoice) setText('');
+    const attachment = fromVoice ? undefined : sticker;
+    if ((!value && !attachment) || value.length > 4000 || (!fromVoice && recording) || !state?.ready || state.busy || pending || sending.current) return false;
+    sending.current = true; setPicker(false); if (!fromVoice) { setText(''); setSticker(undefined); }
     // 直接复用正常聊天通道，语音不清空或附带已有草稿。
-    void request({ type: 'chat', text: value }).then(result => {
+    void request({ type: 'chat', text: value, stickerId: attachment?.id }).then(result => {
       if (!result?.ok) {
         if (fromVoice) setNote(`${result?.message ?? '发送失败'}。识别结果：${value}`);
-        else setText(current => current || value);
+        else { setText(current => current || value); setSticker(current => current ?? attachment); }
       }
     }).finally(() => { sending.current = false; });
     return true;
@@ -76,9 +80,11 @@ export function CompanionPanel() {
       {!state.ready && <div className="companion-empty"><h3>让大肥鱼认识你</h3><p>在陪伴设置里连接本地或远程模型，就可以聊天、记住共同经历，并让表情跟着心情变化。</p><button className="primary" onClick={() => setTab('settings')}>配置智能陪伴</button></div>}
       <div className="companion-messages" ref={scroll.ref} onScroll={scroll.onScroll} tabIndex={0} role="region" aria-label="聊天记录">{state.data.events.map(e => <article className={`companion-message ${e.actor}`} key={e.id}><small>{e.actor === 'pet' ? state.data.config.persona.name : e.actor === 'system' ? '自主唤醒' : '你'} · {e.source === 'desktop' ? '桌面' : e.source} · {new Date(e.at).toLocaleTimeString()}</small><MarkdownContent text={e.text}/></article>)}{stream && !state.data.events.some(e => e.id === stream.id) && <article className="companion-message pet"><small>{state.data.config.persona.name} · 正在说…</small><MarkdownContent text={stream.text}/></article>}</div>
       {scroll.overflow && !scroll.atBottom && <div className="companion-scroll-actions"><button onClick={scroll.toLatest}>回到最新消息 ↓</button></div>}
-      <textarea aria-label="对大肥鱼说" placeholder="和大肥鱼说点什么…（Ctrl + Enter 发送）" value={text} maxLength={4000} onChange={e => setText(e.target.value)} onKeyDown={e => { if (e.key === 'Enter' && e.ctrlKey && !disabled && state.ready) void send(); }}/>
-      <VoiceInput purpose="chat" disabled={disabled || !state.ready} onBusy={setRecording} onText={send}/>
-      <div className="companion-inline"><button className="primary" disabled={disabled || recording || !state.ready || !text.trim()} onClick={() => void send()}>发送</button><button onClick={() => void window.pet.companion({ type: 'cancel' }).then(r => setState(r.state))}>停止思考与朗读</button><button disabled={disabled} onClick={() => void request({ type: 'clear-history' })}>清空聊天</button></div>
+      {picker && <div className="companion-expression-panel"><ExpressionPicker onEmoji={chatDraft.emoji} onSticker={setSticker} close={() => setPicker(false)}/></div>}
+      {sticker && <StickerDraft item={sticker} remove={() => setSticker(undefined)}/>}
+      <textarea ref={chatDraft.input} aria-label="对大肥鱼说" placeholder="和大肥鱼说点什么…（Ctrl + Enter 发送）" value={text} maxLength={4000} onChange={e => setText(e.target.value)} onKeyDown={e => { if (e.key === 'Enter' && e.ctrlKey && !e.nativeEvent.isComposing && !disabled && state.ready) { e.preventDefault(); void send(); } }}/>
+      <div className="companion-compose-tools"><ExpressionButton open={picker} disabled={!state.ready || recording} onClick={() => setPicker(value => !value)}/><VoiceInput purpose="chat" disabled={disabled || !state.ready} onBusy={setRecording} onText={send}/></div>
+      <div className="companion-inline"><button className="primary" disabled={disabled || recording || !state.ready || (!text.trim() && !sticker)} onClick={() => void send()}>发送</button><button onClick={() => void window.pet.companion({ type: 'cancel' }).then(r => setState(r.state))}>停止思考与朗读</button><button disabled={disabled} onClick={() => void request({ type: 'clear-history' })}>清空聊天</button></div>
       {!!state.recalls.length && <details><summary>这次想起了什么（{state.recalls.length}）</summary>{state.recalls.map(m => <p key={m.id}>{m.text}<small>{m.reason}</small></p>)}</details>}
     </section>}
     {tab === 'memory' && <div className="settings-stack"><section className="settings-card"><h3>记住一件事</h3><textarea aria-label="记忆内容" value={memory} maxLength={600} placeholder="例如：我喜欢安静，工作时不要频繁搭话。" onChange={e => setMemory(e.target.value)}/><div className="companion-columns"><label>类型<select value={kind} onChange={e => setKind(e.target.value as typeof kind)}><option value="fact">长期事实</option><option value="preference">用户偏好</option><option value="episode">共同经历</option></select></label><label>事实键<input value={factKey} placeholder="例如 用户.称呼；经历可留空" onChange={e => setFactKey(e.target.value)}/></label><label>可见范围<select value={scope} onChange={e => setScope(e.target.value as typeof scope)}><option value="private">私人：桌面与绑定私聊</option><option value="public">允许在群聊中使用</option></select></label></div><button disabled={disabled || !memory.trim()} onClick={() => void request({ type: 'remember', text: memory, factKey, kind, scope, pinned: kind !== 'episode' }).then(r => { if (r?.ok) setMemory(''); })}>保存记忆</button></section>
